@@ -109,6 +109,174 @@ struct SwiftBarTests {
         #expect(!shouldLoadPluginFile(at: fileURL, makePluginExecutable: true))
     }
 
+    @Test func testGlobToRegex_matchesGlobPatternsCorrectly() {
+        func matches(_ pattern: String, _ path: String) -> Bool {
+            let regex = globToRegex(pattern)
+            if let re = try? NSRegularExpression(pattern: "^\(regex)$") {
+                return re.firstMatch(in: path, options: [], range: NSRange(location: 0, length: path.utf16.count)) != nil
+            }
+            return false
+        }
+
+        // `*.txt` is a single-segment glob, it only matches when the input
+        // itself is a single path segment.
+        #expect(matches("*.txt", "notes.txt"))
+        #expect(!matches("*.txt", "notes.sh"))
+        #expect(!matches("*.txt", "txt"))
+
+        // `**/*.txt` matches recursively AND at the root.
+        #expect(matches("**/*.txt", "notes.txt"))
+        #expect(matches("**/*.txt", "subdir/notes.txt"))
+        #expect(matches("**/*.txt", "a/b/c/notes.txt"))
+        #expect(!matches("**/*.txt", "notes.sh"))
+
+        // Exact path matching
+        #expect(matches("subdir/notes.txt", "subdir/notes.txt"))
+        #expect(!matches("subdir/notes.txt", "notes.txt"))
+    }
+
+    @Test func testShouldBeIgnored_matchesByFilenameAndByRelativePath() {
+        let base = URL(fileURLWithPath: "/plugins")
+        let patterns = ["*.txt"]
+
+        // Filename-only fallback: a bare `*.txt` should ignore `.txt` files
+        // sitting in sub-directories too.
+        let nested = URL(fileURLWithPath: "/plugins/subdir/notes.txt")
+        #expect(shouldBeIgnored(url: nested, patterns: patterns, baseURL: base))
+
+        let deeplyNested = URL(fileURLWithPath: "/plugins/a/b/c/notes.txt")
+        #expect(shouldBeIgnored(url: deeplyNested, patterns: patterns, baseURL: base))
+
+        // Non-matching files should not be ignored.
+        let script = URL(fileURLWithPath: "/plugins/subdir/notes.sh")
+        #expect(!shouldBeIgnored(url: script, patterns: patterns, baseURL: base))
+    }
+
+    @Test func testParseIgnorePatterns_handlesCommentsBlankLinesAndInlineComments() {
+        let content = """
+        # Top comment
+        *.txt
+           # indented comment
+        **/*.log
+
+        notes.bak  # inline comment
+        """
+        let patterns = parseIgnorePatterns(content)
+        #expect(patterns == ["*.txt", "**/*.log", "notes.bak"])
+    }
+
+    @Test func testGetPluginList_respectsSwiftBarIgnore() async throws {
+        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        try Data("*.txt\n".utf8).write(to: tempDirectory.appendingPathComponent(".swiftbarignore"))
+
+        let pluginURL = tempDirectory.appendingPathComponent("plugin.5s.sh")
+        try Data("#!/bin/zsh\necho plugin\n".utf8).write(to: pluginURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: pluginURL.path)
+
+        let txtURL = tempDirectory.appendingPathComponent("notes.txt")
+        try Data("not a plugin\n".utf8).write(to: txtURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: txtURL.path)
+
+        let subdir = tempDirectory.appendingPathComponent("nested", isDirectory: true)
+        try FileManager.default.createDirectory(at: subdir, withIntermediateDirectories: true)
+        let nestedTxt = subdir.appendingPathComponent("deep.txt")
+        try Data("definitely not\n".utf8).write(to: nestedTxt)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: nestedTxt.path)
+
+        let manager = PluginManager()
+        let originalDirectory = manager.prefs.pluginDirectoryPath
+        manager.prefs.pluginDirectoryPath = tempDirectory.path
+        defer { manager.prefs.pluginDirectoryPath = originalDirectory }
+
+        let discovered = manager.getPluginList()
+        // NSTemporaryDirectory() returns /var/folders/... which is a symlink to
+        // /private/var/folders/...; standardize so we can compare with paths
+        // resolved through the directory traversal.
+        let paths = Set(discovered.map { $0.standardizedFileURL.path })
+
+        let expectedPlugin = pluginURL.standardizedFileURL.path
+        let unexpectedTxt = txtURL.standardizedFileURL.path
+        let unexpectedNested = nestedTxt.standardizedFileURL.path
+
+        #expect(paths.contains(expectedPlugin))
+        #expect(!paths.contains(unexpectedTxt))
+        #expect(!paths.contains(unexpectedNested))
+    }
+
+    // MARK: - manifest.json folder plugins
+
+    @Test func testIsManifestPluginDirectory_returnsTrueForFoldersContainingManifest() throws {
+        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            .standardizedFileURL
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        #expect(!isManifestPluginDirectory(tempDirectory))
+
+        try Data("{}".utf8).write(to: tempDirectory.appendingPathComponent("manifest.json"))
+        #expect(isManifestPluginDirectory(tempDirectory))
+    }
+
+    @Test func testPluginManifestLoader_decodesValidManifest() throws {
+        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        let manifestJSON = """
+        {
+          "name": "Test Plugin",
+          "version": "1.2.3",
+          "description": "A test",
+          "type": "streamable",
+          "entry": "run.sh",
+          "refreshInterval": 42,
+          "environment": { "API_KEY": "abc" },
+          "parameters": [
+            { "name": "USER", "type": "string", "default": "guest" }
+          ]
+        }
+        """
+        let manifestURL = tempDirectory.appendingPathComponent("manifest.json")
+        let entryURL = tempDirectory.appendingPathComponent("run.sh")
+        try Data(manifestJSON.utf8).write(to: manifestURL)
+        try Data("#!/bin/zsh\n".utf8).write(to: entryURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: entryURL.path)
+
+        let loaded = PluginManifestLoader.loadAndValidate(from: tempDirectory)
+        #expect(loaded != nil)
+        #expect(loaded?.manifest.name == "Test Plugin")
+        #expect(loaded?.manifest.resolvedType == .Streamable)
+        #expect(loaded?.manifest.resolvedRefreshInterval == 42)
+        #expect(loaded?.manifest.environment?["API_KEY"] == "abc")
+        #expect(loaded?.manifest.parameters?.first?.name == "USER")
+        #expect(loaded?.entryURL.lastPathComponent == "run.sh")
+    }
+
+    @Test func testPluginManifestLoader_rejectsMissingEntry() throws {
+        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        // Manifest declares an entry that doesn't exist
+        try Data("{ \"entry\": \"missing.sh\" }".utf8).write(to: tempDirectory.appendingPathComponent("manifest.json"))
+
+        let loaded = PluginManifestLoader.loadAndValidate(from: tempDirectory)
+        #expect(loaded == nil)
+    }
+
+    @Test func testPluginManifestLoader_rejectsMalformedJSON() throws {
+        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        try Data("{ not valid json".utf8).write(to: tempDirectory.appendingPathComponent("manifest.json"))
+        #expect(PluginManifestLoader.loadAndValidate(from: tempDirectory) == nil)
+    }
+
     @Test func testShouldLoadPluginFile_requiresExecutableBitWhenAutoChmodIsDisabled() async throws {
         let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)

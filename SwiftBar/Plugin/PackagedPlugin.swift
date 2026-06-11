@@ -59,16 +59,15 @@ class PackagedPlugin: TimerArmingPlugin {
     // MARK: - Initialization
 
     /// Initialize with a `.swiftbar` directory URL.
-    init?(packageDirectory: URL) {
+    /// This is a convenience initializer that fails fast when the directory
+    /// isn't a valid packaged bundle, then delegates to the designated
+    /// `init(packageDirectory:mainExecutable:)`.
+    convenience init?(packageDirectory: URL) {
         guard packageDirectory.isSwiftBarPackage else {
             os_log("Directory %{public}@ is not a valid packaged plugin (must end with .swiftbar)",
                    log: Log.plugin, type: .error, packageDirectory.path)
             return nil
         }
-
-        self.packageDirectory = packageDirectory
-        name = packageDirectory.lastPathComponent.replacingOccurrences(of: ".swiftbar", with: "")
-        id = packageDirectory.resolvingSymlinksInPath().path
 
         guard let mainExecutable = PackagedPlugin.findMainExecutable(in: packageDirectory) else {
             os_log("Failed to find plugin.* entry point in packaged plugin %{public}@",
@@ -76,7 +75,16 @@ class PackagedPlugin: TimerArmingPlugin {
             return nil
         }
 
+        self.init(packageDirectory: packageDirectory, mainExecutable: mainExecutable)
+    }
+
+    /// Designated initializer that lets subclasses (e.g. `FolderPlugin`) override
+    /// which file inside `packageDirectory` is treated as the entry point.
+    init(packageDirectory: URL, mainExecutable: URL) {
+        self.packageDirectory = packageDirectory
         self.mainExecutable = mainExecutable
+        name = packageDirectory.lastPathComponent.replacingOccurrences(of: ".swiftbar", with: "")
+        id = packageDirectory.resolvingSymlinksInPath().path
         file = mainExecutable.path
         lastState = .Loading
 

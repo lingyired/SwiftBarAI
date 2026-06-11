@@ -52,6 +52,9 @@ func shouldImportOpenedPluginFile(at url: URL, makePluginExecutable: Bool, fileM
     }
 
     if isDirectory.boolValue {
+        if isManifestPluginDirectory(url) {
+            return PluginManifestLoader.loadAndValidate(from: url) != nil
+        }
         return url.isSwiftBarPackage && PackagedPlugin.findMainExecutable(in: url) != nil
     }
 

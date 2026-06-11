@@ -6,7 +6,7 @@ import os
 /// Used as the default for plugins that are not on a timed schedule.
 let pluginNeverUpdateInterval: Double = 60 * 60 * 24 * 100
 
-enum PluginType: String {
+enum PluginType: String, Codable, Equatable {
     case Executable
     case Streamable
     case Shortcut

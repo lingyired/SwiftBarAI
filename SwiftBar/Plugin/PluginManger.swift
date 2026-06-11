@@ -12,6 +12,16 @@ extension URL {
     }
 }
 
+/// Returns `true` when `url` points at a directory that contains a
+/// `manifest.json` — i.e. a folder-based SwiftBar plugin.
+func isManifestPluginDirectory(_ url: URL) -> Bool {
+    var isDir: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir),
+          isDir.boolValue
+    else { return false }
+    return FileManager.default.fileExists(atPath: url.appendingPathComponent(pluginManifestFileName).path)
+}
+
 struct PluginFileState: Equatable {
     let size: UInt64
     let modificationDate: Date?
@@ -24,10 +34,14 @@ enum PluginFileSkipReason: String {
 }
 
 /// Returns the packaged plugin directory for a file URL, if the URL is inside
-/// (or is itself) a `.swiftbar` bundle. Handles both direct paths and symlinks,
-/// so that packaged plugins are treated as a single atomic unit during sync.
+/// (or is itself) a `.swiftbar` bundle, or a folder that contains a
+/// `manifest.json`. Handles both direct paths and symlinks, so that packaged
+/// plugins are treated as a single atomic unit during sync.
 func packagedPluginDirectory(for fileURL: URL) -> URL? {
     if fileURL.isSwiftBarPackage {
+        return fileURL
+    }
+    if isManifestPluginDirectory(fileURL) {
         return fileURL
     }
 
@@ -35,14 +49,23 @@ func packagedPluginDirectory(for fileURL: URL) -> URL? {
     if parentDirectory.isSwiftBarPackage {
         return parentDirectory
     }
+    if isManifestPluginDirectory(parentDirectory) {
+        return parentDirectory
+    }
 
     let resolvedFileURL = fileURL.resolvingSymlinksInPath()
     if resolvedFileURL.isSwiftBarPackage {
         return resolvedFileURL
     }
+    if isManifestPluginDirectory(resolvedFileURL) {
+        return resolvedFileURL
+    }
 
     let resolvedParentDirectory = resolvedFileURL.deletingLastPathComponent()
-    return resolvedParentDirectory.isSwiftBarPackage ? resolvedParentDirectory : nil
+    if resolvedParentDirectory.isSwiftBarPackage {
+        return resolvedParentDirectory
+    }
+    return isManifestPluginDirectory(resolvedParentDirectory) ? resolvedParentDirectory : nil
 }
 
 /// Returns a canonical path used to identify a plugin across sync cycles.
@@ -174,6 +197,83 @@ func statusItemPersistenceEntries(in defaults: [String: Any]) -> [String] {
         .map { key in
             "\(key) = \(String(describing: defaults[key] ?? ""))"
         }
+}
+
+// MARK: - .swiftbarignore helpers
+
+/// Parses the content of a `.swiftbarignore` file into a list of glob patterns.
+/// Supports full-line `#` comments, blank lines, and inline `#` comments.
+func parseIgnorePatterns(_ content: String) -> [String] {
+    let lines = content
+        .replacingOccurrences(of: "\r\n", with: "\n")
+        .replacingOccurrences(of: "\r", with: "\n")
+        .split(separator: "\n", omittingEmptySubsequences: false)
+        .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    var patterns: [String] = []
+    for line in lines {
+        // Skip blank lines and full-line comments
+        guard !line.isEmpty, !line.hasPrefix("#") else { continue }
+
+        // Strip trailing inline comments (e.g. "*.txt  # notes")
+        let stripped: String
+        if let hashIndex = line.firstIndex(of: "#") {
+            stripped = String(line[..<hashIndex]).trimmingCharacters(in: .whitespaces)
+        } else {
+            stripped = line
+        }
+
+        if !stripped.isEmpty {
+            patterns.append(stripped)
+        }
+    }
+    return patterns
+}
+
+/// Translates a `.swiftbarignore` glob pattern into an `NSRegularExpression` body.
+/// Glob semantics:
+///   `**/`  -> any number of directories (including none)
+///   `*`    -> any characters within a single path segment
+///   `?`    -> a single character within a path segment
+///   `/`    -> a literal path separator
+func globToRegex(_ pattern: String) -> String {
+    // `NSRegularExpression.escapedPattern` also escapes `/` (as `\/`), so the
+    // `**/` token has to be substituted on the *escaped* string as `\*\*\/`.
+    // Doing the substitution before escaping would never match a backslash.
+    let escaped = NSRegularExpression.escapedPattern(for: pattern)
+    return escaped
+        .replacingOccurrences(of: "\\*\\*\\/", with: "(?:.*/)?")
+        .replacingOccurrences(of: "\\*", with: "[^/]*")
+        .replacingOccurrences(of: "\\?", with: "[^/]")
+}
+
+/// Returns true when the given `url` (expressed relative to `baseURL`) matches
+/// any of the supplied ignore patterns. Patterns are matched against both the
+/// relative path and the file name so that a bare `*.txt` ignores files in
+/// sub-directories as well as at the root.
+func shouldBeIgnored(url: URL, patterns: [String], baseURL: URL) -> Bool {
+    let relativePath = url.path.replacingOccurrences(of: baseURL.path + "/", with: "")
+    let filename = url.lastPathComponent
+
+    for pattern in patterns {
+        // 1) Exact, case-sensitive match against the file's relative path
+        if relativePath == pattern { return true }
+        // 2) Exact match against the file's name only (covers "*.ext" style rules)
+        if filename == pattern { return true }
+        // 3) Treat pattern as a glob: match against both the relative path
+        //    AND the filename so a bare "*.txt" still excludes files in sub-dirs.
+        let escapedPattern = globToRegex(pattern)
+        if let regex = try? NSRegularExpression(pattern: "^\(escapedPattern)$", options: []) {
+            let filenameRange = NSRange(location: 0, length: filename.utf16.count)
+            let pathRange = NSRange(location: 0, length: relativePath.utf16.count)
+            if regex.firstMatch(in: filename, options: [], range: filenameRange) != nil ||
+                regex.firstMatch(in: relativePath, options: [], range: pathRange) != nil
+            {
+                return true
+            }
+        }
+    }
+    return false
 }
 
 func systemReportCandidateStatus(for fileURL: URL, makePluginExecutable: Bool, fileManager: FileManager = .default) -> String {
@@ -452,8 +552,9 @@ class PluginManager: ObservableObject {
                     continue
                 }
                 if isDir.boolValue {
-                    // Treat .swiftbar directories as packaged plugin files and skip their contents
-                    if origURL.isSwiftBarPackage {
+                    // Treat .swiftbar directories and manifest.json folders as
+                    // self-contained plugin bundles — skip their descendants.
+                    if origURL.isSwiftBarPackage || isManifestPluginDirectory(origURL) {
                         files.append(origURL)
                         enumerator.skipDescendants()
                         continue
@@ -475,70 +576,20 @@ class PluginManager: ObservableObject {
         }
 
         func filterFilesAndDirs(files: [URL], dirs: [URL], ignoreContent: String) -> (filteredFiles: [URL], filteredDirs: [URL]) {
-            let lines = ignoreContent.split(separator: "\n").map(String.init)
-            var ignorePatterns: [String] = []
-
-            for line in lines {
-                let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !trimmedLine.isEmpty, !trimmedLine.starts(with: "#") {
-                    ignorePatterns.append(trimmedLine)
-                }
-            }
-
-            func shouldBeIgnored(url: URL, patterns: [String], baseURL: URL) -> Bool {
-                // Get relative path from plugin directory
-                let relativePath = url.path.replacingOccurrences(of: baseURL.path + "/", with: "")
-                let filename = url.lastPathComponent
-
-                for pattern in patterns {
-                    // Direct filename match
-                    if filename == pattern || relativePath == pattern {
-                        return true
-                    }
-
-                    // Convert glob pattern to regex
-                    let escapedPattern = NSRegularExpression.escapedPattern(for: pattern)
-                        .replacingOccurrences(of: "\\*\\*/", with: "(.*/)?") // ** matches any directory depth
-                        .replacingOccurrences(of: "\\*", with: "[^/]*") // * matches within directory
-                        .replacingOccurrences(of: "\\?", with: "[^/]") // ? matches single character
-
-                    // Try to match against both filename and relative path
-                    if let regex = try? NSRegularExpression(pattern: "^\(escapedPattern)$", options: []) {
-                        let filenameRange = NSRange(location: 0, length: filename.utf16.count)
-                        let pathRange = NSRange(location: 0, length: relativePath.utf16.count)
-
-                        if regex.firstMatch(in: filename, options: [], range: filenameRange) != nil ||
-                            regex.firstMatch(in: relativePath, options: [], range: pathRange) != nil
-                        {
-                            return true
-                        }
-                    }
-                }
-                return false
-            }
-
+            let ignorePatterns = parseIgnorePatterns(ignoreContent)
+            guard !ignorePatterns.isEmpty else { return (files, dirs) }
             let filteredFiles = files.filter { !shouldBeIgnored(url: $0, patterns: ignorePatterns, baseURL: url) }
             let filteredDirs = dirs.filter { !shouldBeIgnored(url: $0, patterns: ignorePatterns, baseURL: url) }
-
             return (filteredFiles, filteredDirs)
         }
 
+        // The enumerator is recursive, so a single pass returns every file at every
+        // depth. Filtering once on that result is sufficient — the previous code
+        // also re-enumerated sub-directories which produced duplicate entries and
+        // silently dropped any sub-directories that should have been ignored.
         var (files, dirs) = filter(url: url)
         if let ignoreFileContent {
             (files, dirs) = filterFilesAndDirs(files: files, dirs: dirs, ignoreContent: ignoreFileContent)
-        }
-
-        // Only process directories that weren't filtered out by ignore patterns
-        if !dirs.isEmpty {
-            for dir in dirs {
-                let (subFiles, subDirs) = filter(url: dir)
-                if let ignoreFileContent {
-                    let (filteredSubFiles, _) = filterFilesAndDirs(files: subFiles, dirs: subDirs, ignoreContent: ignoreFileContent)
-                    files.append(contentsOf: filteredSubFiles)
-                } else {
-                    files.append(contentsOf: subFiles)
-                }
-            }
         }
 
         // Deduplicate files based on resolved paths
@@ -558,6 +609,13 @@ class PluginManager: ObservableObject {
 
     func getLoadablePluginList(from pluginCandidates: [URL]) -> [URL] {
         pluginCandidates.filter { url in
+            if isManifestPluginDirectory(url) {
+                guard PluginManifestLoader.loadAndValidate(from: url) != nil else {
+                    os_log("Skipping manifest plugin candidate %{public}@ (missing or invalid manifest.json)", log: Log.plugin, type: .info, url.path)
+                    return false
+                }
+                return true
+            }
             if url.isSwiftBarPackage {
                 guard PackagedPlugin.findMainExecutable(in: url) != nil else {
                     os_log("Skipping packaged plugin candidate %{public}@ (missing plugin.* entry point)", log: Log.plugin, type: .info, url.path)
@@ -658,17 +716,26 @@ class PluginManager: ObservableObject {
     }
 
     func loadPlugin(fileURL: URL) -> Plugin? {
-        // Check if this is a packaged plugin (.swiftbar directory)
+        // Check if this is a folder-based plugin (manifest.json) or a legacy
+        // packaged plugin (.swiftbar directory).
         var isDir: ObjCBool = false
         if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDir),
-           isDir.boolValue,
-           fileURL.isSwiftBarPackage
+           isDir.boolValue
         {
-            if let packagedPlugin = PackagedPlugin(packageDirectory: fileURL) {
-                return packagedPlugin
+            if isManifestPluginDirectory(fileURL) {
+                if let folderPlugin = FolderPlugin(manifestDirectory: fileURL) {
+                    return folderPlugin
+                }
+                os_log("Failed to load folder plugin at %{public}@", log: Log.plugin, type: .error, fileURL.path)
+                return nil
             }
-            os_log("Failed to load packaged plugin at %{public}@", log: Log.plugin, type: .error, fileURL.path)
-            return nil
+            if fileURL.isSwiftBarPackage {
+                if let packagedPlugin = PackagedPlugin(packageDirectory: fileURL) {
+                    return packagedPlugin
+                }
+                os_log("Failed to load packaged plugin at %{public}@", log: Log.plugin, type: .error, fileURL.path)
+                return nil
+            }
         }
         return StreamablePlugin(fileURL: fileURL) ?? ExecutablePlugin(fileURL: fileURL)
     }
@@ -1036,7 +1103,9 @@ extension PluginManager {
             for candidate in discoveredPluginCandidates.sorted(by: { $0.path < $1.path }) {
                 let resolvedPath = candidate.resolvingSymlinksInPath().path
                 let status = systemReportCandidateStatus(for: candidate, makePluginExecutable: prefs.makePluginExecutable)
-                let executable = candidate.isSwiftBarPackage ? "n/a" : boolString(FileManager.default.isExecutableFile(atPath: candidate.path))
+                let executable = (candidate.isSwiftBarPackage || isManifestPluginDirectory(candidate))
+                    ? "n/a"
+                    : boolString(FileManager.default.isExecutableFile(atPath: candidate.path))
                 lines.append("- \(candidate.path)")
                 lines.append("  resolved: \(resolvedPath)")
                 lines.append("  status: \(status)")

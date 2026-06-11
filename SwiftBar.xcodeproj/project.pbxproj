@@ -7,13 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		CC468001000000000000C001 /* PackagedPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468000000000000000C000 /* PackagedPlugin.swift */; };
-		CC468002000000000000C002 /* PackagedPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468000000000000000C000 /* PackagedPlugin.swift */; };
-		CC467002000000000000A102 /* MenuItemNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467001000000000000A101 /* MenuItemNode.swift */; };
-		CC467003000000000000A103 /* MenuItemNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467001000000000000A101 /* MenuItemNode.swift */; };
-		CC467005000000000000A105 /* MenuDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467004000000000000A104 /* MenuDiff.swift */; };
-		CC467006000000000000A106 /* MenuDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467004000000000000A104 /* MenuDiff.swift */; };
-		CC467008000000000000A108 /* FoldableMenuItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467007000000000000A107 /* FoldableMenuItemView.swift */; };
 		3920747E25460FD000213DBE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3920747D25460FD000213DBE /* AppDelegate.swift */; };
 		3920748225460FD300213DBE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3920748125460FD300213DBE /* Assets.xcassets */; };
 		3920748525460FD300213DBE /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3920748425460FD300213DBE /* Preview Assets.xcassets */; };
@@ -109,6 +102,17 @@
 		39E1549C25699C8F00287D8A /* URLTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39E1549B25699C8F00287D8A /* URLTextView.swift */; };
 		39E1549F2569A2D700287D8A /* ImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39E1549E2569A2D700287D8A /* ImageView.swift */; };
 		ABF91B7D2589C7920020590A /* NSFont+Offset.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF91B7C2589C7920020590A /* NSFont+Offset.swift */; };
+		CC467002000000000000A102 /* MenuItemNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467001000000000000A101 /* MenuItemNode.swift */; };
+		CC467003000000000000A103 /* MenuItemNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467001000000000000A101 /* MenuItemNode.swift */; };
+		CC467005000000000000A105 /* MenuDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467004000000000000A104 /* MenuDiff.swift */; };
+		CC467006000000000000A106 /* MenuDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467004000000000000A104 /* MenuDiff.swift */; };
+		CC467008000000000000A108 /* FoldableMenuItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467007000000000000A107 /* FoldableMenuItemView.swift */; };
+		CC468001000000000000C001 /* PackagedPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468000000000000000C000 /* PackagedPlugin.swift */; };
+		CC468002000000000000C002 /* PackagedPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468000000000000000C000 /* PackagedPlugin.swift */; };
+		CC468003000000000000C003 /* PluginManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468004000000000000C004 /* PluginManifest.swift */; };
+		CC468005000000000000C005 /* FolderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468006000000000000C006 /* FolderPlugin.swift */; };
+		CC468007000000000000C007 /* PluginManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468004000000000000C004 /* PluginManifest.swift */; };
+		CC468008000000000000C008 /* FolderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468006000000000000C006 /* FolderPlugin.swift */; };
 		FA06104625F0564400B08B6E /* PluginEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA06104525F0564400B08B6E /* PluginEntryView.swift */; };
 		FA136A542917EE0700A7D712 /* PluginUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA136A532917EE0700A7D712 /* PluginUtilities.swift */; };
 		FA3F26072E2AFE35007CF785 /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3F26062E2AFE35007CF785 /* LaunchAtLogin.swift */; };
@@ -210,9 +214,6 @@
 		39AF7774254613C9001D76E5 /* PluginManger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginManger.swift; sourceTree = "<group>"; };
 		39AF7777254613FB001D76E5 /* ExecutablePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutablePlugin.swift; sourceTree = "<group>"; };
 		39AF777B254618F6001D76E5 /* MenuBarItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarItem.swift; sourceTree = "<group>"; };
-		CC467001000000000000A101 /* MenuItemNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemNode.swift; sourceTree = "<group>"; };
-		CC467004000000000000A104 /* MenuDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuDiff.swift; sourceTree = "<group>"; };
-		CC467007000000000000A107 /* FoldableMenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldableMenuItemView.swift; sourceTree = "<group>"; };
 		39AF77832547750E001D76E5 /* AppShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShared.swift; sourceTree = "<group>"; };
 		39AF778C2548EBA3001D76E5 /* MenuLineParameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuLineParameters.swift; sourceTree = "<group>"; };
 		39AF7792254B5834001D76E5 /* NSColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NSColor.swift; sourceTree = "<group>"; };
@@ -225,6 +226,12 @@
 		39E1549B25699C8F00287D8A /* URLTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLTextView.swift; sourceTree = "<group>"; };
 		39E1549E2569A2D700287D8A /* ImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageView.swift; sourceTree = "<group>"; };
 		ABF91B7C2589C7920020590A /* NSFont+Offset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSFont+Offset.swift"; sourceTree = "<group>"; };
+		CC467001000000000000A101 /* MenuItemNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemNode.swift; sourceTree = "<group>"; };
+		CC467004000000000000A104 /* MenuDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuDiff.swift; sourceTree = "<group>"; };
+		CC467007000000000000A107 /* FoldableMenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldableMenuItemView.swift; sourceTree = "<group>"; };
+		CC468000000000000000C000 /* PackagedPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackagedPlugin.swift; sourceTree = "<group>"; };
+		CC468004000000000000C004 /* PluginManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginManifest.swift; sourceTree = "<group>"; };
+		CC468006000000000000C006 /* FolderPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderPlugin.swift; sourceTree = "<group>"; };
 		FA06104525F0564400B08B6E /* PluginEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginEntryView.swift; sourceTree = "<group>"; };
 		FA136A532917EE0700A7D712 /* PluginUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginUtilities.swift; sourceTree = "<group>"; };
 		FA3C3793281EB2760003DEDE /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -248,7 +255,6 @@
 		FABE30D72D6FB51C00297F18 /* SwiftBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAC3F2EC2915D88300D8F346 /* ShortcutPluginsPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutPluginsPreferencesView.swift; sourceTree = "<group>"; };
 		FAC3F2F02916A61800D8F346 /* AboutSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutSettingsView.swift; sourceTree = "<group>"; };
-		CC468000000000000000C000 /* PackagedPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackagedPlugin.swift; sourceTree = "<group>"; };
 		FAC4AE4829722CD2000BED63 /* EphemeralPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EphemeralPlugin.swift; sourceTree = "<group>"; };
 		FAC4AE4A297304F4000BED63 /* SetEphemeralPluginIntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetEphemeralPluginIntentHandler.swift; sourceTree = "<group>"; };
 		FAD14C042585AE1800CB7BBE /* String+ANSIColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+ANSIColor.swift"; sourceTree = "<group>"; };
@@ -411,6 +417,8 @@
 				CC468000000000000000C000 /* PackagedPlugin.swift */,
 				FA6E13852915B70E00BA4594 /* ShortcutPlugin.swift */,
 				39AF7771254612BF001D76E5 /* PluginMetadata.swift */,
+				CC468004000000000000C004 /* PluginManifest.swift */,
+				CC468006000000000000C006 /* FolderPlugin.swift */,
 				39AF7774254613C9001D76E5 /* PluginManger.swift */,
 				3990DCE02602BB5B002CDCD5 /* PluginDebugInfo.swift */,
 			);
@@ -844,6 +852,8 @@
 				FAAFB2A52A1A567D00316F79 /* AdvancedPreferencesView.swift in Sources */,
 				FAC4AE4929722CD2000BED63 /* EphemeralPlugin.swift in Sources */,
 				CC468001000000000000C001 /* PackagedPlugin.swift in Sources */,
+				CC468003000000000000C003 /* PluginManifest.swift in Sources */,
+				CC468005000000000000C005 /* FolderPlugin.swift in Sources */,
 				FAA14A192728C7FC0052FDB8 /* AppDelegate+Intents.swift in Sources */,
 				39AF778D2548EBA3001D76E5 /* MenuLineParameters.swift in Sources */,
 				CC467002000000000000A102 /* MenuItemNode.swift in Sources */,
@@ -927,6 +937,8 @@
 				FA57F2A4272A307900817A79 /* PluginRepositoryAPI.swift in Sources */,
 				39224E0C25F4344600BABF21 /* StreamablePlugin.swift in Sources */,
 				CC468002000000000000C002 /* PackagedPlugin.swift in Sources */,
+				CC468007000000000000C007 /* PluginManifest.swift in Sources */,
+				CC468008000000000000C008 /* FolderPlugin.swift in Sources */,
 				39224E0D25F4344600BABF21 /* PreferencesView.swift in Sources */,
 				39224E0E25F4344600BABF21 /* PluginMetadata.swift in Sources */,
 				39224E0F25F4344600BABF21 /* RunScript.swift in Sources */,
@@ -1101,12 +1113,13 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = SwiftBar/Resources/SwiftBar.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 578;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"SwiftBar/Preview Content\"";
-				DEVELOPMENT_TEAM = X93LWC49WV;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = SwiftBar/Resources/Info.plist;
@@ -1130,12 +1143,13 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = SwiftBar/Resources/SwiftBar.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 578;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"SwiftBar/Preview Content\"";
-				DEVELOPMENT_TEAM = X93LWC49WV;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = SwiftBar/Resources/Info.plist;
