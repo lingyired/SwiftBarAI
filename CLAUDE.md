@@ -72,3 +72,14 @@ SwiftBar supports running scripts in these terminals:
 SWIFTBAR_VERSION, SWIFTBAR_BUILD, SWIFTBAR_PLUGINS_PATH, SWIFTBAR_PLUGIN_PATH, 
 SWIFTBAR_PLUGIN_CACHE_PATH, SWIFTBAR_PLUGIN_DATA_PATH, SWIFTBAR_PLUGIN_REFRESH_REASON,
 OS_APPEARANCE, OS_VERSION_MAJOR, OS_VERSION_MINOR, OS_VERSION_PATCH
+
+## 变更记录规则（changes/）
+
+所有非平凡的改动（新功能、修复、重构、构建/发布流程变更、影响用户可见行为的文档更新）**必须**在 [`changes/`](changes/) 目录下新建一条记录。
+
+- **目录规范**：[`changes/README.md`](changes/README.md) 包含文件命名、模板、生命周期和 AI 协作约定，是这条规则的权威来源。
+- **文件命名**：`YYYY-MM-DD-<short-slug>.md`，例：`2026-06-12-fix-shell-quoting-bug.md`。
+- **落盘时机**：与代码改动放在**同一个 commit**（或紧随其后的紧密 commit），并在 commit 后回填 commit SHA 和 `Status: done`。
+- **不删除旧记录**；必要时归档到 `changes/archive/`。
+- **纯 typo / 注释级修改可豁免**。
+- AI 助手（Trae AI / Claude 等）在做任何非平凡改动时，**必须**先读 `changes/README.md` 再动手，并在 commit 前创建对应的 `changes/*.md` 文件。
