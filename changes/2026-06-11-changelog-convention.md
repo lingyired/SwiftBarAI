@@ -3,8 +3,8 @@
 - **Type:** chore
 - **Scope:** docs
 - **Author(s):** lingyired, Trae AI (co-author)
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** e7f21f1
+- **Status:** done
 
 ## Summary
 Introduce a `changes/` directory and a CLAUDE.md rule that requires every non-trivial change to be recorded there. The directory ships with its own `README.md` spec, plus this entry as the first record.
