@@ -117,14 +117,16 @@ class ShortcutPlugin: TimerArmingPlugin, Identifiable, ObservableObject {
     }
 
     func enable() {
-        prefs.disabledPlugins.removeAll(where: { $0 == id })
+        prefs.enablePlugin(id)
+        enabled = true
         refresh(reason: .FirstLaunch)
     }
 
     func disable() {
         lastState = .Disabled
         disableTimer()
-        prefs.disabledPlugins.append(id)
+        prefs.disablePlugin(id)
+        enabled = false
     }
 
     func start() {

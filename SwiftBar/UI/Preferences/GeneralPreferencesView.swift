@@ -18,6 +18,12 @@ struct GeneralPreferencesView: View {
                         .labelsHidden()
                     Text(Localizable.Preferences.DimOnManualRefresh.localized)
                 }
+
+                SettingsPaneRow(title: Localizable.Preferences.AlwaysShowSwiftBarMenu.localized) {
+                    Toggle("", isOn: $preferences.alwaysShowSwiftBarMenu)
+                        .labelsHidden()
+                    Text(Localizable.Preferences.AlwaysShowSwiftBarMenu.localized)
+                }
             }
 
             SettingsPaneSection {

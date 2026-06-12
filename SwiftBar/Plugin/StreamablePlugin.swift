@@ -79,7 +79,7 @@ class StreamablePlugin: Plugin {
         lastState = .Disabled
         content = ""
         procces?.terminate()
-        prefs.disabledPlugins.append(id)
+        prefs.disablePlugin(id)
     }
 
     func terminate() {
@@ -88,8 +88,8 @@ class StreamablePlugin: Plugin {
     }
 
     func enable() {
-        prefs.disabledPlugins.removeAll(where: { $0 == id })
-        invokeQueue.addOperation { [weak self] in self?.invoke() }
+        prefs.enablePlugin(id)
+        refresh(reason: .FirstLaunch)
     }
 
     @discardableResult func invoke() -> String? {

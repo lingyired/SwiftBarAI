@@ -132,8 +132,38 @@ private extension Process {
 
         let outputQueue = DispatchQueue(label: "bash-output-queue")
 
+        // Use terminationHandler as the authoritative signal that the
+        // plugin subprocess has exited, instead of relying on
+        // `waitUntilExit()` to also implicitly tear down the pipe
+        // readers. This avoids the "Unable to obtain a task name port
+        // right for pid N: (os/kern) failure (0x5)" error that happens
+        // when the readability handlers are still pulling from the
+        // pipe's file descriptor at the moment the kernel reaps the
+        // child — the handlers race the kernel's task-port cleanup
+        // and the kernel wins, leaving us with a stale dispatch.
+        //
+        // We hop back to the output queue (the same serial queue the
+        // readability handlers use) to clear the handlers, so the
+        // teardown is fully serialised with the read loop and there
+        // is no window in which the kernel can reap the child while a
+        // handler is mid-call.
+        terminationHandler = { _ in
+            outputQueue.async {
+                outputPipe.fileHandleForReading.readabilityHandler = nil
+                errorPipe.fileHandleForReading.readabilityHandler = nil
+            }
+        }
+
         outputPipe.fileHandleForReading.readabilityHandler = { handler in
             let data = handler.availableData
+            // Empty data = EOF — the kernel has signalled close on the
+            // write end of the pipe. Drop the handler so we don't
+            // spin on the closed fd, and don't bother queueing the
+            // empty data into `outputData`.
+            if data.isEmpty {
+                outputPipe.fileHandleForReading.readabilityHandler = nil
+                return
+            }
             outputQueue.async {
                 outputData.append(data)
                 onOutputUpdate(String(data: data, encoding: .utf8))
@@ -142,6 +172,10 @@ private extension Process {
 
         errorPipe.fileHandleForReading.readabilityHandler = { handler in
             let data = handler.availableData
+            if data.isEmpty {
+                errorPipe.fileHandleForReading.readabilityHandler = nil
+                return
+            }
             outputQueue.async {
                 errorData.append(data)
             }
@@ -151,11 +185,22 @@ private extension Process {
             try run()
         } catch {
             os_log("Failed to launch plugin", log: Log.plugin, type: .error)
+            outputPipe.fileHandleForReading.readabilityHandler = nil
+            errorPipe.fileHandleForReading.readabilityHandler = nil
             throw ShellOutError(terminationStatus: terminationStatus, errorData: errorData, outputData: outputData)
         }
 
+        // The process is now running. `waitUntilExit()` will return as
+        // soon as the kernel reaps the child. By the time it returns,
+        // the terminationHandler has fired (it runs on a kernel-
+        // managed dispatch queue) and our readability handlers have
+        // been cleared inside the output queue.
         waitUntilExit()
 
+        // Defensive: if for any reason the terminationHandler did
+        // not clear the readers (e.g. an extremely fast exit that
+        // raced the handler install), clear them now. This is a
+        // no-op in the common path because the handler already ran.
         outputPipe.fileHandleForReading.readabilityHandler = nil
         errorPipe.fileHandleForReading.readabilityHandler = nil
 
@@ -170,7 +215,6 @@ private extension Process {
             let output = String(data: outputData, encoding: .utf8) ?? ""
             let err = String(data: errorData, encoding: .utf8)
             return (out: output, err: err)
-//            return outputData.shellOutput()
         }
     }
 }

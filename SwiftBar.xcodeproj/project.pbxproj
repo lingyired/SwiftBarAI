@@ -107,12 +107,14 @@
 		CC467005000000000000A105 /* MenuDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467004000000000000A104 /* MenuDiff.swift */; };
 		CC467006000000000000A106 /* MenuDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467004000000000000A104 /* MenuDiff.swift */; };
 		CC467008000000000000A108 /* FoldableMenuItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467007000000000000A107 /* FoldableMenuItemView.swift */; };
+		CC467010000000000000A110 /* PluginToggleMenuItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467009000000000000A109 /* PluginToggleMenuItemView.swift */; };
 		CC468001000000000000C001 /* PackagedPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468000000000000000C000 /* PackagedPlugin.swift */; };
 		CC468002000000000000C002 /* PackagedPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468000000000000000C000 /* PackagedPlugin.swift */; };
 		CC468003000000000000C003 /* PluginManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468004000000000000C004 /* PluginManifest.swift */; };
 		CC468005000000000000C005 /* FolderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468006000000000000C006 /* FolderPlugin.swift */; };
 		CC468007000000000000C007 /* PluginManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468004000000000000C004 /* PluginManifest.swift */; };
 		CC468008000000000000C008 /* FolderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468006000000000000C006 /* FolderPlugin.swift */; };
+		AB00000000000000A00000A1 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000A00000A2 /* AppVersion.swift */; };
 		FA06104625F0564400B08B6E /* PluginEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA06104525F0564400B08B6E /* PluginEntryView.swift */; };
 		FA136A542917EE0700A7D712 /* PluginUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA136A532917EE0700A7D712 /* PluginUtilities.swift */; };
 		FA3F26072E2AFE35007CF785 /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3F26062E2AFE35007CF785 /* LaunchAtLogin.swift */; };
@@ -229,9 +231,11 @@
 		CC467001000000000000A101 /* MenuItemNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemNode.swift; sourceTree = "<group>"; };
 		CC467004000000000000A104 /* MenuDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuDiff.swift; sourceTree = "<group>"; };
 		CC467007000000000000A107 /* FoldableMenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldableMenuItemView.swift; sourceTree = "<group>"; };
+		CC467009000000000000A109 /* PluginToggleMenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginToggleMenuItemView.swift; sourceTree = "<group>"; };
 		CC468000000000000000C000 /* PackagedPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackagedPlugin.swift; sourceTree = "<group>"; };
 		CC468004000000000000C004 /* PluginManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginManifest.swift; sourceTree = "<group>"; };
 		CC468006000000000000C006 /* FolderPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderPlugin.swift; sourceTree = "<group>"; };
+		AB00000000000000A00000A2 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 		FA06104525F0564400B08B6E /* PluginEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginEntryView.swift; sourceTree = "<group>"; };
 		FA136A532917EE0700A7D712 /* PluginUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginUtilities.swift; sourceTree = "<group>"; };
 		FA3C3793281EB2760003DEDE /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -429,6 +433,7 @@
 			isa = PBXGroup;
 			children = (
 				CC467007000000000000A107 /* FoldableMenuItemView.swift */,
+				CC467009000000000000A109 /* PluginToggleMenuItemView.swift */,
 				39AF777B254618F6001D76E5 /* MenuBarItem.swift */,
 				CC467004000000000000A104 /* MenuDiff.swift */,
 				CC467001000000000000A101 /* MenuItemNode.swift */,
@@ -448,6 +453,7 @@
 		39AF7791254B5824001D76E5 /* Utility */ = {
 			isa = PBXGroup;
 			children = (
+				AB00000000000000A00000A2 /* AppVersion.swift */,
 				FA3F26062E2AFE35007CF785 /* LaunchAtLogin.swift */,
 				39AF7792254B5834001D76E5 /* NSColor.swift */,
 				39AF7795254B6203001D76E5 /* NSImage.swift */,
@@ -822,6 +828,7 @@
 				3962572B256967DC00341A19 /* PluginRepository.swift in Sources */,
 				39AF776F25461277001D76E5 /* Plugin.swift in Sources */,
 				39B84A0B257C21D400FA012E /* String+Escaped.swift in Sources */,
+				AB00000000000000A00000A1 /* AppVersion.swift in Sources */,
 				39E1549F2569A2D700287D8A /* ImageView.swift in Sources */,
 				3990DCDA2602BB32002CDCD5 /* DebugView.swift in Sources */,
 				39E1549C25699C8F00287D8A /* URLTextView.swift in Sources */,
@@ -859,6 +866,7 @@
 				CC467002000000000000A102 /* MenuItemNode.swift in Sources */,
 				CC467005000000000000A105 /* MenuDiff.swift in Sources */,
 				CC467008000000000000A108 /* FoldableMenuItemView.swift in Sources */,
+				CC467010000000000000A110 /* PluginToggleMenuItemView.swift in Sources */,
 				FAD1BC9E25D22EEA00B761E8 /* AnimatableWindow.swift in Sources */,
 				39AF7796254B6203001D76E5 /* NSImage.swift in Sources */,
 				398B86CE254DBF2F00DEA027 /* main.swift in Sources */,

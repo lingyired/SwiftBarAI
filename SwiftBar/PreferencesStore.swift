@@ -40,6 +40,7 @@ class PreferencesStore: ObservableObject {
         case StreamablePluginDebugOutput
         case PluginDebugMode
         case StealthMode
+        case AlwaysShowSwiftBarMenu
         case IncludeBetaUpdates
         case DimOnManualRefresh
         case CollectCrashReports
@@ -78,6 +79,25 @@ class PreferencesStore: ObservableObject {
             PreferencesStore.setValue(value: unique, key: .DisabledPlugins)
             disabledPluginsPublisher.send("")
         }
+    }
+
+    /// Add a plugin id to `disabledPlugins`. Reads the current value, mutates
+    /// the copy, and writes it back through the setter so `@Published`'s
+    /// `objectWillChange` and `didSet` fire reliably. Swift's in-place
+    /// `append`/`removeAll(where:)` on a `@Published`-wrapped array has been
+    /// observed to skip the setter on some macOS/Swift combinations, so we
+    /// centralise the mutation here.
+    func disablePlugin(_ id: PluginID) {
+        if disabledPlugins.contains(id) { return }
+        disabledPlugins = disabledPlugins + [id]
+    }
+
+    /// Remove a plugin id from `disabledPlugins`. See `disablePlugin(_:)` for
+    /// why this is a read-modify-write helper instead of a direct
+    /// `removeAll(where:)`.
+    func enablePlugin(_ id: PluginID) {
+        guard disabledPlugins.contains(id) else { return }
+        disabledPlugins = disabledPlugins.filter { $0 != id }
     }
 
     @Published var terminal: TerminalOptions {
@@ -153,6 +173,18 @@ class PreferencesStore: ObservableObject {
         }
     }
 
+    /// When true, the fallback SwiftBar status item stays in the menu bar
+    /// even if at least one plugin is currently visible. This is a safety
+    /// net so the user can always reach Preferences / Quit / logs even when
+    /// a misbehaving plugin (or disabling all plugins) would otherwise leave
+    /// the menu bar empty.
+    @Published var alwaysShowSwiftBarMenu: Bool {
+        didSet {
+            PreferencesStore.setValue(value: alwaysShowSwiftBarMenu, key: .AlwaysShowSwiftBarMenu)
+            delegate.pluginManager.updateDefaultBarItemVisibility()
+        }
+    }
+
     var debugLoggingEnabled: Bool {
         PreferencesStore.getValue(key: .DebugLoggingEnabled) as? Bool ?? false
     }
@@ -186,6 +218,7 @@ class PreferencesStore: ObservableObject {
         collectCrashReports = PreferencesStore.getValue(key: .CollectCrashReports) as? Bool ?? true
         dimOnManualRefresh = PreferencesStore.getValue(key: .DimOnManualRefresh) as? Bool ?? true
         stealthMode = PreferencesStore.getValue(key: .StealthMode) as? Bool ?? false
+        alwaysShowSwiftBarMenu = PreferencesStore.getValue(key: .AlwaysShowSwiftBarMenu) as? Bool ?? true
         shortcutsPlugins = {
             guard let data = PreferencesStore.getValue(key: .ShortcutPlugins) as? Data,
                   let plugins = try? PropertyListDecoder().decode([PersistentShortcutPlugin].self, from: data) else { return [] }

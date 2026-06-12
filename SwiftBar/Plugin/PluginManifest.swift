@@ -13,6 +13,8 @@ let pluginManifestFileName = "manifest.json"
 ///   "version": "1.0.0",
 ///   "description": "Shows battery info",
 ///   "author": "Me",
+///   "aboutUrl": "https://github.com/you/battery",
+///   "dependencies": "bash, curl",
 ///   "type": "executable",
 ///   "entry": "plugin.sh",
 ///   "refreshInterval": 30,
@@ -23,7 +25,10 @@ let pluginManifestFileName = "manifest.json"
 ///   },
 ///   "parameters": [
 ///     { "name": "API_KEY", "type": "string", "default": "", "description": "API key" }
-///   ]
+///   ],
+///   "hideAbout": false,
+///   "hideRunInTerminal": false,
+///   "hideLastUpdated": false
 /// }
 /// ```
 struct PluginManifest: Codable {
@@ -51,6 +56,22 @@ struct PluginManifest: Codable {
     /// storage so the values flow into the script as `SWIFTBAR_PLUGIN_PARAM_*`
     /// environment variables.
     var parameters: [PluginManifestParameter]?
+    /// Comma-separated tool/runtime dependencies shown in the About panel
+    /// (e.g. `bash, python3, curl`). Informational only — SwiftBar does not
+    /// install these for you.
+    var dependencies: String?
+    /// URL surfaced in the About panel / `AboutPlugin` UI.
+    var aboutUrl: String?
+    /// Hide the default "About Plugin" menu item.
+    var hideAbout: Bool?
+    /// Hide the "Run in Terminal" menu item.
+    var hideRunInTerminal: Bool?
+    /// Hide the "Last Updated" indicator.
+    var hideLastUpdated: Bool?
+    /// Hide the "Disable Plugin" menu item.
+    var hideDisablePlugin: Bool?
+    /// Hide the "SwiftBar" menu item (parent menu of plugin-specific entries).
+    var hideSwiftBar: Bool?
 
     /// The manifest format version this struct understands.
     static let currentVersion = 1
@@ -58,6 +79,9 @@ struct PluginManifest: Codable {
     enum CodingKeys: String, CodingKey {
         case name, version, description, author, type, entry
         case refreshInterval, schedule, runInBash, environment, parameters
+        case dependencies, aboutUrl
+        case hideAbout, hideRunInTerminal, hideLastUpdated
+        case hideDisablePlugin, hideSwiftBar
     }
 
     init() {}
@@ -75,6 +99,13 @@ struct PluginManifest: Codable {
         runInBash = try container.decodeIfPresent(Bool.self, forKey: .runInBash)
         environment = try container.decodeIfPresent([String: String].self, forKey: .environment)
         parameters = try container.decodeIfPresent([PluginManifestParameter].self, forKey: .parameters)
+        dependencies = try container.decodeIfPresent(String.self, forKey: .dependencies)
+        aboutUrl = try container.decodeIfPresent(String.self, forKey: .aboutUrl)
+        hideAbout = try container.decodeIfPresent(Bool.self, forKey: .hideAbout)
+        hideRunInTerminal = try container.decodeIfPresent(Bool.self, forKey: .hideRunInTerminal)
+        hideLastUpdated = try container.decodeIfPresent(Bool.self, forKey: .hideLastUpdated)
+        hideDisablePlugin = try container.decodeIfPresent(Bool.self, forKey: .hideDisablePlugin)
+        hideSwiftBar = try container.decodeIfPresent(Bool.self, forKey: .hideSwiftBar)
     }
 
     /// Encodes the manifest, omitting fields that are at their default value so
@@ -92,6 +123,13 @@ struct PluginManifest: Codable {
         try container.encodeIfPresent(runInBash, forKey: .runInBash)
         try container.encodeIfPresent(environment, forKey: .environment)
         try container.encodeIfPresent(parameters, forKey: .parameters)
+        try container.encodeIfPresent(dependencies, forKey: .dependencies)
+        try container.encodeIfPresent(aboutUrl, forKey: .aboutUrl)
+        try container.encodeIfPresent(hideAbout, forKey: .hideAbout)
+        try container.encodeIfPresent(hideRunInTerminal, forKey: .hideRunInTerminal)
+        try container.encodeIfPresent(hideLastUpdated, forKey: .hideLastUpdated)
+        try container.encodeIfPresent(hideDisablePlugin, forKey: .hideDisablePlugin)
+        try container.encodeIfPresent(hideSwiftBar, forKey: .hideSwiftBar)
     }
 }
 

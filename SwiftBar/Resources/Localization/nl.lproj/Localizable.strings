@@ -9,6 +9,7 @@
 "MB_DDEBUG_PLUGIN" = "Debug plug-in";
 "MB_TERMINATE_EPH" = "Terminate Plugin";
 "MB_PREFERENCES" = "Voorkeuren…";
+"MB_TOGGLE_PLUGINS" = "Plug-ins schakelen";
 "MB_REFRESH_ALL" = "Ververs alle plug-ins";
 "MB_ENABLE_ALL" = "Schakel alle in";
 "MB_DISABLE_ALL" = "Schakel alle uit";
@@ -36,6 +37,7 @@
 "PF_TERMINAL" = "Shell-applicatie";
 "PF_HIDE_SWIFTBAR_ICON" = "Verberg SwiftBar-icoon";
 "PF_STEALTH_MODE" = "Hide SwiftBar in the menu bar";
+"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "SwiftBar-menu altijd weergeven";
 "PF_CHECK_FOR_UPDATE" = "Updates";
 "PF_CHECK_FOR_UPDATES" = "Controleer op updates…";
 "PR_INCLUDE_BETA_UPDATES" = "Pre-releaseversies Opnemen";

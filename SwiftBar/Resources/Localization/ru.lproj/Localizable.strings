@@ -9,6 +9,7 @@
 "MB_DDEBUG_PLUGIN" = "Отладка плагина";
 "MB_TERMINATE_EPH" = "Terminate Plugin";
 "MB_PREFERENCES" = "Настройки…";
+"MB_TOGGLE_PLUGINS" = "Переключить плагины";
 "MB_REFRESH_ALL" = "Обновить все";
 "MB_ENABLE_ALL" = "Включить все";
 "MB_DISABLE_ALL" = "Отключить все";
@@ -36,6 +37,7 @@
 "PF_TERMINAL" = "Терминал";
 "PF_HIDE_SWIFTBAR_ICON" = "Скрыть иконку SwiftBar";
 "PF_STEALTH_MODE" = "Hide SwiftBar in the menu bar";
+"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Всегда показывать меню SwiftBar";
 "PF_CHECK_FOR_UPDATE" = "Обновить";
 "PF_CHECK_FOR_UPDATES" = "Проверить обновления";
 "PR_INCLUDE_BETA_UPDATES" = "Включая бета версии";

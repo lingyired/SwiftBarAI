@@ -184,7 +184,7 @@ class PackagedPlugin: TimerArmingPlugin {
     func disable() {
         lastState = .Disabled
         disableTimer()
-        prefs.disabledPlugins.append(id)
+        prefs.disablePlugin(id)
     }
 
     func terminate() {
@@ -192,7 +192,7 @@ class PackagedPlugin: TimerArmingPlugin {
     }
 
     func enable() {
-        prefs.disabledPlugins.removeAll(where: { $0 == id })
+        prefs.enablePlugin(id)
         refresh(reason: .FirstLaunch)
     }
 

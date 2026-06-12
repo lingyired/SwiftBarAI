@@ -64,6 +64,32 @@ class FolderPlugin: PackagedPlugin {
         if let parameters = manifest.parameters {
             self.metadata?.variables = parameters.map { $0.toPluginVariable() }
         }
+        if let dependencies = manifest.dependencies,
+           !dependencies.trimmingCharacters(in: .whitespaces).isEmpty
+        {
+            // Split on commas or whitespace so users can write either form.
+            let parts = dependencies
+                .split(whereSeparator: { ",;\n\t".contains($0) || $0.isWhitespace })
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            if !parts.isEmpty {
+                self.metadata?.dependencies = parts
+            }
+        }
+        if let aboutUrl = manifest.aboutUrl,
+           !aboutUrl.isEmpty,
+           let url = URL(string: aboutUrl)
+        {
+            self.metadata?.aboutURL = url
+        }
+        // `hide*` flags default to `false` — only override when the manifest
+        // explicitly says `true`. This keeps behavior parity with the
+        // xbar-script-metadata case where omitting a flag means "show".
+        if manifest.hideAbout == true { self.metadata?.hideAbout = true }
+        if manifest.hideRunInTerminal == true { self.metadata?.hideRunInTerminal = true }
+        if manifest.hideLastUpdated == true { self.metadata?.hideLastUpdated = true }
+        if manifest.hideDisablePlugin == true { self.metadata?.hideDisablePlugin = true }
+        if manifest.hideSwiftBar == true { self.metadata?.hideSwiftBar = true }
     }
 
     // MARK: - Environment
