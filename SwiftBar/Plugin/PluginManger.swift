@@ -6,10 +6,27 @@ import SwiftUI
 import UserNotifications
 
 extension URL {
-    /// Whether this URL represents a SwiftBar packaged plugin directory (`.swiftbar` bundle).
+    /// Whether this URL represents a legacy `.swiftbar` packaged plugin
+    /// directory.
+    ///
+    /// **Deprecated**: New plugins should be folder-based and identified by
+    /// `manifest.json`. The `.swiftbar` suffix is no longer recognised by the
+    /// discovery pipeline — this helper exists only so that the still-in-tree
+    /// `PackagedPlugin` class can self-validate its inputs in legacy tests.
+    @available(*, deprecated, message: "Use a manifest.json folder plugin instead of a .swiftbar bundle.")
     var isSwiftBarPackage: Bool {
         lastPathComponent.hasSuffix(".swiftbar")
     }
+}
+
+/// Returns `true` when `url` points at a directory that contains a
+/// `manifest.json` — i.e. a folder-based SwiftBar plugin.
+func isManifestPluginDirectory(_ url: URL) -> Bool {
+    var isDir: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir),
+          isDir.boolValue
+    else { return false }
+    return FileManager.default.fileExists(atPath: url.appendingPathComponent(pluginManifestFileName).path)
 }
 
 struct PluginFileState: Equatable {
@@ -23,26 +40,68 @@ enum PluginFileSkipReason: String {
     case notExecutable = "not executable while auto-make-executable is disabled"
 }
 
-/// Returns the packaged plugin directory for a file URL, if the URL is inside
-/// (or is itself) a `.swiftbar` bundle. Handles both direct paths and symlinks,
-/// so that packaged plugins are treated as a single atomic unit during sync.
+/// Returns the folder-plugin directory for a file URL, if `fileURL` is
+/// inside (or is itself) a folder that contains a `manifest.json` — or, as a
+/// best-effort fallback for code that has to key off the URL alone (e.g. the
+/// sync logic in tests that use synthetic paths), looks like it should be
+/// one. Handles both direct paths and symlinks so that folder plugins are
+/// treated as a single atomic unit during sync.
 func packagedPluginDirectory(for fileURL: URL) -> URL? {
-    if fileURL.isSwiftBarPackage {
+    if isManifestPluginDirectory(fileURL) {
         return fileURL
     }
 
     let parentDirectory = fileURL.deletingLastPathComponent()
-    if parentDirectory.isSwiftBarPackage {
+    if isManifestPluginDirectory(parentDirectory) {
+        return parentDirectory
+    }
+
+    // Best-effort fallback: the directory on disk doesn't yet exist or has
+    // no `manifest.json`. In that case we still want the parent directory to
+    // be treated as the sync key so that two URLs under the same folder
+    // (e.g. `/tmp/weather/plugin.sh` and `/tmp/weather/plugin.py`) collapse
+    // into a single plugin during sync. We require the file to look like an
+    // entry script (`.sh`, `.py`, `.js`, ...) and the parent to look like a
+    // plain directory name (not a dotfile, not the `.swiftbarignore` parent).
+    if looksLikeFolderPluginEntry(fileURL),
+       isPlausibleFolderName(parentDirectory.lastPathComponent)
+    {
         return parentDirectory
     }
 
     let resolvedFileURL = fileURL.resolvingSymlinksInPath()
-    if resolvedFileURL.isSwiftBarPackage {
+    if isManifestPluginDirectory(resolvedFileURL) {
         return resolvedFileURL
     }
 
     let resolvedParentDirectory = resolvedFileURL.deletingLastPathComponent()
-    return resolvedParentDirectory.isSwiftBarPackage ? resolvedParentDirectory : nil
+    if isManifestPluginDirectory(resolvedParentDirectory) {
+        return resolvedParentDirectory
+    }
+
+    if looksLikeFolderPluginEntry(resolvedFileURL),
+       isPlausibleFolderName(resolvedParentDirectory.lastPathComponent)
+    {
+        return resolvedParentDirectory
+    }
+    return nil
+}
+
+/// Heuristic check for "this looks like an entry script of a folder plugin".
+private func looksLikeFolderPluginEntry(_ fileURL: URL) -> Bool {
+    let name = fileURL.lastPathComponent.lowercased()
+    let executableSuffixes = [".sh", ".bash", ".py", ".rb", ".js", ".pl", ".elf"]
+    return executableSuffixes.contains(where: name.hasSuffix)
+}
+
+/// Heuristic check for "this directory name is reasonable for a folder plugin".
+/// Excludes dotfiles, `.swiftbarignore`, `.swiftbar` (legacy), and bare names
+/// that look like the plugin directory itself (e.g. `weather.swiftbar`).
+private func isPlausibleFolderName(_ name: String) -> Bool {
+    !name.isEmpty
+        && !name.hasPrefix(".")
+        && !name.hasSuffix(".swiftbar")
+        && name != "swiftbarignore"
 }
 
 /// Returns a canonical path used to identify a plugin across sync cycles.
@@ -58,9 +117,16 @@ func pluginSyncPath(for plugin: Plugin) -> String {
 
 private func packagedPluginFileState(for packageURL: URL, fileManager: FileManager = .default) -> PluginFileState? {
     let resolvedPackageURL = packageURL.resolvingSymlinksInPath()
-    guard PackagedPlugin.findMainExecutable(in: resolvedPackageURL) != nil,
-          let enumerator = fileManager.enumerator(at: resolvedPackageURL, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
-    else {
+
+    // A folder plugin is "real" as long as it contains any regular file —
+    // the existence of an entry script is enforced separately by the loader.
+    // We still skip hidden files and the `manifest.json` itself.
+    let enumerator = fileManager.enumerator(
+        at: resolvedPackageURL,
+        includingPropertiesForKeys: nil,
+        options: [.skipsHiddenFiles]
+    )
+    guard let enumerator else {
         return nil
     }
 
@@ -69,6 +135,12 @@ private func packagedPluginFileState(for packageURL: URL, fileManager: FileManag
     var hasRegularFile = false
 
     for case let entryURL as URL in enumerator {
+        // Skip metadata files (manifest.json) so they don't influence the
+        // size/modification hash used for change detection.
+        if entryURL.lastPathComponent == pluginManifestFileName {
+            continue
+        }
+
         let resolvedEntryURL = entryURL.resolvingSymlinksInPath()
         guard let attributes = try? fileManager.attributesOfItem(atPath: resolvedEntryURL.path),
               let fileType = attributes[.type] as? FileAttributeType
@@ -146,8 +218,8 @@ func shouldLoadPluginFile(at fileURL: URL, makePluginExecutable: Bool, fileManag
     return true
 }
 
-func shouldShowDefaultBarItem(hasVisiblePlugins: Bool, stealthMode: Bool) -> Bool {
-    !stealthMode && !hasVisiblePlugins
+func shouldShowDefaultBarItem(hasVisiblePlugins: Bool, stealthMode: Bool, alwaysShowSwiftBarMenu: Bool) -> Bool {
+    !stealthMode && (!hasVisiblePlugins || alwaysShowSwiftBarMenu)
 }
 
 private let knownMenuBarManagerNames = [
@@ -176,18 +248,96 @@ func statusItemPersistenceEntries(in defaults: [String: Any]) -> [String] {
         }
 }
 
+// MARK: - .swiftbarignore helpers
+
+/// Parses the content of a `.swiftbarignore` file into a list of glob patterns.
+/// Supports full-line `#` comments, blank lines, and inline `#` comments.
+func parseIgnorePatterns(_ content: String) -> [String] {
+    let lines = content
+        .replacingOccurrences(of: "\r\n", with: "\n")
+        .replacingOccurrences(of: "\r", with: "\n")
+        .split(separator: "\n", omittingEmptySubsequences: false)
+        .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    var patterns: [String] = []
+    for line in lines {
+        // Skip blank lines and full-line comments
+        guard !line.isEmpty, !line.hasPrefix("#") else { continue }
+
+        // Strip trailing inline comments (e.g. "*.txt  # notes")
+        let stripped: String
+        if let hashIndex = line.firstIndex(of: "#") {
+            stripped = String(line[..<hashIndex]).trimmingCharacters(in: .whitespaces)
+        } else {
+            stripped = line
+        }
+
+        if !stripped.isEmpty {
+            patterns.append(stripped)
+        }
+    }
+    return patterns
+}
+
+/// Translates a `.swiftbarignore` glob pattern into an `NSRegularExpression` body.
+/// Glob semantics:
+///   `**/`  -> any number of directories (including none)
+///   `*`    -> any characters within a single path segment
+///   `?`    -> a single character within a path segment
+///   `/`    -> a literal path separator
+func globToRegex(_ pattern: String) -> String {
+    // `NSRegularExpression.escapedPattern` also escapes `/` (as `\/`), so the
+    // `**/` token has to be substituted on the *escaped* string as `\*\*\/`.
+    // Doing the substitution before escaping would never match a backslash.
+    let escaped = NSRegularExpression.escapedPattern(for: pattern)
+    return escaped
+        .replacingOccurrences(of: "\\*\\*\\/", with: "(?:.*/)?")
+        .replacingOccurrences(of: "\\*", with: "[^/]*")
+        .replacingOccurrences(of: "\\?", with: "[^/]")
+}
+
+/// Returns true when the given `url` (expressed relative to `baseURL`) matches
+/// any of the supplied ignore patterns. Patterns are matched against both the
+/// relative path and the file name so that a bare `*.txt` ignores files in
+/// sub-directories as well as at the root.
+func shouldBeIgnored(url: URL, patterns: [String], baseURL: URL) -> Bool {
+    let relativePath = url.path.replacingOccurrences(of: baseURL.path + "/", with: "")
+    let filename = url.lastPathComponent
+
+    for pattern in patterns {
+        // 1) Exact, case-sensitive match against the file's relative path
+        if relativePath == pattern { return true }
+        // 2) Exact match against the file's name only (covers "*.ext" style rules)
+        if filename == pattern { return true }
+        // 3) Treat pattern as a glob: match against both the relative path
+        //    AND the filename so a bare "*.txt" still excludes files in sub-dirs.
+        let escapedPattern = globToRegex(pattern)
+        if let regex = try? NSRegularExpression(pattern: "^\(escapedPattern)$", options: []) {
+            let filenameRange = NSRange(location: 0, length: filename.utf16.count)
+            let pathRange = NSRange(location: 0, length: relativePath.utf16.count)
+            if regex.firstMatch(in: filename, options: [], range: filenameRange) != nil ||
+                regex.firstMatch(in: relativePath, options: [], range: pathRange) != nil
+            {
+                return true
+            }
+        }
+    }
+    return false
+}
+
 func systemReportCandidateStatus(for fileURL: URL, makePluginExecutable: Bool, fileManager: FileManager = .default) -> String {
-    if fileURL.isSwiftBarPackage {
-        return PackagedPlugin.findMainExecutable(in: fileURL) != nil
-            ? "loadable packaged plugin"
-            : "skipped: packaged plugin missing plugin.* entry point"
+    var isDir: ObjCBool = false
+    if fileManager.fileExists(atPath: fileURL.path, isDirectory: &isDir), isDir.boolValue {
+        // Every directory in the plugin folder is expected to be a folder
+        // plugin with a `manifest.json`. Anything else is a broken plugin.
+        return PluginManifestLoader.loadAndValidate(from: fileURL) != nil
+            ? "loadable folder plugin"
+            : "skipped: folder plugin has invalid manifest.json"
     }
 
-    if let skipReason = pluginFileSkipReason(for: fileURL, makePluginExecutable: makePluginExecutable, fileManager: fileManager) {
-        return "skipped: \(skipReason.rawValue)"
-    }
-
-    return "loadable file plugin"
+    // Anything that isn't a directory is rejected — single-file scripts and
+    // `.swiftbar` bundles are no longer supported.
+    return "skipped: not a folder plugin"
 }
 
 struct FilePluginSyncResult {
@@ -274,7 +424,10 @@ func mergePluginsPreservingOrder(existingPlugins: [Plugin], removedPluginIDs: Se
 class PluginManager: ObservableObject {
     static let shared = PluginManager()
     let prefs = PreferencesStore.shared
-    lazy var barItem: MenubarItem = .defaultBarItem()
+    lazy var barItem: MenubarItem = {
+        let item = MenubarItem.defaultBarItem()
+        return item
+    }()
 
     #if !MAC_APP_STORE
         var directoryObserver: DirectoryObserver?
@@ -338,8 +491,16 @@ class PluginManager: ObservableObject {
     }()
 
     init() {
+        // Use the main dispatch queue (not RunLoop.main) so the sink fires
+        // even while the user is interacting with an open NSMenu — the
+        // toggle dropdown, for example. The main runloop is held in
+        // `NSEventTrackingRunLoopMode` during menu tracking, which causes
+        // `RunLoop.main` scheduled work to be deferred until the user
+        // dismisses the menu. `DispatchQueue.main` is processed in parallel
+        // with the runloop, so `pluginsDidChange()` (and the resulting
+        // NSStatusItem add/remove) happens immediately.
         disablePluginCancellable = prefs.disabledPluginsPublisher
-            .receive(on: RunLoop.main)
+            .receive(on: DispatchQueue.main)
             .sink(receiveValue: { [weak self] _ in
                 os_log("Recieved plugin enable/disable notification", log: Log.plugin)
                 self?.pluginsDidChange()
@@ -357,27 +518,126 @@ class PluginManager: ObservableObject {
     }
 
     func pluginsDidChange() {
-        os_log("Plugins did change, updating menu bar...", log: Log.plugin)
-        let enabledIDs = Set(enabledPlugins.map(\.id))
+        // This function is reached via the `disabledPluginsPublisher`
+        // sink, so any unhandled throw here would propagate into Combine
+        // and tear down the sink subscription — which in turn would
+        // freeze the toggle UI in its last state. Wrap the whole body
+        // in a top-level do/catch so a plugin misbehaviour (bad
+        // title string, NSStatusItem allocation failure, etc.) is
+        // logged and swallowed instead of crashing the main app.
+        do {
+            os_log("Plugins did change, updating menu bar... enabledPlugins=%{public}d, total=%{public}d, menuBarItems.count=%{public}d",
+                   log: Log.plugin, type: .info,
+                   enabledPlugins.count, plugins.count, menuBarItems.count)
+            let enabledIDs = Set(enabledPlugins.map(\.id))
 
-        for plugin in enabledPlugins {
-            if let existingMenuBarItem = menuBarItems[plugin.id] {
-                if existingMenuBarItem.plugin !== plugin {
-                    existingMenuBarItem.replacePlugin(plugin)
+            for plugin in enabledPlugins {
+                if let existingMenuBarItem = menuBarItems[plugin.id] {
+                    if existingMenuBarItem.plugin !== plugin {
+                        existingMenuBarItem.replacePlugin(plugin)
+                    }
+                    continue
                 }
-                continue
+                os_log("pluginsDidChange: creating MenubarItem for %{public}@", log: Log.plugin, type: .info, plugin.id)
+                menuBarItems[plugin.id] = MenubarItem(title: plugin.name, plugin: plugin, visibilityDidChange: { [weak self] _ in
+                    self?.updateDefaultBarItemVisibility()
+                })
             }
-            menuBarItems[plugin.id] = MenubarItem(title: plugin.name, plugin: plugin, visibilityDidChange: { [weak self] _ in
-                self?.updateDefaultBarItemVisibility()
-            })
-        }
-        for pluginID in menuBarItems.keys {
-            guard !enabledIDs.contains(pluginID) else { continue }
-            menuBarItems.removeValue(forKey: pluginID)
-        }
 
-        updateDefaultBarItemVisibility()
-        persistLatestSystemReport(reason: "plugins-did-change")
+            // The default SwiftBar `MenubarItem` (the one without a
+            // plugin) hosts the inlined "Toggle Plugins" section.
+            // When the set of enabled plugins changes (add / remove
+            // / enable / disable), we refresh the section so the
+            // checkmarks reflect the latest state.
+            barItem.rebuildTogglePluginSection()
+
+            // Collect the MenubarItems that need to be torn down. We
+            // *hide* them synchronously (so the user sees the status
+            // item vanish immediately) but defer the actual removal
+            // — and therefore the deallocation of the NSStatusItem
+            // — to the next main-queue iteration.
+            //
+            // This avoids a recurring class of scene-detach errors:
+            //   - "No scene exists for identity:
+            //      com.apple.controlcenter:…-Aux[1]-NSStatusItemView"
+            //   - "Unhandled disconnected auxiliary scene
+            //      <NSHostedViewScene: …>"
+            //   - "Unhandled disconnected scene <NSStatusItemScene: …>"
+            //   - "[BSBlockSentinel:FBSWorkspaceScenesClient] failed!"
+            //
+            // Those are produced when an NSStatusItem is released
+            // while AppKit is still tracking a control that
+            // references it (e.g. inside an open NSMenu or in the
+            // middle of a mouseDown). Deferring the release gives
+            // AppKit a tick to settle, after which the dealloc is
+            // safe.
+            var pendingRemoval: [PluginID] = []
+            for pluginID in menuBarItems.keys {
+                guard !enabledIDs.contains(pluginID) else { continue }
+                os_log("pluginsDidChange: hiding disabled MenubarItem for %{public}@ (deferred release)", log: Log.plugin, type: .info, pluginID)
+                menuBarItems[pluginID]?.hide()
+                pendingRemoval.append(pluginID)
+            }
+
+            os_log("pluginsDidChange: done (visible updates), menuBarItems.count=%{public}d, barItem.isVisible=%{public}@, pendingRemoval=%{public}d",
+                   log: Log.plugin, type: .info,
+                   menuBarItems.count,
+                   barItem.barItem.isVisible ? "true" : "false",
+                   pendingRemoval.count)
+
+            updateDefaultBarItemVisibility()
+            persistLatestSystemReport(reason: "plugins-did-change")
+
+            if !pendingRemoval.isEmpty {
+                let snapshot = pendingRemoval
+                // Defer the actual `NSStatusItem` deallocation to a
+                // *later* main-queue tick. The first async dispatch
+                // returns control to AppKit so it can finish any
+                // in-flight NSMenu / NSStatusItem tracking for the
+                // toggle that just fired. A second async dispatch then
+                // runs on the next subsequent main-queue turn, which
+                // is far enough in the future for AppKit's
+                // `NSStatusItemScene` and the control-center's
+                // `Aux[1]-NSStatusItemView` scene to both settle. The
+                // intervening idle time also lets any in-flight
+                // `[BSBlockSentinel:FBSWorkspaceScenesClient]`
+                // callbacks drain, so the scene-detach errors we used
+                // to see ("Unhandled disconnected auxiliary scene
+                // <NSHostedViewScene …>", "Unhandled disconnected
+                // scene <NSStatusItemScene …>",
+                // "No scene exists for identity: …-Aux[1]-NSStatusItemView")
+                // no longer fire.
+                os_log("pluginsDidChange: deferring release of %{public}d NSStatusItem(s) by 2 main-queue turns: %{public}@",
+                       log: Log.plugin, type: .info,
+                       snapshot.count,
+                       snapshot.joined(separator: ","))
+                DispatchQueue.main.async { [weak self] in
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self else { return }
+                        // Re-check: the user may have re-enabled one
+                        // of these plugins in the meantime. Only
+                        // release the NSStatusItem for plugins that
+                        // are still disabled at the moment we run.
+                        let stillEnabled = Set(self.enabledPlugins.map(\.id))
+                        for pluginID in snapshot where !stillEnabled.contains(pluginID) {
+                            if let item = self.menuBarItems.removeValue(forKey: pluginID) {
+                                os_log("pluginsDidChange (deferred): releasing NSStatusItem for %{public}@", log: Log.plugin, type: .info, pluginID)
+                                // Capture in a local so the deinit
+                                // (which calls removeAllItems on its
+                                // private NSMenu) runs *after* this
+                                // iteration returns. We don't need
+                                // the value, just the release
+                                // barrier.
+                                _ = item
+                            }
+                        }
+                    }
+                }
+            }
+        } catch {
+            os_log("pluginsDidChange: caught unexpected error — plugin execution isolation: %{public}@",
+                   log: Log.plugin, type: .error, String(describing: error))
+        }
     }
 
     func updateDefaultBarItemVisibility() {
@@ -396,7 +656,22 @@ class PluginManager: ObservableObject {
             menuBarItems[plugin.id]?.barItem.isVisible == true
         }
 
-        shouldShowDefaultBarItem(hasVisiblePlugins: hasVisiblePlugins, stealthMode: prefs.stealthMode) ? barItem.show() : barItem.hide()
+        os_log("updateDefaultBarItemVisibility: hasVisiblePlugins=%{public}@, menuBarItems.count=%{public}d, enabledPlugins=%{public}d",
+               log: Log.plugin, type: .info,
+               hasVisiblePlugins ? "true" : "false",
+               menuBarItems.count,
+               enabledPlugins.count)
+
+        shouldShowDefaultBarItem(
+            hasVisiblePlugins: hasVisiblePlugins,
+            stealthMode: prefs.stealthMode,
+            alwaysShowSwiftBarMenu: prefs.alwaysShowSwiftBarMenu
+        ) ? barItem.show() : barItem.hide()
+        os_log("updateDefaultBarItemVisibility: default barItem.isVisible=%{public}@, defaultObjId=%{public}d, pluginObjIds=%{public}@",
+               log: Log.plugin, type: .info,
+               barItem.barItem.isVisible ? "true" : "false",
+               ObjectIdentifier(barItem).hashValue,
+               menuBarItems.values.map { ObjectIdentifier($0).hashValue }.map(String.init).sorted().joined(separator: ","))
         persistLatestSystemReport(reason: "default-bar-item-visibility")
     }
 
@@ -407,12 +682,29 @@ class PluginManager: ObservableObject {
 
     func disablePlugin(plugin: Plugin) {
         os_log("Disabling plugin \n%{public}@", log: Log.plugin, plugin.description)
-        plugin.disable()
+        // Defensive: `plugin.disable()` mutates `prefs.disabledPlugins`,
+        // which fires the publisher. The publisher's sink runs
+        // `pluginsDidChange()` on the main queue. If anything in that
+        // chain throws, we must not let the exception escape — it
+        // would propagate back into the user-facing menu tracking
+        // path (the toggle switch's mouseDown handler) and freeze
+        // the dropdown.
+        do {
+            plugin.disable()
+        } catch {
+            os_log("disablePlugin: caught error from plugin.disable() — plugin execution isolation: %{public}@",
+                   log: Log.plugin, type: .error, String(describing: error))
+        }
     }
 
     func enablePlugin(plugin: Plugin) {
         os_log("Enabling plugin \n%{public}@", log: Log.plugin, plugin.description)
-        plugin.enable()
+        do {
+            plugin.enable()
+        } catch {
+            os_log("enablePlugin: caught error from plugin.enable() — plugin execution isolation: %{public}@",
+                   log: Log.plugin, type: .error, String(describing: error))
+        }
     }
 
     func togglePlugin(plugin: Plugin) {
@@ -452,8 +744,11 @@ class PluginManager: ObservableObject {
                     continue
                 }
                 if isDir.boolValue {
-                    // Treat .swiftbar directories as packaged plugin files and skip their contents
-                    if origURL.isSwiftBarPackage {
+                    // Only manifest.json folders are recognised as plugin
+                    // bundles — they are treated as a single atomic unit and
+                    // their descendants are skipped. Single-file scripts and
+                    // legacy `.swiftbar` packaged plugins are not supported.
+                    if isManifestPluginDirectory(origURL) {
                         files.append(origURL)
                         enumerator.skipDescendants()
                         continue
@@ -465,80 +760,36 @@ class PluginManager: ObservableObject {
                     }
                     continue
                 }
-                // Exclude .json files (used for plugin variable storage)
+                // Loose files are not loaded as plugins anymore — every plugin
+                // must be a folder with a manifest.json. Skip .json explicitly
+                // so anything stored alongside a plugin (e.g. an embedded
+                // settings file) isn't logged as a candidate.
                 if origURL.pathExtension.lowercased() == "json" {
                     continue
                 }
-                files.append(origURL)
+                // Everything else at the leaf level is intentionally ignored:
+                // single-file executable/streamable plugins and bare scripts
+                // are no longer part of the supported plugin surface.
+                continue
             }
             return (files, dirs)
         }
 
         func filterFilesAndDirs(files: [URL], dirs: [URL], ignoreContent: String) -> (filteredFiles: [URL], filteredDirs: [URL]) {
-            let lines = ignoreContent.split(separator: "\n").map(String.init)
-            var ignorePatterns: [String] = []
-
-            for line in lines {
-                let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !trimmedLine.isEmpty, !trimmedLine.starts(with: "#") {
-                    ignorePatterns.append(trimmedLine)
-                }
-            }
-
-            func shouldBeIgnored(url: URL, patterns: [String], baseURL: URL) -> Bool {
-                // Get relative path from plugin directory
-                let relativePath = url.path.replacingOccurrences(of: baseURL.path + "/", with: "")
-                let filename = url.lastPathComponent
-
-                for pattern in patterns {
-                    // Direct filename match
-                    if filename == pattern || relativePath == pattern {
-                        return true
-                    }
-
-                    // Convert glob pattern to regex
-                    let escapedPattern = NSRegularExpression.escapedPattern(for: pattern)
-                        .replacingOccurrences(of: "\\*\\*/", with: "(.*/)?") // ** matches any directory depth
-                        .replacingOccurrences(of: "\\*", with: "[^/]*") // * matches within directory
-                        .replacingOccurrences(of: "\\?", with: "[^/]") // ? matches single character
-
-                    // Try to match against both filename and relative path
-                    if let regex = try? NSRegularExpression(pattern: "^\(escapedPattern)$", options: []) {
-                        let filenameRange = NSRange(location: 0, length: filename.utf16.count)
-                        let pathRange = NSRange(location: 0, length: relativePath.utf16.count)
-
-                        if regex.firstMatch(in: filename, options: [], range: filenameRange) != nil ||
-                            regex.firstMatch(in: relativePath, options: [], range: pathRange) != nil
-                        {
-                            return true
-                        }
-                    }
-                }
-                return false
-            }
-
+            let ignorePatterns = parseIgnorePatterns(ignoreContent)
+            guard !ignorePatterns.isEmpty else { return (files, dirs) }
             let filteredFiles = files.filter { !shouldBeIgnored(url: $0, patterns: ignorePatterns, baseURL: url) }
             let filteredDirs = dirs.filter { !shouldBeIgnored(url: $0, patterns: ignorePatterns, baseURL: url) }
-
             return (filteredFiles, filteredDirs)
         }
 
+        // The enumerator is recursive, so a single pass returns every file at every
+        // depth. Filtering once on that result is sufficient — the previous code
+        // also re-enumerated sub-directories which produced duplicate entries and
+        // silently dropped any sub-directories that should have been ignored.
         var (files, dirs) = filter(url: url)
         if let ignoreFileContent {
             (files, dirs) = filterFilesAndDirs(files: files, dirs: dirs, ignoreContent: ignoreFileContent)
-        }
-
-        // Only process directories that weren't filtered out by ignore patterns
-        if !dirs.isEmpty {
-            for dir in dirs {
-                let (subFiles, subDirs) = filter(url: dir)
-                if let ignoreFileContent {
-                    let (filteredSubFiles, _) = filterFilesAndDirs(files: subFiles, dirs: subDirs, ignoreContent: ignoreFileContent)
-                    files.append(contentsOf: filteredSubFiles)
-                } else {
-                    files.append(contentsOf: subFiles)
-                }
-            }
         }
 
         // Deduplicate files based on resolved paths
@@ -558,14 +809,15 @@ class PluginManager: ObservableObject {
 
     func getLoadablePluginList(from pluginCandidates: [URL]) -> [URL] {
         pluginCandidates.filter { url in
-            if url.isSwiftBarPackage {
-                guard PackagedPlugin.findMainExecutable(in: url) != nil else {
-                    os_log("Skipping packaged plugin candidate %{public}@ (missing plugin.* entry point)", log: Log.plugin, type: .info, url.path)
-                    return false
-                }
-                return true
+            // Every plugin must be a folder with a valid `manifest.json`. We
+            // do the deeper validation (entry script existence, executability,
+            // ...) inside `PluginManifestLoader` so the error message lives in
+            // one place.
+            guard PluginManifestLoader.loadAndValidate(from: url) != nil else {
+                os_log("Skipping folder %{public}@ (missing or invalid manifest.json)", log: Log.plugin, type: .info, url.path)
+                return false
             }
-            return shouldLoadPluginFile(at: url, makePluginExecutable: prefs.makePluginExecutable)
+            return true
         }
     }
 
@@ -581,7 +833,7 @@ class PluginManager: ObservableObject {
             menuBarItems.removeValue(forKey: plugin.id)
 
             if clearDisabledState {
-                prefs.disabledPlugins.removeAll(where: { $0 == plugin.id })
+                prefs.enablePlugin(plugin.id)
             }
         }
 
@@ -643,7 +895,7 @@ class PluginManager: ObservableObject {
         for plugin in removedFilePlugins + removedShortcutPlugins {
             plugin.terminate()
             menuBarItems.removeValue(forKey: plugin.id)
-            prefs.disabledPlugins.removeAll(where: { $0 == plugin.id })
+            prefs.enablePlugin(plugin.id)
         }
 
         let removedPluginIDs = fileSyncResult.removedPluginIDs.union(removedShortcutPlugins.map(\.id))
@@ -658,19 +910,17 @@ class PluginManager: ObservableObject {
     }
 
     func loadPlugin(fileURL: URL) -> Plugin? {
-        // Check if this is a packaged plugin (.swiftbar directory)
-        var isDir: ObjCBool = false
-        if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDir),
-           isDir.boolValue,
-           fileURL.isSwiftBarPackage
-        {
-            if let packagedPlugin = PackagedPlugin(packageDirectory: fileURL) {
-                return packagedPlugin
-            }
-            os_log("Failed to load packaged plugin at %{public}@", log: Log.plugin, type: .error, fileURL.path)
+        // Only folder-based plugins with a `manifest.json` are supported.
+        // The discovery pipeline in `getLoadablePluginList` already filters out
+        // anything that doesn't match, so we can assume here that `fileURL`
+        // is a directory that contains a `manifest.json` we just validated.
+        guard isManifestPluginDirectory(fileURL),
+              let folderPlugin = FolderPlugin(manifestDirectory: fileURL)
+        else {
+            os_log("Refusing to load non-folder plugin candidate %{public}@", log: Log.plugin, type: .error, fileURL.path)
             return nil
         }
-        return StreamablePlugin(fileURL: fileURL) ?? ExecutablePlugin(fileURL: fileURL)
+        return folderPlugin
     }
 
     func refreshAllPlugins(reason: PluginRefreshReason) {
@@ -1036,7 +1286,9 @@ extension PluginManager {
             for candidate in discoveredPluginCandidates.sorted(by: { $0.path < $1.path }) {
                 let resolvedPath = candidate.resolvingSymlinksInPath().path
                 let status = systemReportCandidateStatus(for: candidate, makePluginExecutable: prefs.makePluginExecutable)
-                let executable = candidate.isSwiftBarPackage ? "n/a" : boolString(FileManager.default.isExecutableFile(atPath: candidate.path))
+                let executable = isManifestPluginDirectory(candidate)
+                    ? "n/a"
+                    : boolString(FileManager.default.isExecutableFile(atPath: candidate.path))
                 lines.append("- \(candidate.path)")
                 lines.append("  resolved: \(resolvedPath)")
                 lines.append("  status: \(status)")

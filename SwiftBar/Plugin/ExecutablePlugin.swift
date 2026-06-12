@@ -101,7 +101,7 @@ class ExecutablePlugin: TimerArmingPlugin {
     func disable() {
         lastState = .Disabled
         disableTimer()
-        prefs.disabledPlugins.append(id)
+        prefs.disablePlugin(id)
     }
 
     func terminate() {
@@ -109,7 +109,7 @@ class ExecutablePlugin: TimerArmingPlugin {
     }
 
     func enable() {
-        prefs.disabledPlugins.removeAll(where: { $0 == id })
+        prefs.enablePlugin(id)
         refresh(reason: .FirstLaunch)
     }
 
@@ -161,25 +161,54 @@ class ExecutablePlugin: TimerArmingPlugin {
 
     func invoke() -> String? {
         lastUpdated = Date()
+        // Double-layered isolation:
+        //   1. The `runScript` call may throw (file not found, non-zero
+        //      exit, sandbox denial, Mach port failure, etc.).
+        //   2. *Any other* error from the surrounding code (string
+        //      conversion OOM, a plugin path containing NUL bytes, an
+        //      exception from Combine's `onOutputUpdate` callback)
+        //      would normally propagate up the OperationQueue and out
+        //      of our control.
+        //
+        // Both cases must never reach the main app process. We catch
+        // them here, mark the plugin as failed, and let SwiftBar
+        // continue running.
         do {
-            let out = try runScript(to: file, env: env,
-                                    runInBash: metadata?.shouldRunInBash ?? true)
-            error = nil
-            lastState = .Success
-            os_log("Successfully executed script \n%{public}@", log: Log.plugin, file)
-            debugInfo.addEvent(type: .ContentUpdate, value: out.out)
-            if let err = out.err, err != "" {
-                debugInfo.addEvent(type: .ContentUpdateError, value: err)
-                os_log("Error output from the script: \n%{public}@:", log: Log.plugin, err)
+            do {
+                let out = try runScript(to: file, env: env,
+                                        runInBash: metadata?.shouldRunInBash ?? true)
+                error = nil
+                lastState = .Success
+                os_log("Successfully executed script \n%{public}@", log: Log.plugin, file)
+                debugInfo.addEvent(type: .ContentUpdate, value: out.out)
+                if let err = out.err, err != "" {
+                    debugInfo.addEvent(type: .ContentUpdateError, value: err)
+                    os_log("Error output from the script: \n%{public}@:", log: Log.plugin, err)
+                }
+                return out.out
+            } catch {
+                // We treat *every* error (ShellOutError or otherwise) as
+                // a plugin failure, log it, and continue. The previous
+                // version returned `nil` for non-ShellOutError
+                // exceptions which silently dropped them on the floor.
+                let message: String
+                if let shellError = error as? ShellOutError {
+                    message = shellError.message
+                } else {
+                    message = String(describing: error)
+                }
+                os_log("Failed to execute script\n%{public}@\n%{public}@", log: Log.plugin, type: .error, file, message)
+                os_log("Error output from the script: \n%{public}@", log: Log.plugin, message)
+                self.error = error
+                debugInfo.addEvent(type: .ContentUpdateError, value: message)
+                lastState = .Failed
             }
-            return out.out
         } catch {
-            guard let error = error as? ShellOutError else { return nil }
-            os_log("Failed to execute script\n%{public}@\n%{public}@", log: Log.plugin, type: .error, file, error.message)
-            os_log("Error output from the script: \n%{public}@", log: Log.plugin, error.message)
-            self.error = error
-            debugInfo.addEvent(type: .ContentUpdateError, value: error.message)
-            lastState = .Failed
+            // Defensive second net — a `debugInfo.addEvent` that
+            // itself throws, or a `lastUpdated = Date()` overflow, must
+            // still not bring down SwiftBar.
+            os_log("Plugin execution isolation: unexpected error in invoke() for %{public}@: %{public}@",
+                   log: Log.plugin, type: .error, file, String(describing: error))
         }
         return nil
     }

@@ -43,42 +43,29 @@ SwiftBar is bundled with a Plugin Repository. You can access it at Swiftbar → 
 If you want to add\remove plugin or have other questions about repository content please refer to this [issue](https://github.com/swiftbar/swiftbar-plugins/issues/1).
 
 ## Creating Plugins
-
-To add a new plugin to SwiftBar, you need to create an executable script following the required format (see below) and put it into `Plugin Folder`. 
-
-### Plugin Folder
-
-With the first launch, Swiftbar will ask you to set the `Plugin Folder`. SwiftBar will try to import every file in this folder as a plugin.
-
-**Important**:
-* hidden folders are ignored
-* nested folders are traversed by SwiftBar, including symlinks
-* `.swiftbarignore` file is supported, you can use it to exclude files from being imported as plugins.
-
-You can hide a folder by prepending `.` or using this command `chflags hidden <folder name>`.
-
-### Plugin Naming
-
-Plugin files must adopt the following format:
+SwiftBar plugins are **folder-based**. Every plugin is a directory containing a
+`manifest.json` (which describes the plugin) plus an entry script and any
+auxiliary files (icons, helper scripts, libraries). The folder name does
+**not** need a special suffix.
 
 ```
-{name}.{time}.{ext}
+my-plugin/
+├── manifest.json    # plugin metadata (required)
+└── my-plugin.sh     # entry script (referenced from manifest)
 ```
 
-* **name** - Anything you want.
-* **time** - Refresh interval (optional). Should be a number + duration modifier (see below)
-* **ext** - File extension.
+This single format replaces the older "single-file executable" plugins and
+the legacy `.swiftbar` packaged plugins — those are no longer loaded.
 
-Duration modifiers:
-* **ms** - milliseconds, e.g. 1ms - refresh every millisecond
-* **s** - seconds, e.g. 1s - refresh every second
-* **m** - minute, e.g. 10m - refresh every ten minutes
-* **h** - hour, e.g. 3h - refresh every three hours
-* **d** - day, e.g. 1d - refresh every day
+For the full schema (typed parameters, schedule, environment, About URL,
+hide-flags, ...) and a worked example, see
+**[README-MANIFEST-PLUGINS.md](README-MANIFEST-PLUGINS.md)**.
 
-Example filename: `date.1m.sh`
+### Migrating an older plugin
 
-Whether you are using a plugin from the plugin repository, or creating your own, plugins will initially appear in the menu bar in no pre-determined order. However, you can reorder how they appear by holding down <kbd>Cmd</kbd> and dragging them (this process can sometimes also be used on some other non-SwiftBar icons in the menu bar too). Plugin position will be remembered unless you change the name of the plugin file, in which case they'll need to be re-positioned again.
+If you have an existing single-file script (e.g. `weather.1m.sh`) or a legacy
+`.swiftbar` bundle, follow the
+[migration guide in README-MANIFEST-PLUGINS.md](README-MANIFEST-PLUGINS.md#migrating-from-older-formats).
 
 ## Plugin API
 

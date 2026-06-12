@@ -1,15 +1,20 @@
-# SwiftBar Packaged Plugins
+# SwiftBar Packaged Plugins — DEPRECATED
 
-SwiftBar now supports packaged plugins, which allow you to organize related files into a single plugin package rather than a single script file.
-
-## Creating a Packaged Plugin
-
-A packaged plugin is a directory with the `.swiftbar` extension containing multiple files, including a main script file named `plugin.*`. Here's how to create one:
-
-1. Create a directory with the `.swiftbar` extension (e.g., `weather.swiftbar`)
-2. Inside this directory, create a main script file named `plugin.sh` (or `plugin.py`, `plugin.js`, etc.)
-3. Add any additional resources your plugin needs (libraries, helper scripts, assets, etc.)
-4. Make sure your main `plugin.*` script is executable
+> **⚠️ This format is deprecated and no longer loaded by SwiftBar.**
+>
+> SwiftBar now exclusively supports folder-based plugins declared by a
+> `manifest.json` file. See
+> **[README-MANIFEST-PLUGINS.md](../../README-MANIFEST-PLUGINS.md)**
+> for the current plugin format.
+>
+> `.swiftbar` bundles will be silently ignored by the plugin loader and
+> appear in the system report as
+> `"skipped: folder plugin has invalid manifest.json"`. To migrate an
+> existing packaged plugin, see the
+> [migration guide in README-MANIFEST-PLUGINS.md](../../README-MANIFEST-PLUGINS.md#migrating-from-older-formats).
+>
+> This document is preserved for historical reference only and was
+> archived on 2026-06-11.
 
 ## Example Structure
 

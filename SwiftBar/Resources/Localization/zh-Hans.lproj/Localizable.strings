@@ -9,6 +9,7 @@
 "MB_DDEBUG_PLUGIN" = "调试插件";
 "MB_TERMINATE_EPH" = "终止插件";
 "MB_PREFERENCES" = "偏好设置…";
+"MB_TOGGLE_PLUGINS" = "开关插件";
 "MB_REFRESH_ALL" = "刷新全部插件";
 "MB_ENABLE_ALL" = "开启全部插件";
 "MB_DISABLE_ALL" = "停用全部插件";
@@ -36,6 +37,7 @@
 "PF_TERMINAL" = "终端";
 "PF_HIDE_SWIFTBAR_ICON" = "隐藏 SwiftBar 图标";
 "PF_STEALTH_MODE" = "在菜单栏隐藏 SwiftBar";
+"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "始终显示 SwiftBar 菜单";
 "PF_CHECK_FOR_UPDATE" = "更新";
 "PF_CHECK_FOR_UPDATES" = "检查更新";
 "PR_INCLUDE_BETA_UPDATES" = "包括预发布版本";

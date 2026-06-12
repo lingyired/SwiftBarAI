@@ -9,6 +9,7 @@
 "MB_DDEBUG_PLUGIN" = "Depurar Complemento";
 "MB_TERMINATE_EPH" = "Terminate Plugin";
 "MB_PREFERENCES" = "Preferencias…";
+"MB_TOGGLE_PLUGINS" = "Alternar Complementos";
 "MB_REFRESH_ALL" = "Actualizar Todo";
 "MB_ENABLE_ALL" = "Habilitar Todo";
 "MB_DISABLE_ALL" = "Deshabilitar Todo";
@@ -36,6 +37,7 @@
 "PF_TERMINAL" = "Terminal";
 "PF_HIDE_SWIFTBAR_ICON" = "Ocultar Ícono SwiftBar";
 "PF_STEALTH_MODE" = "Hide SwiftBar in the menu bar";
+"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Mostrar siempre el menú de SwiftBar";
 "PF_CHECK_FOR_UPDATE" = "Actualizar";
 "PF_CHECK_FOR_UPDATES" = "Verificar Actualizaciones";
 "PR_INCLUDE_BETA_UPDATES" = "Incluir Versiones Beta";

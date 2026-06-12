@@ -78,7 +78,7 @@ If the change is abandoned, leave the record in place with `Status: in-progress`
 
 - **Use English for content** so the records can be aggregated into GitHub release notes without translation.
 - **One change per file** — do not bundle unrelated work.
-- **Do not delete old records.** If the directory grows too large, move older entries to `changes/archive/`.
+- **Do not delete old records.** If the directory grows too large, move older entries to `changes/archive/`. Session-scoped debug iterations (e.g. p12 → p27 chasing the same icon-rendering bug) belong in a single per-session subdirectory under `archive/` so the chronology is preserved without polluting the top-level `changes/`.
 - For multi-commit or branch-based work, use one record with a list of commit SHAs.
 - For purely visual / documentation changes inside `docs/`, a `docs:` type record is still required so the rule has no exceptions.
 

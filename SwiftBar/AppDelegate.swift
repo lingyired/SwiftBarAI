@@ -51,11 +51,11 @@ func shouldImportOpenedPluginFile(at url: URL, makePluginExecutable: Bool, fileM
         return false
     }
 
-    if isDirectory.boolValue {
-        return url.isSwiftBarPackage && PackagedPlugin.findMainExecutable(in: url) != nil
-    }
-
-    return shouldLoadPluginFile(at: url, makePluginExecutable: makePluginExecutable, fileManager: fileManager)
+    // Only folder-based plugins with a `manifest.json` are supported.
+    // Single-file scripts and legacy `.swiftbar` bundles are no longer
+    // recognised as importable plugin candidates.
+    guard isDirectory.boolValue else { return false }
+    return PluginManifestLoader.loadAndValidate(from: url) != nil
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate, SPUStandardUserDriverDelegate, SPUUpdaterDelegate, UNUserNotificationCenterDelegate, NSWindowDelegate {
@@ -81,9 +81,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUStandardUserDriverDelegat
     #endif
 
     func applicationDidFinishLaunching(_: Notification) {
+        // Loud, greppable startup stamp so the user can confirm the
+        // binary they are actually running matches the source tree
+        // they are editing. The previous "still not working" reports
+        // all turned out to be stale /Applications installs running
+        // an older build; this log line removes that ambiguity.
+        os_log("SwiftBar startup stamp: %{public}@", log: Log.plugin, type: .info, AppVersion.fullLabel)
+        NSLog("[SwiftBar startup] %@", AppVersion.fullLabel)
+
         preferencesWindowController.window?.delegate = self
         setupToolbar()
-        
+
         // Clean up any corrupted NSStatusItem visibility states from UserDefaults
         // This fixes issues where menubar items disappear after initial setup
         cleanupStatusItemVisibility()

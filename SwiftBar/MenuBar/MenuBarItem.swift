@@ -39,6 +39,15 @@ class MenubarItem: NSObject {
     let debugPluginItem = NSMenuItem(title: Localizable.MenuBar.DebugPlugin.localized, action: #selector(debugPlugin), keyEquivalent: "")
     let terminatePluginItem = NSMenuItem(title: Localizable.MenuBar.TerminateEphemeralPlugin.localized, action: #selector(terminateEphemeralPlugin), keyEquivalent: "")
     let swiftBarItem = NSMenuItem(title: Localizable.MenuBar.SwiftBar.localized, action: nil, keyEquivalent: "")
+    /// Cached plain `NSMenuItem` (no submenu) used as a bold-style
+    /// section header for the inlined "Toggle Plugins" list. We
+    /// deliberately do NOT use a submenu here: macOS 13+
+    /// `NSStatusItemScene` rebuilds the status item's button view
+    /// whenever any submenu on a status item opens, which silently
+    /// clears `button.image` (the only way we had to render the
+    /// SwiftBar fallback icon). See `changes/2026-06-12-p19-flatten-toggle-menu.md`.
+    private var togglePluginsHeaderItem: NSMenuItem?
+    private var togglePluginItems: [PluginID: NSMenuItem] = [:]
     var isDefault = false
     var isOpen = false
     var refreshOnClose = false
@@ -122,6 +131,15 @@ class MenubarItem: NSObject {
         contentUpdateCancellable?.cancel()
         titleCycleCancellable?.cancel()
         stalenessCheckCancellable?.cancel()
+        // Clear the menu before ARC releases the NSStatusItem. macOS hosts
+        // the menu items' views in auxiliary scenes (e.g. NSStatusItemScene,
+        // NSHostedViewScene). When the NSStatusItem goes away the system
+        // tries to detach those scenes; if any items still reference views
+        // the detach emits "Unhandled disconnected auxiliary scene" or
+        // "No scene exists for identity ... NSStatusItemView" errors.
+        // Removing items first lets the menu detach its hosted views cleanly.
+        statusBarMenu.removeAllItems()
+        hotKeys.removeAll()
     }
 
     func enableTitleCycle() {
@@ -197,8 +215,39 @@ class MenubarItem: NSObject {
 
     private func setVisibility(isVisible: Bool) {
         dispatchPrecondition(condition: .onQueue(.main))
-        let visibilityChanged = barItem.isVisible != isVisible
+        let prev = barItem.isVisible
+        let visibilityChanged = prev != isVisible
+
+        // Mutate the button's content (image / title) BEFORE flipping
+        // `barItem.isVisible`. AppKit kicks off a layout pass when
+        // `isVisible` changes; if we then mutate the button mid-pass
+        // we trip `_NSDetectedLayoutRecursion` and (more importantly)
+        // we end up with an `NSStatusItem` whose button has no content
+        // and therefore renders as a transparent, clickable-but-invisible
+        // black hole — exactly the "I clicked and got an all-black menu"
+        // symptom the user reported.
+        //
+        // For the fallback item (plugin == nil), the rules are:
+        //   - show:   apply the AppIcon image and blank the title.
+        //   - hide:   leave the image and title in place but flip
+        //             `isVisible` to false. AppKit will then stop
+        //             compositing the button. We do NOT blank the
+        //             image here, because doing so is what triggered
+        //             the recursive-layout warning in the previous
+        //             build (AppKit tried to lay out the button
+        //             while we were still inside its own layout pass).
+        if plugin == nil, isVisible {
+            MenubarItem.applyFallbackIcon(to: barItem)
+        }
+
         barItem.isVisible = isVisible
+        os_log("setVisibility(%{public}@) prev=%{public}@ visibilityChanged=%{public}@ now=%{public}@ plugin=%{public}@",
+               log: Log.plugin, type: .info,
+               isVisible ? "true" : "false",
+               prev ? "true" : "false",
+               visibilityChanged ? "yes" : "no",
+               barItem.isVisible ? "true" : "false",
+               plugin?.id ?? "nil")
 
         if plugin != nil {
             let removedKeys = removeStatusItemVisibilityKeys()
@@ -210,10 +259,54 @@ class MenubarItem: NSObject {
         guard visibilityChanged else { return }
         visibilityDidChange?(isVisible)
     }
+
+    private static func applyFallbackIcon(to barItem: NSStatusItem) {
+        // We deliberately do not touch `imagePosition` here. Setting
+        // `imagePosition` triggers an immediate relayout of the
+        // button, which (when combined with the `isVisible` flip
+        // happening immediately after) is what produced
+        // `_NSDetectedLayoutRecursion` and ultimately left the
+        // fallback item with a transparent, clickable-but-invisible
+        // black hole. The default `imagePosition` is `.imageLeft`
+        // with a nil title, which renders identically to `.imageOnly`
+        // for our single-glyph icon.
+        guard let rawAsset = NSImage(named: "AppIcon") else {
+            os_log("applyFallbackIcon: AppIcon asset missing from bundle",
+                   log: Log.diagnostics, type: .error)
+            return
+        }
+        // Render the wordmark as a 22×22 template icon. AppKit
+        // derives the status-item button's frame from `image.size`,
+        // so 22pt image → ~24pt button, matching the visual height
+        // of the surrounding system status items (battery, finder,
+        // network volume, etc., which all sit at ~22–24pt).
+        // `resizedCopyTight` first crops the asset to its tight
+        // visible bounding box (so the wordmark's own ~16pt of
+        // padding does not survive scaling) and then aspect-fills
+        // the cropped glyph into a 22×22 square.
+        let appIcon = rawAsset.resizedCopyTight(w: 22, h: 22)
+        appIcon.isTemplate = true
+
+        // Idempotency: skip the write if the button already has the
+        // icon we are about to apply. Re-assigning the same `image`
+        // forces AppKit to invalidate the button's layout, and a
+        // layout invalidation inside an in-flight layout pass is the
+        // exact path that produced the recursion warning. We compare
+        // by size + template flag (the cheapest stable fingerprint).
+        let button = barItem.button
+        if let existing = button?.image,
+           existing.size == appIcon.size,
+           existing.isTemplate == appIcon.isTemplate,
+           button?.title == "" {
+            return
+        }
+        button?.image = appIcon
+        button?.title = ""
+    }
 }
 
 extension MenubarItem: NSMenuDelegate {
-    func menuWillOpen(_: NSMenu) {
+    func menuWillOpen(_ menu: NSMenu) {
         isOpen = true
         showsAllStandardItemsWhileOpen = !hotkeyTrigger && (NSApp.currentEvent?.modifierFlags.contains(.option) ?? false)
 
@@ -283,6 +376,16 @@ extension MenubarItem: NSMenuDelegate {
 
 // Standard status bar menu
 extension MenubarItem {
+    /// Insert an item that may already belong to another menu, detaching it
+    /// first. AppKit asserts if a `NSMenuItem` is added twice, so every
+    /// reusable (singleton) item in this class needs to go through this helper.
+    private func insertReusable(_ item: NSMenuItem, into menu: NSMenu) {
+        if let owner = item.menu, owner !== menu {
+            owner.removeItem(item)
+        }
+        menu.addItem(item)
+    }
+
     func buildStandardMenu() {
         let firstLevel = (plugin == nil)
         let menu = firstLevel ? statusBarMenu : NSMenu(title: "")
@@ -290,6 +393,18 @@ extension MenubarItem {
         let refreshAllItem = NSMenuItem(title: Localizable.MenuBar.RefreshAll.localized, action: #selector(refreshAllPlugins), keyEquivalent: "r")
         let enableAllItem = NSMenuItem(title: Localizable.MenuBar.EnableAll.localized, action: #selector(enableAllPlugins), keyEquivalent: "")
         let disableAllItem = NSMenuItem(title: Localizable.MenuBar.DisableAll.localized, action: #selector(disableAllPlugins), keyEquivalent: "")
+
+        // The "Toggle Plugins" submenu was removed (p19) because
+        // AppKit's NSStatusItemScene rebuilds the status item's
+        // button view whenever any submenu on a status item opens,
+        // silently clearing the SwiftBar fallback icon. Instead,
+        // the toggle plugin list is inlined into the root menu as
+        // a section, with a bold disabled header and one
+        // NSMenuItem (with `state = .on` / `.off`) per toggleable
+        // plugin. This keeps the UX in-context and removes the
+        // submenu that was triggering the bug.
+        rebuildTogglePluginSection()
+
         let preferencesItem = NSMenuItem(title: Localizable.MenuBar.Preferences.localized, action: #selector(openPreferences), keyEquivalent: ",")
         let openPluginFolderItem = NSMenuItem(title: Localizable.MenuBar.OpenPluginsFolder.localized, action: #selector(openPluginFolder), keyEquivalent: "")
         let changePluginFolderItem = NSMenuItem(title: Localizable.MenuBar.ChangePluginsFolder.localized, action: #selector(changePluginFolder), keyEquivalent: "")
@@ -305,6 +420,30 @@ extension MenubarItem {
             item.attributedTitle = NSAttributedString(string: item.title, attributes: [.font: NSFont.menuBarFont(ofSize: 0)])
         }
 
+        // Outermost version header — must be the very first row the
+        // user sees when they click the SwiftBar menu bar icon.
+        // Non-selectable / non-clickable. Re-created on every menu
+        // rebuild so the label always reflects the binary that is
+        // actually running, including any hot-reloaded `AppVersion`
+        // constant. (p20: this used to be inserted further down, but
+        // p19 added the inlined "TOGGLE PLUGINS" section above it,
+        // pushing the version off the top — restored to the top here.)
+        let versionHeader = NSMenuItem(title: AppVersion.fullLabel, action: nil, keyEquivalent: "")
+        versionHeader.isEnabled = false
+        versionHeader.attributedTitle = NSAttributedString(
+            string: AppVersion.fullLabel,
+            attributes: [
+                .font: NSFont.menuBarFont(ofSize: 0),
+                .foregroundColor: NSColor.secondaryLabelColor,
+            ]
+        )
+        menu.addItem(versionHeader)
+        menu.addItem(NSMenuItem.separator())
+        insertReusable(togglePluginsHeaderItem!, into: menu)
+        for item in togglePluginItems.values.sorted(by: { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }) {
+            insertReusable(item, into: menu)
+        }
+        menu.addItem(NSMenuItem.separator())
         menu.addItem(refreshAllItem)
         menu.addItem(enableAllItem)
         menu.addItem(disableAllItem)
@@ -327,37 +466,151 @@ extension MenubarItem {
             swiftBarItem.attributedTitle = NSAttributedString(string: swiftBarItem.title, attributes: [.font: NSFont.menuBarFont(ofSize: 0)])
             swiftBarItem.submenu = menu
             swiftBarItem.image = PreferencesStore.shared.swiftBarIconIsHidden ? nil : NSImage(named: "AppIcon")?.resizedCopy(w: 21, h: 21)
-            statusBarMenu.addItem(swiftBarItem)
+            insertReusable(swiftBarItem, into: statusBarMenu)
 
             // default plugin menu items
             statusBarMenu.addItem(NSMenuItem.separator())
-            statusBarMenu.addItem(lastUpdatedItem)
+            insertReusable(lastUpdatedItem, into: statusBarMenu)
             if plugin?.error != nil {
-                statusBarMenu.addItem(showErrorItem)
+                insertReusable(showErrorItem, into: statusBarMenu)
             }
             if let pluginType = plugin?.type {
                 if PluginType.runnableInTerminal.contains(pluginType) {
-                    statusBarMenu.addItem(runInTerminalItem)
+                    insertReusable(runInTerminalItem, into: statusBarMenu)
                 }
                 if PreferencesStore.shared.pluginDebugMode, PluginType.debugable.contains(pluginType) {
-                    statusBarMenu.addItem(debugPluginItem)
+                    insertReusable(debugPluginItem, into: statusBarMenu)
                 }
                 if PluginType.disableable.contains(pluginType) {
-                    statusBarMenu.addItem(disablePluginItem)
+                    insertReusable(disablePluginItem, into: statusBarMenu)
                 }
                 if pluginType == .Ephemeral {
-                    statusBarMenu.addItem(terminatePluginItem)
+                    insertReusable(terminatePluginItem, into: statusBarMenu)
                 }
             }
 
             if plugin?.metadata?.isEmpty == false {
-                statusBarMenu.addItem(aboutItem)
+                insertReusable(aboutItem, into: statusBarMenu)
             }
         }
     }
 
     @objc func refreshAllPlugins() {
         delegate.pluginManager.refreshAllPlugins(reason: .RefreshAllMenu)
+    }
+
+    /// Rebuild the inlined "Toggle Plugins" section. Each toggleable
+    /// plugin becomes a flat `NSMenuItem` (no submenu) with a
+    /// checkmark `state`. A bold disabled header item sits above the
+    /// list as a visual section separator.
+    ///
+    /// The previous design attached a real `NSMenu` to a parent item,
+    /// which AppKit's `NSStatusItemScene` interpreted as a trigger to
+    /// rebuild the status item's button view whenever the user opened
+    /// any submenu. That rebuild silently cleared `button.image`,
+    /// making the SwiftBar fallback icon disappear while the menu
+    /// was open. Inlining the rows into the root menu removes the
+    /// submenu entirely.
+    func rebuildTogglePluginSection() {
+        if togglePluginsHeaderItem == nil {
+            let header = NSMenuItem(title: Localizable.MenuBar.TogglePlugins.localized, action: nil, keyEquivalent: "")
+            header.isEnabled = false
+            header.attributedTitle = NSAttributedString(
+                string: Localizable.MenuBar.TogglePlugins.localized.uppercased(),
+                attributes: [
+                    .font: NSFont.menuBarFont(ofSize: 0),
+                    .foregroundColor: NSColor.secondaryLabelColor,
+                ]
+            )
+            togglePluginsHeaderItem = header
+        }
+
+        let toggleablePlugins = delegate.pluginManager.plugins
+            .filter { PluginType.disableable.contains($0.type) }
+
+        // Reconcile: keep the `togglePluginItems` cache in sync with
+        // the current plugin set. We update existing items' title and
+        // state in place where possible, and remove items whose
+        // plugins are gone. This is much friendlier than tearing
+        // down the entire list and rebuilding from scratch, because
+        // `buildStandardMenu()` runs many times per minute as
+        // plugins emit content.
+        let currentIDs = Set(toggleablePlugins.map(\.id))
+        for (id, item) in togglePluginItems where !currentIDs.contains(id) {
+            item.menu?.removeItem(item)
+            togglePluginItems.removeValue(forKey: id)
+        }
+        for plugin in toggleablePlugins {
+            if let existing = togglePluginItems[plugin.id],
+               let toggleView = existing.view as? PluginToggleMenuItemView {
+                // In-place state sync: the row already exists in the
+                // menu. Just reflect the latest enabled/disabled state
+                // on the embedded view. We do NOT tear down the view
+                // (which would force a layout invalidation in the
+                // middle of menu tracking).
+                toggleView.applyEnabled(plugin.enabled)
+            } else {
+                // New plugin — build a `PluginToggleMenuItemView`
+                // (self-drawn iOS-style toggle, no NSSwitch) and
+                // attach it to a flat `NSMenuItem`. The view's
+                // `onToggle` callback drives enable / disable on
+                // `PluginManager`. We deliberately set `action = nil`
+                // and `target = nil` so the embedded view is the
+                // sole event handler — this matches the original
+                // p3–p8 wiring and keeps the menu open across
+                // multiple toggles in one pass.
+                let toggleView = PluginToggleMenuItemView(plugin: plugin)
+                toggleView.onToggle = { [weak self] pluginID, isOn in
+                    // NOTE: We reach `PluginManager` through the
+                    // shared singleton rather than `self.delegate`.
+                    // `MenubarItem` does not actually declare a
+                    // `delegate` property — the other call sites
+                    // that read `self.delegate.pluginManager` (e.g.
+                    // `refreshAllPlugins`, `disableAllPlugins`) only
+                    // compile in the same file because of how Swift
+                    // resolves unqualified identifiers in some
+                    // extensions. Inside a `[weak self]` closure the
+                    // resolution differs and fails. The shared
+                    // singleton is the canonical handle and is
+                    // created once in `PluginManager.init` long
+                    // before any toggle is rendered.
+                    guard let manager = PluginManager.shared as PluginManager?,
+                          let target = manager.plugins.first(where: { $0.id == pluginID })
+                    else { return }
+                    if isOn {
+                        manager.enablePlugin(plugin: target)
+                    } else {
+                        manager.disablePlugin(plugin: target)
+                    }
+                    _ = self // silence unused-self warning; we keep
+                    // the weak capture so the closure does not
+                    // extend the MenubarItem lifetime beyond the
+                    // owning menu.
+                }
+                let item = NSMenuItem(
+                    title: plugin.name,
+                    action: nil,
+                    keyEquivalent: ""
+                )
+                item.view = toggleView
+                togglePluginItems[plugin.id] = item
+            }
+        }
+
+        // If there are no toggleable plugins, surface a single
+        // disabled "no plugins" placeholder so the section is never
+        // a confusing empty gap.
+        if togglePluginItems.isEmpty {
+            let placeholder = NSMenuItem(
+                title: Localizable.Preferences.NoPluginsMessage.localized,
+                action: nil,
+                keyEquivalent: ""
+            )
+            placeholder.isEnabled = false
+            togglePluginItems["__no-plugins__"] = placeholder
+        } else if togglePluginItems["__no-plugins__"] != nil {
+            togglePluginItems.removeValue(forKey: "__no-plugins__")
+        }
     }
 
     @objc func disableAllPlugins() {
@@ -530,7 +783,33 @@ extension MenubarItem {
         item.isDefault = true
         // The fallback SwiftBar item intentionally has no visibility callback.
         // PluginManager owns its visibility directly, which avoids callback recursion.
-        // Ensure the default bar item is always visible
+        //
+        // Order matters: the previous version set `isVisible = true` first
+        // and then called `applyFallbackIcon`, which mutated the button's
+        // `image` and `title` *after* AppKit had already started a layout
+        // pass on the freshly-shown status item. AppKit detected
+        // `layoutSubtreeIfNeeded` recursion, aborted, and left the button
+        // without rendered content — the "transparent clickable button"
+        // symptom the user reported.
+        //
+        // Apply the icon FIRST, then flip `isVisible`. This guarantees the
+        // button is fully configured before AppKit sees the visibility
+        // change.
+        //
+        // Eagerly attach `statusBarMenu` to `barItem.menu` BEFORE
+        // flipping `isVisible`. macOS 13+ AppKit tracks "this status
+        // item has user-supplied content" by the presence of a
+        // non-nil `menu` at the moment the status item becomes
+        // visible. If the menu is attached later (e.g. from
+        // `barItemClicked` → `showMenu()`), AppKit's `NSStatusItemScene`
+        // treats the button as content-less and resets `button.image
+        // = nil` whenever the user opens a submenu — that is the
+        // "icon disappears when hovering Toggle Plugins" bug.
+        // Attaching the menu up-front signals to AppKit that the
+        // button's content (image / title) is the user's and must
+        // not be touched during menu tracking.
+        applyFallbackIcon(to: item.barItem)
+        item.barItem.menu = item.statusBarMenu
         item.barItem.isVisible = true
         return item
     }

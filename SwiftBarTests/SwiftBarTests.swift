@@ -87,54 +87,234 @@ final class TimedTestPlugin: TimerArmingPlugin {
 
 struct SwiftBarTests {
     @Test func testShouldShowDefaultBarItem_whenNoVisiblePluginsAndNotInStealthMode() async throws {
-        #expect(shouldShowDefaultBarItem(hasVisiblePlugins: false, stealthMode: false))
+        #expect(shouldShowDefaultBarItem(hasVisiblePlugins: false, stealthMode: false, alwaysShowSwiftBarMenu: true))
     }
 
     @Test func testShouldShowDefaultBarItem_hidesFallbackWhenPluginIsVisible() async throws {
-        #expect(!shouldShowDefaultBarItem(hasVisiblePlugins: true, stealthMode: false))
+        #expect(!shouldShowDefaultBarItem(hasVisiblePlugins: true, stealthMode: false, alwaysShowSwiftBarMenu: true))
     }
 
     @Test func testShouldShowDefaultBarItem_hidesFallbackInStealthMode() async throws {
-        #expect(!shouldShowDefaultBarItem(hasVisiblePlugins: false, stealthMode: true))
+        #expect(!shouldShowDefaultBarItem(hasVisiblePlugins: false, stealthMode: true, alwaysShowSwiftBarMenu: true))
     }
 
-    @Test func testShouldLoadPluginFile_skipsEmptyFiles() async throws {
-        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+    @Test func testGlobToRegex_matchesGlobPatternsCorrectly() {
+        func matches(_ pattern: String, _ path: String) -> Bool {
+            let regex = globToRegex(pattern)
+            if let re = try? NSRegularExpression(pattern: "^\(regex)$") {
+                return re.firstMatch(in: path, options: [], range: NSRange(location: 0, length: path.utf16.count)) != nil
+            }
+            return false
+        }
+
+        // `*.txt` is a single-segment glob, it only matches when the input
+        // itself is a single path segment.
+        #expect(matches("*.txt", "notes.txt"))
+        #expect(!matches("*.txt", "notes.sh"))
+        #expect(!matches("*.txt", "txt"))
+
+        // `**/*.txt` matches recursively AND at the root.
+        #expect(matches("**/*.txt", "notes.txt"))
+        #expect(matches("**/*.txt", "subdir/notes.txt"))
+        #expect(matches("**/*.txt", "a/b/c/notes.txt"))
+        #expect(!matches("**/*.txt", "notes.sh"))
+
+        // Exact path matching
+        #expect(matches("subdir/notes.txt", "subdir/notes.txt"))
+        #expect(!matches("subdir/notes.txt", "notes.txt"))
+    }
+
+    @Test func testShouldBeIgnored_matchesByFilenameAndByRelativePath() {
+        let base = URL(fileURLWithPath: "/plugins")
+        let patterns = ["*.txt"]
+
+        // Filename-only fallback: a bare `*.txt` should ignore `.txt` files
+        // sitting in sub-directories too.
+        let nested = URL(fileURLWithPath: "/plugins/subdir/notes.txt")
+        #expect(shouldBeIgnored(url: nested, patterns: patterns, baseURL: base))
+
+        let deeplyNested = URL(fileURLWithPath: "/plugins/a/b/c/notes.txt")
+        #expect(shouldBeIgnored(url: deeplyNested, patterns: patterns, baseURL: base))
+
+        // Non-matching files should not be ignored.
+        let script = URL(fileURLWithPath: "/plugins/subdir/notes.sh")
+        #expect(!shouldBeIgnored(url: script, patterns: patterns, baseURL: base))
+    }
+
+    @Test func testParseIgnorePatterns_handlesCommentsBlankLinesAndInlineComments() {
+        let content = """
+        # Top comment
+        *.txt
+           # indented comment
+        **/*.log
+
+        notes.bak  # inline comment
+        """
+        let patterns = parseIgnorePatterns(content)
+        #expect(patterns == ["*.txt", "**/*.log", "notes.bak"])
+    }
+
+    @Test func testGetPluginList_respectsSwiftBarIgnore() async throws {
+        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        let fileURL = tempDirectory.appendingPathComponent("empty.5s.sh")
-        FileManager.default.createFile(atPath: fileURL.path, contents: Data())
+        try Data("notes*\n".utf8).write(to: tempDirectory.appendingPathComponent(".swiftbarignore"))
 
-        #expect(!shouldLoadPluginFile(at: fileURL, makePluginExecutable: true))
+        // Folder plugin that should be picked up.
+        let pluginFolder = tempDirectory.appendingPathComponent("my-plugin", isDirectory: true)
+        try FileManager.default.createDirectory(at: pluginFolder, withIntermediateDirectories: true)
+        try Data("{\"entry\": \"plugin.sh\"}".utf8).write(to: pluginFolder.appendingPathComponent("manifest.json"))
+        let pluginScript = pluginFolder.appendingPathComponent("plugin.sh")
+        try Data("#!/bin/zsh\necho plugin\n".utf8).write(to: pluginScript)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: pluginScript.path)
+
+        // Folder plugin whose name matches the ignore pattern — should be skipped.
+        let ignoredFolder = tempDirectory.appendingPathComponent("notes-plugin", isDirectory: true)
+        try FileManager.default.createDirectory(at: ignoredFolder, withIntermediateDirectories: true)
+        try Data("{\"entry\": \"plugin.sh\"}".utf8).write(to: ignoredFolder.appendingPathComponent("manifest.json"))
+        let ignoredScript = ignoredFolder.appendingPathComponent("plugin.sh")
+        try Data("#!/bin/zsh\necho notes\n".utf8).write(to: ignoredScript)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: ignoredScript.path)
+
+        let manager = PluginManager()
+        let originalDirectory = manager.prefs.pluginDirectoryPath
+        manager.prefs.pluginDirectoryPath = tempDirectory.path
+        defer { manager.prefs.pluginDirectoryPath = originalDirectory }
+
+        let discovered = manager.getPluginList()
+        let paths = Set(discovered.map { $0.standardizedFileURL.path })
+
+        let expectedPlugin = pluginFolder.standardizedFileURL.path
+        let unexpectedPlugin = ignoredFolder.standardizedFileURL.path
+
+        #expect(paths.contains(expectedPlugin))
+        #expect(!paths.contains(unexpectedPlugin))
     }
 
-    @Test func testShouldLoadPluginFile_requiresExecutableBitWhenAutoChmodIsDisabled() async throws {
-        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+    // MARK: - manifest.json folder plugins
+
+    @Test func testIsManifestPluginDirectory_returnsTrueForFoldersContainingManifest() throws {
+        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            .standardizedFileURL
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        let fileURL = tempDirectory.appendingPathComponent("test.5s.sh")
-        FileManager.default.createFile(atPath: fileURL.path, contents: Data("echo hi\n".utf8))
+        #expect(!isManifestPluginDirectory(tempDirectory))
 
-        #expect(!shouldLoadPluginFile(at: fileURL, makePluginExecutable: false))
-        #expect(shouldLoadPluginFile(at: fileURL, makePluginExecutable: true))
+        try Data("{}".utf8).write(to: tempDirectory.appendingPathComponent("manifest.json"))
+        #expect(isManifestPluginDirectory(tempDirectory))
     }
 
-    @Test func testShouldLoadPluginFile_acceptsSymlinkedExecutableFiles() async throws {
-        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+    @Test func testPluginManifestLoader_decodesValidManifest() throws {
+        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        let targetFileURL = tempDirectory.appendingPathComponent("target.5s.sh")
-        try Data("#!/bin/zsh\necho hi\n".utf8).write(to: targetFileURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: targetFileURL.path)
+        let manifestJSON = """
+        {
+          "name": "Test Plugin",
+          "version": "1.2.3",
+          "description": "A test",
+          "type": "streamable",
+          "entry": "run.sh",
+          "refreshInterval": 42,
+          "environment": { "API_KEY": "abc" },
+          "parameters": [
+            { "name": "USER", "type": "string", "default": "guest" }
+          ]
+        }
+        """
+        let manifestURL = tempDirectory.appendingPathComponent("manifest.json")
+        let entryURL = tempDirectory.appendingPathComponent("run.sh")
+        try Data(manifestJSON.utf8).write(to: manifestURL)
+        try Data("#!/bin/zsh\n".utf8).write(to: entryURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: entryURL.path)
 
-        let symlinkURL = tempDirectory.appendingPathComponent("link.5s.sh")
-        try FileManager.default.createSymbolicLink(atPath: symlinkURL.path, withDestinationPath: targetFileURL.path)
+        let loaded = PluginManifestLoader.loadAndValidate(from: tempDirectory)
+        #expect(loaded != nil)
+        #expect(loaded?.manifest.name == "Test Plugin")
+        #expect(loaded?.manifest.resolvedType == .Streamable)
+        #expect(loaded?.manifest.resolvedRefreshInterval == 42)
+        #expect(loaded?.manifest.environment?["API_KEY"] == "abc")
+        #expect(loaded?.manifest.parameters?.first?.name == "USER")
+        #expect(loaded?.entryURL.lastPathComponent == "run.sh")
+    }
 
-        #expect(pluginFileState(for: symlinkURL) != nil)
-        #expect(shouldLoadPluginFile(at: symlinkURL, makePluginExecutable: false))
+    @Test func testPluginManifestLoader_decodesAllFields() throws {
+        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        let manifestJSON = """
+        {
+          "name": "Test Plugin",
+          "version": "1.2.3",
+          "description": "A test",
+          "author": "Alice",
+          "aboutUrl": "https://example.com/plugin",
+          "dependencies": "bash, curl, jq",
+          "type": "streamable",
+          "entry": "run.sh",
+          "refreshInterval": 42,
+          "environment": { "API_KEY": "abc" },
+          "parameters": [
+            { "name": "USER", "type": "string", "default": "guest" }
+          ],
+          "hideAbout": true,
+          "hideRunInTerminal": true,
+          "hideLastUpdated": false,
+          "hideDisablePlugin": true,
+          "hideSwiftBar": true
+        }
+        """
+        let manifestURL = tempDirectory.appendingPathComponent("manifest.json")
+        let entryURL = tempDirectory.appendingPathComponent("run.sh")
+        try Data(manifestJSON.utf8).write(to: manifestURL)
+        try Data("#!/bin/zsh\n".utf8).write(to: entryURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: entryURL.path)
+
+        let loaded = PluginManifestLoader.loadAndValidate(from: tempDirectory)
+        #expect(loaded != nil)
+        let manifest = try #require(loaded?.manifest)
+        #expect(manifest.name == "Test Plugin")
+        #expect(manifest.version == "1.2.3")
+        #expect(manifest.description == "A test")
+        #expect(manifest.author == "Alice")
+        #expect(manifest.aboutUrl == "https://example.com/plugin")
+        #expect(manifest.dependencies == "bash, curl, jq")
+        #expect(manifest.resolvedType == .Streamable)
+        #expect(manifest.resolvedRefreshInterval == 42)
+        #expect(manifest.environment?["API_KEY"] == "abc")
+        #expect(manifest.parameters?.first?.name == "USER")
+        #expect(manifest.hideAbout == true)
+        #expect(manifest.hideRunInTerminal == true)
+        #expect(manifest.hideLastUpdated == false)
+        #expect(manifest.hideDisablePlugin == true)
+        #expect(manifest.hideSwiftBar == true)
+        #expect(loaded?.entryURL.lastPathComponent == "run.sh")
+    }
+
+    @Test func testPluginManifestLoader_rejectsMissingEntry() throws {
+        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        // Manifest declares an entry that doesn't exist
+        try Data("{ \"entry\": \"missing.sh\" }".utf8).write(to: tempDirectory.appendingPathComponent("manifest.json"))
+
+        let loaded = PluginManifestLoader.loadAndValidate(from: tempDirectory)
+        #expect(loaded == nil)
+    }
+
+    @Test func testPluginManifestLoader_rejectsMalformedJSON() throws {
+        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        try Data("{ not valid json".utf8).write(to: tempDirectory.appendingPathComponent("manifest.json"))
+        #expect(PluginManifestLoader.loadAndValidate(from: tempDirectory) == nil)
     }
 
     @Test func testRunPluginOperation_rearmsTimersForTimerArmingPlugins() async throws {
@@ -261,25 +441,30 @@ struct SwiftBarTests {
         #expect(matches == ["Ice", "Bartender"])
     }
 
-    @Test func testSystemReportCandidateStatus_reportsPackagedPluginWithoutEntryPoint() async throws {
+    @Test func testSystemReportCandidateStatus_reportsInvalidFolderPlugin() async throws {
         let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
-        let packageURL = tempDirectory.appendingPathComponent("weather.swiftbar")
-        try FileManager.default.createDirectory(at: packageURL, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        #expect(systemReportCandidateStatus(for: packageURL, makePluginExecutable: true) == "skipped: packaged plugin missing plugin.* entry point")
+        // A folder without a manifest.json (or with an invalid one) should
+        // be reported as a non-loadable folder plugin.
+        let emptyFolderURL = tempDirectory.appendingPathComponent("weather")
+        try FileManager.default.createDirectory(at: emptyFolderURL, withIntermediateDirectories: true)
+
+        #expect(systemReportCandidateStatus(for: emptyFolderURL, makePluginExecutable: true) == "skipped: folder plugin has invalid manifest.json")
     }
 
-    @Test func testSystemReportCandidateStatus_reportsLoadableExecutableFile() async throws {
+    @Test func testSystemReportCandidateStatus_reportsLoadableFolderPlugin() async throws {
         let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        let fileURL = tempDirectory.appendingPathComponent("hello.1m.sh")
-        try Data("#!/bin/zsh\necho hi\n".utf8).write(to: fileURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fileURL.path)
+        let folderURL = tempDirectory.appendingPathComponent("weather")
+        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+        try Data("{\"entry\": \"plugin.sh\"}".utf8).write(to: folderURL.appendingPathComponent("manifest.json"))
+        let scriptURL = folderURL.appendingPathComponent("plugin.sh")
+        try Data("#!/bin/zsh\necho hi\n".utf8).write(to: scriptURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
 
-        #expect(systemReportCandidateStatus(for: fileURL, makePluginExecutable: false) == "loadable file plugin")
+        #expect(systemReportCandidateStatus(for: folderURL, makePluginExecutable: false) == "loadable folder plugin")
     }
 
     @Test func testBuildTerminalCommand_quotesMultiWordBashCArgument() async throws {
@@ -692,24 +877,28 @@ struct SwiftBarIntegrationTests {
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        let fileURL = tempDirectory.appendingPathComponent("test.5s.sh")
-        try Data("#!/bin/zsh\necho one\n".utf8).write(to: fileURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fileURL.path)
+        let folderURL = tempDirectory.appendingPathComponent("plugin-folder", isDirectory: true)
+        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+        try Data("{\"entry\": \"plugin.sh\"}".utf8).write(to: folderURL.appendingPathComponent("manifest.json"))
+        let scriptURL = folderURL.appendingPathComponent("plugin.sh")
 
-        let initialState = try #require(pluginFileState(for: fileURL))
-        let existingPlugin = TestPlugin(id: "original-plugin", file: fileURL.path, content: "one", lastState: .Success)
+        try Data("#!/bin/zsh\necho one\n".utf8).write(to: scriptURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
 
-        try Data("#!/bin/zsh\necho updated output that changes size\n".utf8).write(to: fileURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fileURL.path)
+        let initialState = try #require(pluginFileState(for: folderURL))
+        let existingPlugin = TestPlugin(id: "original-plugin", file: folderURL.path, content: "one", lastState: .Success)
+
+        try Data("#!/bin/zsh\necho updated output that changes size\n".utf8).write(to: scriptURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
 
         let syncResult = syncFilePlugins(
             existingFilePlugins: [existingPlugin],
-            freshFilePlugins: [fileURL],
-            previousFileStates: [fileURL.path: initialState]
-        ) { fileURL in
+            freshFilePlugins: [folderURL],
+            previousFileStates: [folderURL.path: initialState]
+        ) { folderURL in
             TestPlugin(
                 id: "reloaded-plugin",
-                file: fileURL.path,
+                file: folderURL.path,
                 content: "updated",
                 lastState: .Success
             )
@@ -720,7 +909,7 @@ struct SwiftBarIntegrationTests {
         #expect(syncResult.modifiedPluginIDs == [existingPlugin.id])
         #expect(syncResult.loadedPlugins.count == 1)
         #expect(ObjectIdentifier(reloadedPlugin as AnyObject) != ObjectIdentifier(existingPlugin as AnyObject))
-        #expect(syncResult.freshFileStates[fileURL.path] != initialState)
+        #expect(syncResult.freshFileStates[folderURL.path] != initialState)
     }
 
     @Test func testSyncFilePlugins_doesNotTreatTemporarilySkippedFileAsRemoved() async throws {
@@ -728,19 +917,24 @@ struct SwiftBarIntegrationTests {
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        let fileURL = tempDirectory.appendingPathComponent("test.5s.sh")
-        try Data("#!/bin/zsh\necho one\n".utf8).write(to: fileURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: fileURL.path)
+        // Folder plugin with a non-executable script — the loader would skip
+        // it, but it must not be reported as "removed" by the sync logic.
+        let folderURL = tempDirectory.appendingPathComponent("disabled-plugin", isDirectory: true)
+        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+        try Data("{\"entry\": \"plugin.sh\"}".utf8).write(to: folderURL.appendingPathComponent("manifest.json"))
+        let scriptURL = folderURL.appendingPathComponent("plugin.sh")
+        try Data("#!/bin/zsh\necho one\n".utf8).write(to: scriptURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: scriptURL.path)
 
-        let existingPlugin = TestPlugin(id: "disabled-plugin", file: fileURL.path, enabled: false, lastState: .Disabled)
+        let existingPlugin = TestPlugin(id: "disabled-plugin", file: folderURL.path, enabled: false, lastState: .Disabled)
 
         let syncResult = syncFilePlugins(
             existingFilePlugins: [existingPlugin],
             freshFilePlugins: [],
             previousFileStates: [:],
-            discoveredFilePlugins: [fileURL]
-        ) { fileURL in
-            TestPlugin(id: "reloaded-plugin", file: fileURL.path, content: "updated", lastState: .Success)
+            discoveredFilePlugins: [folderURL]
+        ) { folderURL in
+            TestPlugin(id: "reloaded-plugin", file: folderURL.path, content: "updated", lastState: .Success)
         }
 
         #expect(syncResult.removedPluginIDs.isEmpty)
@@ -753,23 +947,24 @@ struct SwiftBarIntegrationTests {
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        let packageURL = tempDirectory.appendingPathComponent("weather.swiftbar", isDirectory: true)
-        try FileManager.default.createDirectory(at: packageURL, withIntermediateDirectories: true)
+        let folderURL = tempDirectory.appendingPathComponent("weather", isDirectory: true)
+        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+        try Data("{\"entry\": \"plugin.sh\"}".utf8).write(to: folderURL.appendingPathComponent("manifest.json"))
 
-        let mainExecutableURL = packageURL.appendingPathComponent("plugin.sh")
+        let mainExecutableURL = folderURL.appendingPathComponent("plugin.sh")
         try Data("#!/bin/zsh\necho weather\n".utf8).write(to: mainExecutableURL)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: mainExecutableURL.path)
 
         let existingPlugin = TestPlugin(id: "weather-package", file: mainExecutableURL.path, content: "weather", lastState: .Success)
-        let packageState = try #require(pluginFileState(for: packageURL))
-        let packageSyncPath = pluginSyncPath(for: packageURL)
+        let packageState = try #require(pluginFileState(for: folderURL))
+        let packageSyncPath = pluginSyncPath(for: folderURL)
         var loadCallCount = 0
 
         let syncResult = syncFilePlugins(
             existingFilePlugins: [existingPlugin],
-            freshFilePlugins: [packageURL],
+            freshFilePlugins: [folderURL],
             previousFileStates: [packageSyncPath: packageState],
-            discoveredFilePlugins: [packageURL]
+            discoveredFilePlugins: [folderURL]
         ) { _ in
             loadCallCount += 1
             return nil
@@ -782,39 +977,40 @@ struct SwiftBarIntegrationTests {
         #expect(loadCallCount == 0)
     }
 
-    @Test func testSyncFilePlugins_keepsSymlinkedPackagedPluginMatchedByBundlePath() async throws {
+    @Test func testSyncFilePlugins_keepsSymlinkedFolderPluginMatchedByBundlePath() async throws {
         let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        let packageTargetURL = tempDirectory.appendingPathComponent("weather-package", isDirectory: true)
-        try FileManager.default.createDirectory(at: packageTargetURL, withIntermediateDirectories: true)
+        let folderTargetURL = tempDirectory.appendingPathComponent("weather-target", isDirectory: true)
+        try FileManager.default.createDirectory(at: folderTargetURL, withIntermediateDirectories: true)
+        try Data("{\"entry\": \"plugin.sh\"}".utf8).write(to: folderTargetURL.appendingPathComponent("manifest.json"))
 
-        let mainExecutableURL = packageTargetURL.appendingPathComponent("plugin.sh")
+        let mainExecutableURL = folderTargetURL.appendingPathComponent("plugin.sh")
         try Data("#!/bin/zsh\necho weather\n".utf8).write(to: mainExecutableURL)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: mainExecutableURL.path)
 
-        let symlinkedPackageURL = tempDirectory.appendingPathComponent("weather.swiftbar", isDirectory: true)
-        try FileManager.default.createSymbolicLink(atPath: symlinkedPackageURL.path, withDestinationPath: packageTargetURL.path)
+        let symlinkedFolderURL = tempDirectory.appendingPathComponent("weather", isDirectory: true)
+        try FileManager.default.createSymbolicLink(atPath: symlinkedFolderURL.path, withDestinationPath: folderTargetURL.path)
 
         let existingPlugin = TestPlugin(
             id: "weather-package",
-            file: symlinkedPackageURL.appendingPathComponent("plugin.sh").path,
+            file: symlinkedFolderURL.appendingPathComponent("plugin.sh").path,
             content: "weather",
             lastState: .Success
         )
-        let packageState = try #require(pluginFileState(for: symlinkedPackageURL))
-        let packageSyncPath = pluginSyncPath(for: symlinkedPackageURL)
+        let packageState = try #require(pluginFileState(for: symlinkedFolderURL))
+        let packageSyncPath = pluginSyncPath(for: symlinkedFolderURL)
         var loadCallCount = 0
 
-        #expect(packageSyncPath == symlinkedPackageURL.path)
-        #expect(pluginSyncPath(for: existingPlugin) == symlinkedPackageURL.path)
+        #expect(packageSyncPath == symlinkedFolderURL.path)
+        #expect(pluginSyncPath(for: existingPlugin) == symlinkedFolderURL.path)
 
         let syncResult = syncFilePlugins(
             existingFilePlugins: [existingPlugin],
-            freshFilePlugins: [symlinkedPackageURL],
+            freshFilePlugins: [symlinkedFolderURL],
             previousFileStates: [packageSyncPath: packageState],
-            discoveredFilePlugins: [symlinkedPackageURL]
+            discoveredFilePlugins: [symlinkedFolderURL]
         ) { _ in
             loadCallCount += 1
             return nil
@@ -846,9 +1042,9 @@ struct SwiftBarIntegrationTests {
         #expect(mergedPlugins[2] === thirdPlugin)
     }
 
-    @Test func testMergePluginsPreservingOrder_replacesPackagedPluginInPlaceByBundlePath() async throws {
-        let originalPlugin = TestPlugin(id: "weather-package", file: "/tmp/weather.swiftbar/plugin.sh")
-        let replacementPlugin = TestPlugin(id: "weather-package", file: "/tmp/weather.swiftbar/plugin.py", content: "updated")
+    @Test func testMergePluginsPreservingOrder_replacesFolderPluginInPlaceByBundlePath() async throws {
+        let originalPlugin = TestPlugin(id: "weather-package", file: "/tmp/weather/plugin.sh")
+        let replacementPlugin = TestPlugin(id: "weather-package", file: "/tmp/weather/plugin.py", content: "updated")
 
         let mergedPlugins = mergePluginsPreservingOrder(
             existingPlugins: [originalPlugin],
@@ -928,66 +1124,86 @@ struct SwiftBarIntegrationTests {
         #expect(manager.plugins.isEmpty)
     }
 
-    @Test func testGetLoadablePluginList_skipsMalformedPackagedPlugins() async throws {
+    @Test func testGetLoadablePluginList_skipsMalformedFolderPlugins() async throws {
         let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        let packageURL = tempDirectory.appendingPathComponent("broken.swiftbar", isDirectory: true)
-        try FileManager.default.createDirectory(at: packageURL, withIntermediateDirectories: true)
-        try Data("not a plugin\n".utf8).write(to: packageURL.appendingPathComponent("README.txt"))
+        // A folder without a manifest.json is not a loadable plugin anymore.
+        let folderURL = tempDirectory.appendingPathComponent("broken", isDirectory: true)
+        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+        try Data("not a manifest\n".utf8).write(to: folderURL.appendingPathComponent("README.txt"))
 
         let manager = PluginManager()
-        let loadablePlugins = manager.getLoadablePluginList(from: [packageURL])
+        let loadablePlugins = manager.getLoadablePluginList(from: [folderURL])
 
         #expect(loadablePlugins.isEmpty)
-        #expect(manager.loadPlugin(fileURL: packageURL) == nil)
+        #expect(manager.loadPlugin(fileURL: folderURL) == nil)
     }
 
-    @Test func testPackagedPlugin_keepsStreamableMetadataOnExecutableCodePath() async throws {
+    @Test func testFolderPlugin_keepsStreamableMetadataOnExecutableCodePath() async throws {
         let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
-        let packageURL = tempDirectory.appendingPathComponent("streaming.swiftbar", isDirectory: true)
-        try FileManager.default.createDirectory(at: packageURL, withIntermediateDirectories: true)
+        let folderURL = tempDirectory.appendingPathComponent("streaming", isDirectory: true)
+        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
 
-        let mainExecutableURL = packageURL.appendingPathComponent("plugin.sh")
+        // Manifest sets the entry script; the script body intentionally has a
+        // SwiftBar `<swiftbar.type>Streamable</swiftbar.type>` comment to
+        // verify the folder plugin still defaults to Executable when the
+        // manifest does not override the type.
+        try Data("""
+        {
+          "entry": "plugin.sh"
+        }
+        """.utf8).write(to: folderURL.appendingPathComponent("manifest.json"))
+        let scriptURL = folderURL.appendingPathComponent("plugin.sh")
         try Data("""
         #!/bin/zsh
         <swiftbar.type>Streamable</swiftbar.type>
         echo hi
-        """.utf8).write(to: mainExecutableURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: mainExecutableURL.path)
+        """.utf8).write(to: scriptURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
 
-        let plugin = try #require(PackagedPlugin(packageDirectory: packageURL))
+        let plugin = try #require(FolderPlugin(manifestDirectory: folderURL))
         plugin.operation?.cancel()
         plugin.terminate()
 
         #expect(plugin.type == .Executable)
     }
 
-    @Test func testShouldImportOpenedPluginFile_onlyAcceptsValidLocalPlugins() async throws {
+    @Test func testShouldImportOpenedPluginFile_onlyAcceptsValidFolderPlugins() async throws {
         let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDirectory) }
 
+        // Single-file scripts are no longer accepted as importable plugins.
         let regularPluginURL = tempDirectory.appendingPathComponent("sample.1m.sh")
         try Data("#!/bin/zsh\necho hi\n".utf8).write(to: regularPluginURL)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: regularPluginURL.path)
 
-        let validPackageURL = tempDirectory.appendingPathComponent("valid.swiftbar", isDirectory: true)
-        try FileManager.default.createDirectory(at: validPackageURL, withIntermediateDirectories: true)
-        let validPackageExecutableURL = validPackageURL.appendingPathComponent("plugin.sh")
-        try Data("#!/bin/zsh\necho valid\n".utf8).write(to: validPackageExecutableURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: validPackageExecutableURL.path)
+        // Folder plugins with a valid manifest.json are accepted.
+        let validFolderURL = tempDirectory.appendingPathComponent("valid", isDirectory: true)
+        try FileManager.default.createDirectory(at: validFolderURL, withIntermediateDirectories: true)
+        try Data("{\"entry\": \"plugin.sh\"}".utf8).write(to: validFolderURL.appendingPathComponent("manifest.json"))
+        let validScript = validFolderURL.appendingPathComponent("plugin.sh")
+        try Data("#!/bin/zsh\necho valid\n".utf8).write(to: validScript)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: validScript.path)
 
-        let invalidPackageURL = tempDirectory.appendingPathComponent("invalid.swiftbar", isDirectory: true)
-        try FileManager.default.createDirectory(at: invalidPackageURL, withIntermediateDirectories: true)
+        // Folder plugins missing the entry script are rejected.
+        let invalidFolderURL = tempDirectory.appendingPathComponent("invalid", isDirectory: true)
+        try FileManager.default.createDirectory(at: invalidFolderURL, withIntermediateDirectories: true)
+        try Data("{\"entry\": \"missing.sh\"}".utf8).write(to: invalidFolderURL.appendingPathComponent("manifest.json"))
 
-        #expect(shouldImportOpenedPluginFile(at: regularPluginURL, makePluginExecutable: true))
-        #expect(shouldImportOpenedPluginFile(at: validPackageURL, makePluginExecutable: true))
-        #expect(!shouldImportOpenedPluginFile(at: invalidPackageURL, makePluginExecutable: true))
+        // Folders without a manifest.json are rejected.
+        let noManifestFolderURL = tempDirectory.appendingPathComponent("no-manifest", isDirectory: true)
+        try FileManager.default.createDirectory(at: noManifestFolderURL, withIntermediateDirectories: true)
+
+        #expect(!shouldImportOpenedPluginFile(at: regularPluginURL, makePluginExecutable: true))
+        #expect(shouldImportOpenedPluginFile(at: validFolderURL, makePluginExecutable: true))
+        #expect(!shouldImportOpenedPluginFile(at: invalidFolderURL, makePluginExecutable: true))
+        #expect(!shouldImportOpenedPluginFile(at: noManifestFolderURL, makePluginExecutable: true))
         #expect(!shouldImportOpenedPluginFile(at: URL(string: "swiftbar://refreshallplugins")!, makePluginExecutable: true))
     }
 
