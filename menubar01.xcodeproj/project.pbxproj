@@ -146,6 +146,18 @@
 		FAD1BC9B25D22E9400B761E8 /* PluginDetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD1BC9A25D22E9400B761E8 /* PluginDetailsView.swift */; };
 		FAD1BC9E25D22EEA00B761E8 /* AnimatableWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD1BC9D25D22EEA00B761E8 /* AnimatableWindow.swift */; };
 		FAFF1285273837EA00B3993B /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = FAFF1284273837EA00B3993B /* README.md */; };
+		CA8FEF5D37C04CE89530D6C2 /* AIGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */; };
+		7B97A791D1E24D1BB4F1937A /* AIPluginGeneratorFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */; };
+		A70651873CCB49F5884BEB7D /* MockAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */; };
+		A9D77907F8FD45B1BCF9FCDF /* MarketplaceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */; };
+		F096B206BDC343C8848D75A6 /* MarketplaceEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705AC70319E448669E96803B /* MarketplaceEntry.swift */; };
+		7011242E8E804B8286069094 /* MarketplaceInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */; };
+		DA52E96B59834115BFF8F3D7 /* AIGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */; };
+		CD13713CB3F4453B850CEA56 /* AIPluginGeneratorFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */; };
+		E919EF2895D146658B798821 /* MockAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */; };
+		8BF42C414E384000A69A88B2 /* MarketplaceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */; };
+		721EF289AC9C4FB2B33B670E /* MarketplaceEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705AC70319E448669E96803B /* MarketplaceEntry.swift */; };
+		188634133DA64CA2B479D00F /* MarketplaceInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -257,6 +269,12 @@
 		FAD1BC9A25D22E9400B761E8 /* PluginDetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginDetailsView.swift; sourceTree = "<group>"; };
 		FAD1BC9D25D22EEA00B761E8 /* AnimatableWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatableWindow.swift; sourceTree = "<group>"; };
 		FAFF1284273837EA00B3993B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGenerator.swift; sourceTree = "<group>"; };
+		15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPluginGeneratorFactory.swift; sourceTree = "<group>"; };
+		0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAIPluginGenerator.swift; sourceTree = "<group>"; };
+		7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceClient.swift; sourceTree = "<group>"; };
+		705AC70319E448669E96803B /* MarketplaceEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceEntry.swift; sourceTree = "<group>"; };
+		3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceInstaller.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -336,6 +354,8 @@
 				FAA14A0F2728C6BE0052FDB8 /* Intents */,
 				FAD14BE42583249B00CB7BBE /* Resources */,
 				3920748325460FD300213DBE /* Preview Content */,
+				3863D89E8D4543EF83DE3C01 /* AI */,
+				CBBEA16EEB8940EDADD75254 /* Marketplace */,
 			);
 			path = menubar01;
 			sourceTree = "<group>";
@@ -415,6 +435,26 @@
 				3990DCE02602BB5B002CDCD5 /* PluginDebugInfo.swift */,
 			);
 			path = Plugin;
+			sourceTree = "<group>";
+		};
+		3863D89E8D4543EF83DE3C01 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */,
+				15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */,
+				0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */,
+			);
+			path = AI;
+			sourceTree = "<group>";
+		};
+		CBBEA16EEB8940EDADD75254 /* Marketplace */ = {
+			isa = PBXGroup;
+			children = (
+				7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */,
+				705AC70319E448669E96803B /* MarketplaceEntry.swift */,
+				3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */,
+			);
+			path = Marketplace;
 			sourceTree = "<group>";
 		};
 		398B86D4254DC01800DEA027 /* MenuBar */ = {
@@ -876,6 +916,12 @@
 				FAD14C052585AE1800CB7BBE /* String+ANSIColor.swift in Sources */,
 				39AF777C254618F6001D76E5 /* MenuBarItem.swift in Sources */,
 				39641EB0254E163C00713DAF /* PreferencesStore.swift in Sources */,
+				CA8FEF5D37C04CE89530D6C2 /* AIGenerator.swift in Sources */,
+				7B97A791D1E24D1BB4F1937A /* AIPluginGeneratorFactory.swift in Sources */,
+				A70651873CCB49F5884BEB7D /* MockAIPluginGenerator.swift in Sources */,
+				A9D77907F8FD45B1BCF9FCDF /* MarketplaceClient.swift in Sources */,
+				F096B206BDC343C8848D75A6 /* MarketplaceEntry.swift in Sources */,
+				7011242E8E804B8286069094 /* MarketplaceInstaller.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -936,6 +982,12 @@
 				39224E1125F4344600BABF21 /* String+ANSIColor.swift in Sources */,
 				39224E1225F4344600BABF21 /* MenuBarItem.swift in Sources */,
 				39224E1325F4344600BABF21 /* PreferencesStore.swift in Sources */,
+				DA52E96B59834115BFF8F3D7 /* AIGenerator.swift in Sources */,
+				CD13713CB3F4453B850CEA56 /* AIPluginGeneratorFactory.swift in Sources */,
+				E919EF2895D146658B798821 /* MockAIPluginGenerator.swift in Sources */,
+				8BF42C414E384000A69A88B2 /* MarketplaceClient.swift in Sources */,
+				721EF289AC9C4FB2B33B670E /* MarketplaceEntry.swift in Sources */,
+				188634133DA64CA2B479D00F /* MarketplaceInstaller.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
