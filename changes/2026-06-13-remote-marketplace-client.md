@@ -3,8 +3,8 @@
 - **Type:** feat
 - **Scope:** `menubar01/Marketplace/`, `menubar01Tests/`
 - **Author(s):** Trae AI
-- **Commit(s):** <pending>
-- **Status:** in-progress
+- **Commit(s):** 18c3675
+- **Status:** done
 
 ## Summary
 
