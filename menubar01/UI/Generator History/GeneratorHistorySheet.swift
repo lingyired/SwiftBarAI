@@ -576,9 +576,18 @@ struct GeneratorHistorySheet: View {
     private func exportEntry(_ entry: AIGeneratorHistoryEntry) {
         switch GeneratorHistoryExporter.exportEntry(entry, store: viewModel.store) {
         case .success(let destination):
+            // The exporter already calls
+            // `NSWorkspace.shared.activateFileViewerSelecting([destination])`
+            // on success, so Finder pops up with the new zip
+            // highlighted. Surface that in the alert copy so the
+            // user knows what to look for. We use the
+            // `lastPathComponent` (the file name) rather than the
+            // full path because the alert already says where the
+            // file is — "Finder has been opened to the file" —
+            // and a full path in the same line is noise.
             showAlert(
                 title: "Exported",
-                message: "Saved to \(destination.path)"
+                message: "Exported to \(destination.lastPathComponent). Finder has been opened to the file."
             )
         case .cancelled:
             break

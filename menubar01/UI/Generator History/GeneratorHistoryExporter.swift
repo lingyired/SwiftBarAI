@@ -115,6 +115,7 @@ enum GeneratorHistoryExporter {
             try process.run()
             process.waitUntilExit()
             if process.terminationStatus == 0 {
+                revealInFinder(destination)
                 return .success(destination: destination)
             } else {
                 let captured = String(
@@ -160,6 +161,33 @@ enum GeneratorHistoryExporter {
         subsystem: "com.lingyi.menubar01",
         category: "GeneratorHistory"
     )
+
+    /// Pop Finder with `url` highlighted. Called from
+    /// `runZip(...)` on the success path so the user lands
+    /// next to the new zip without having to dig it out of the
+    /// `NSSavePanel`'s chosen directory. The call is dispatched
+    /// onto the main queue — `NSWorkspace` is documented to
+    /// be safe from any thread, but the `UI`-flavoured method
+    /// `activateFileViewerSelecting(...)` is the one we want
+    /// here, and the project keeps its UI work on the main
+    /// thread for consistency with the rest of the exporter's
+    /// callers.
+    ///
+    /// Fire-and-forget: a failure to launch Finder (e.g. the
+    /// user has never opened Finder) does not surface as an
+    /// error to the caller — the zip is already on disk, so
+    /// the export is still a success.
+    private static func revealInFinder(_ url: URL) {
+        os_log(
+            "runZip: revealing exported zip in Finder at %{public}@",
+            log: log,
+            type: .info,
+            url.path
+        )
+        DispatchQueue.main.async {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        }
+    }
 
     // MARK: - Manifest
 

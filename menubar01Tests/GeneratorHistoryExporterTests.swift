@@ -150,6 +150,40 @@ struct GeneratorHistoryExporterTests {
         #expect((size ?? 0) > 0)
     }
 
+    @Test func testRunZip_succeeds_doesNotThrow() throws {
+        // Sanity counterpart to `testExport_writesNonEmptyZipAndExitsZero`:
+        // a happy-path source dir + destination must round-trip
+        // through `runZip(...)` without throwing and must report
+        // `.success`. This is the code path the new
+        // reveal-in-Finder call lives on, so a regression that
+        // broke the success branch would also break the UX
+        // follow-up — keeping the test tiny and obvious.
+        //
+        // The reveal-in-Finder call itself is deliberately
+        // not asserted on. NSWorkspace has no test seam (it is
+        // a system singleton with no injection point in
+        // `GeneratorHistoryExporter`), and adding a
+        // `NSWorkspace` protocol abstraction for a single
+        // one-liner would be over-engineering. The visible
+        // behaviour (Finder pops up) is a UX nicety, not a
+        // correctness requirement — the zip is still written
+        // even if `activateFileViewerSelecting` is a no-op.
+        let store = try TempStore()
+        let entry = makeEntry(promptId: "export-sanity", request: "list two items")
+        try store.store.record(entry)
+
+        let sourceDir = store.rootDirectory.appendingPathComponent("export-sanity")
+        let zipURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("export-sanity-\(UUID().uuidString).zip")
+        defer { try? FileManager.default.removeItem(at: zipURL) }
+
+        let result = GeneratorHistoryExporter.runZip(
+            sourceDirectory: sourceDir,
+            destination: zipURL
+        )
+        #expect(result == .success(destination: zipURL))
+    }
+
     @Test func testExport_zipContainsRequestAndResponseFiles() throws {
         let store = try TempStore()
         let entry = makeEntry(
