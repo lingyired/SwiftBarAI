@@ -15,7 +15,7 @@ class PackagedPlugin: TimerArmingPlugin {
     var refreshEnv: [String: String] = [:]
 
     private var _metadata: PluginMetadata?
-    private let metadataQueue = DispatchQueue(label: "com.ameba.SwiftBar.PackagedPlugin.metadata", attributes: .concurrent)
+    private let metadataQueue = DispatchQueue(label: "com.lingyi.menubar01.PackagedPlugin.metadata", attributes: .concurrent)
 
     var metadata: PluginMetadata? {
         get {

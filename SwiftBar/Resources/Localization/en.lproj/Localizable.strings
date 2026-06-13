@@ -1,5 +1,5 @@
 //Menubar strings
-"MB_SWIFT_BAR" = "SwiftBar";
+"MB_SWIFT_BAR" = "menubar01";
 "MB_UPDATING_MENU" = "Updating…";
 "MB_LAST_UPDATED" = "Updated";
 "MB_ABOUT_SWIFT_BAR" = "About";
@@ -35,9 +35,9 @@
 "PF_CHANGE_PATH" = "Change...";
 "PF_SHELL" = "Shell";
 "PF_TERMINAL" = "Terminal";
-"PF_HIDE_SWIFTBAR_ICON" = "Hide SwiftBar Icon";
-"PF_STEALTH_MODE" = "Hide SwiftBar in the menu bar";
-"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Always show SwiftBar menu";
+"PF_HIDE_SWIFTBAR_ICON" = "Hide menubar01 Icon";
+"PF_STEALTH_MODE" = "Hide menubar01 in the menu bar";
+"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Always show menubar01 menu";
 "PF_CHECK_FOR_UPDATE" = "Update";
 "PF_CHECK_FOR_UPDATES" = "Check for Updates";
 "PR_INCLUDE_BETA_UPDATES" = "Include Pre-Release Versions";
@@ -53,7 +53,7 @@
 "PF_SHORTCUTS_DELETE_BUTTON" = "Delete";
 "PF_SHORTCUTS_DELETE_CONFIRMATION" = "Are you sure you want to delete '<selectedPlugin>'?";
 "PF_SHORTCUTS_ADD_BUTTON" = "Add";
-"PF_SHORTCUTS_COLUMN_TOGGLE_HELP" = "Enable\Disable menu bar item";
+"PF_SHORTCUTS_COLUMN_TOGGLE_HELP" = "Enable\\Disable menu bar item";
 "PF_SHORTCUTS_COLUMN_REFRESH_HELP" = "Refresh menu bar item";
 "PF_ADD_SHORTCUT_PLUGIN_HEADER" = "Add Shortcut Plugin";
 "PF_ADD_SHORTCUT_PLUGIN_NAME" = "Name";
@@ -80,12 +80,12 @@
 
 //App strings
 "APP_CHOOSE_PLUGIN_FOLDER_TITLE" = "Choose plugin folder";
-"APP_FOLDER_NOT_ALLOWED_MESSAGE" = "Can't use this folder as SwiftBar plugins location";
+"APP_FOLDER_NOT_ALLOWED_MESSAGE" = "Can't use this folder as menubar01 plugins location";
 "APP_FOLDER_NOT_ALLOWED_ACTION" = "Choose New Location";
 "APP_FOLDER_HAS_TOO_MANY_FILES_MESSAGE" = "WOW! Looks like you chose a folder with a LOT OF FILES, please choose another one. If you have node_modules folder that you need for a plugin, please make it hidden.";
-"APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Set SwiftBar Plugins Location";
+"APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Set menubar01 Plugins Location";
 "APP_CHOOSE_PLUGIN_FOLDER_INFO" = "Select a folder to store the plugins repository";
-"APP_QUIT" = "Quit SwiftBar";
+"APP_QUIT" = "Quit menubar01";
 "OK" = "OK";
 "CANCEL" = "Cancel";
 

@@ -24,7 +24,7 @@ class ShortcutPlugin: TimerArmingPlugin, Identifiable, ObservableObject {
     var name: String
     var file: String = "none"
     private var _metadata: PluginMetadata?
-    private let metadataQueue = DispatchQueue(label: "com.ameba.SwiftBar.ShortcutPlugin.metadata", attributes: .concurrent)
+    private let metadataQueue = DispatchQueue(label: "com.lingyi.menubar01.ShortcutPlugin.metadata", attributes: .concurrent)
     
     var metadata: PluginMetadata? {
         get {

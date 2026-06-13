@@ -80,11 +80,11 @@
 
 //App strings
 "APP_CHOOSE_PLUGIN_FOLDER_TITLE" = "Choose plugin folder";
-"APP_FOLDER_NOT_ALLOWED_MESSAGE" = "Can't use this folder as SwiftBar plugins location";
+"APP_FOLDER_NOT_ALLOWED_MESSAGE" = "Can't use this folder as menubar01 plugins location";
 "APP_FOLDER_NOT_ALLOWED_ACTION" = "Choose New Location";
-"APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Set SwiftBar Plugins Location";
+"APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Set menubar01 Plugins Location";
 "APP_CHOOSE_PLUGIN_FOLDER_INFO" = "Select a folder to store the plugins repository";
-"APP_QUIT" = "Quit SwiftBar";
+"APP_QUIT" = "Quit menubar01";
 "OK" = "Ok";
 "CANCEL" = "Cancel";
 

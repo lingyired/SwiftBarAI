@@ -80,10 +80,10 @@
 
 //App strings
 "APP_CHOOSE_PLUGIN_FOLDER_TITLE" = "Odaberi mapu dodataka";
-"APP_FOLDER_NOT_ALLOWED_MESSAGE" = "Ova se mapa ne može koristiti kao mjesto za SwiftBar dodatke";
+"APP_FOLDER_NOT_ALLOWED_MESSAGE" = "Ova se mapa ne može koristiti kao mjesto za menubar01 dodatke";
 "APP_FOLDER_NOT_ALLOWED_ACTION" = "Odaberi novo mjesto";
 "APP_FOLDER_HAS_TOO_MANY_FILES_MESSAGE" = "AJME! Odabrao/la si mapu s PUNO DATOTEKA. Odaberi jednu drugu mapu. Ako imaš mapu node_modules koja ti treba za dodatak, sakrij ju.";
-"APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Odredi mjesto za SwiftBar dodatke";
+"APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Odredi mjesto za menubar01 dodatke";
 "APP_CHOOSE_PLUGIN_FOLDER_INFO" = "Odaberi mapu za spremanje repozitorija dodataka";
 "APP_QUIT" = "Zatvori SwiftBar";
 "OK" = "U redu";

@@ -3,7 +3,7 @@ import Combine
 import Foundation
 import Testing
 
-@testable import SwiftBar
+@testable import menubar01
 
 final class TestPlugin: Plugin {
     let id: PluginID

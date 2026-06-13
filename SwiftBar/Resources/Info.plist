@@ -25,6 +25,7 @@
 			<string>Viewer</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>menubar01</string>
 				<string>swiftbar</string>
 			</array>
 		</dict>
@@ -51,15 +52,15 @@
 		<true/>
 	</dict>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Allow SwiftBar to run plugin in Terminal</string>
+	<string>Allow menubar01 to run plugin in Terminal</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>Allow SwiftBar to access your Calendar. This is required by one of your plugins.</string>
+	<string>Allow menubar01 to access your Calendar. This is required by one of your plugins.</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright ©2020-2026 Ameba Labs. All rights reserved.</string>
+	<string>menubar01. All rights reserved.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSRemindersUsageDescription</key>
-	<string>Allow SwiftBar to access your Reminders. This is required by one of your plugins.</string>
+	<string>Allow menubar01 to access your Reminders. This is required by one of your plugins.</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>DisablePluginIntent</string>
@@ -76,14 +77,14 @@
 				<string>swiftbar</string>
 			</array>
 			<key>CFBundleTypeName</key>
-			<string>SwiftBar Plugin Package</string>
+			<string>menubar01 Plugin Package</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>com.ameba.SwiftBar.PluginPackage</string>
+				<string>com.lingyi.menubar01.PluginPackage</string>
 			</array>
 			<key>LSTypeIsPackage</key>
 			<true/>
@@ -98,9 +99,9 @@
 				<string>public.directory</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>SwiftBar Plugin Package</string>
+			<string>menubar01 Plugin Package</string>
 			<key>UTTypeIdentifier</key>
-			<string>com.ameba.SwiftBar.PluginPackage</string>
+			<string>com.lingyi.menubar01.PluginPackage</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>

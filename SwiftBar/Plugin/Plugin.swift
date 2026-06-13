@@ -225,6 +225,6 @@ extension Plugin {
     }
 
     func writeStdin(_ input: String) throws {
-        throw NSError(domain: "SwiftBar.Plugin", code: 1, userInfo: [NSLocalizedDescriptionKey: "Plugin type \(type.rawValue) does not support stdin input"])
+        throw NSError(domain: "menubar01.Plugin", code: 1, userInfo: [NSLocalizedDescriptionKey: "Plugin type \(type.rawValue) does not support stdin input"])
     }
 }

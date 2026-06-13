@@ -86,7 +86,7 @@ struct PluginDetailsView: View {
 
                     Preferences.Section(bottomDivider: !md.variables.isEmpty, label: {
                         HStack {
-                            PluginDetailsToggleView(label: "SwiftBar",
+                            PluginDetailsToggleView(label: "menubar01",
                                                     state: $md.hideSwiftBar,
                                                     width: width * screenProportion)
 

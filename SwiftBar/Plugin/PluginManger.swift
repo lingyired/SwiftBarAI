@@ -1231,7 +1231,7 @@ extension PluginManager {
         let reportPath = latestSystemReportURL()?.path ?? "unavailable"
 
         var lines: [String] = [
-            "SwiftBar System Report",
+            "menubar01 System Report",
             "Generated: \(dateString(Date()))",
             "Reason: \(reason)",
             "Privacy note: local paths and configuration are included; secret environment values are intentionally omitted.",

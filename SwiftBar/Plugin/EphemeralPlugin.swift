@@ -28,7 +28,7 @@ class EphemeralPlugin: Plugin {
     }
 
     private var _metadata: PluginMetadata?
-    private let metadataQueue = DispatchQueue(label: "com.ameba.SwiftBar.EphemeralPlugin.metadata", attributes: .concurrent)
+    private let metadataQueue = DispatchQueue(label: "com.lingyi.menubar01.EphemeralPlugin.metadata", attributes: .concurrent)
     
     var metadata: PluginMetadata? {
         get {

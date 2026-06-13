@@ -639,7 +639,7 @@ extension MenubarItem {
     }
 
     @objc func sendFeedback() {
-        NSWorkspace.shared.open(URL(string: "https://github.com/swiftbar/SwiftBar/issues")!)
+        NSWorkspace.shared.open(URL(string: "https://github.com/lingyi/menubar01/issues")!)
     }
 
     @objc func copySystemReport() {
@@ -1979,7 +1979,7 @@ extension MenubarItem: NSPopoverDelegate {
             window.minSize = NSSize(width: 300, height: 200)
 
             // Set window title to match the plugin name
-            window.title = "‎ SwiftBar: \(plugin?.name ?? "")"
+            window.title = "‎ menubar01: \(plugin?.name ?? "")"
 
             // Stop the popup monitor when detached to prevent auto-closing on outside clicks
             stopPopupMonitor()

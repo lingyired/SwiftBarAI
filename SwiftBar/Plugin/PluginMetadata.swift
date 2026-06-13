@@ -307,24 +307,31 @@ class PluginMetadata: ObservableObject {
     }
 
     static func parser(fileURL: URL) -> PluginMetadata? {
-        guard let base64 = try? fileURL.extendedAttribute(forName: "com.ameba.SwiftBar"),
-              let decodedData = Data(base64Encoded: base64),
-              let decodedString = String(data: decodedData, encoding: .utf8)
-        else {
-            return nil
+        let candidateKeys = ["com.lingyi.menubar01", "com.ameba.SwiftBar"]
+        for key in candidateKeys {
+            guard let base64 = try? fileURL.extendedAttribute(forName: key),
+                  let decodedData = Data(base64Encoded: base64),
+                  let decodedString = String(data: decodedData, encoding: .utf8)
+            else {
+                continue
+            }
+            return parser(script: decodedString)
         }
-        return parser(script: decodedString)
+        return nil
     }
 
     static func writeMetadata(metadata: PluginMetadata, fileURL: URL) {
         let metadataString = metadata.genereteMetadataString()
         if let encodedString = metadataString.data(using: .utf8)?.base64EncodedData() {
-            try? fileURL.setExtendedAttribute(data: encodedString, forName: "com.ameba.SwiftBar")
+            try? fileURL.setExtendedAttribute(data: encodedString, forName: "com.lingyi.menubar01")
+            // Migrate: clear the legacy key so the next read uses the new key.
+            try? fileURL.removeExtendedAttribute(forName: "com.ameba.SwiftBar")
             return
         }
     }
 
     static func cleanMetadata(fileURL: URL) {
+        try? fileURL.removeExtendedAttribute(forName: "com.lingyi.menubar01")
         try? fileURL.removeExtendedAttribute(forName: "com.ameba.SwiftBar")
     }
 

@@ -50,7 +50,7 @@ struct DebugView: View {
                     plugin.refresh(reason: .DebugView)
                 })
 
-                Button("Print SwiftBar ENV", action: {
+                Button("Print menubar01 ENV", action: {
                     let envs = plugin.env
                     let swiftbarEnv = sharedEnv.systemEnvStr.merging(envs) { current, _ in current }
                     let debugString = swiftbarEnv.map { "\($0.key) = \($0.value)" }.sorted().joined(separator: "\n")

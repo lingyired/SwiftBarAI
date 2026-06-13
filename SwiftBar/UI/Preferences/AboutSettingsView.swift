@@ -11,13 +11,13 @@ struct AboutSettingsView: View {
 
                 VStack(alignment: .leading) {
                     if #available(macOS 11.0, *) {
-                        Text("SwiftBar")
+                        Text("menubar01")
                             .font(.title3)
                             .bold()
                     }
                     Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))")
                         .font(.subheadline)
-                    Text("Copyright ©2020-2026 Ameba Labs. All rights reserved.")
+                    Text("menubar01. All rights reserved.")
                         .font(.footnote)
                         .padding(.top, 10)
                 }
@@ -27,10 +27,10 @@ struct AboutSettingsView: View {
             HStack {
                 Spacer()
                 Button("Visit our Website", action: {
-                    NSWorkspace.shared.open(URL(string: "https://swiftbar.app")!)
+                    NSWorkspace.shared.open(URL(string: "https://github.com/lingyi/menubar01")!)
                 })
                 Button("Contact Us", action: {
-                    NSWorkspace.shared.open(URL(string: "mailto:info@swiftbar.app")!)
+                    NSWorkspace.shared.open(URL(string: "mailto:hello@menubar01.local")!)
                 })
             }.padding(.top, 10)
                 .padding(.bottom, 10)

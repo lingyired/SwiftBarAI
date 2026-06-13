@@ -26,7 +26,7 @@ class AppMenu: NSMenu {
     }
 
     @objc func sendFeedback() {
-        NSWorkspace.shared.open(URL(string: "https://github.com/swiftbar/SwiftBar/issues")!)
+        NSWorkspace.shared.open(URL(string: "https://github.com/lingyi/menubar01/issues")!)
     }
 
     @objc func aboutSwiftBar() {

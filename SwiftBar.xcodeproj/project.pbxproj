@@ -178,7 +178,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		3920747A25460FD000213DBE /* SwiftBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3920747A25460FD000213DBE /* menubar01.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = menubar01.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3920747D25460FD000213DBE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3920748125460FD300213DBE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3920748425460FD300213DBE /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -256,7 +256,7 @@
 		FAA14A162728C79B0052FDB8 /* GetPluginsIntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GetPluginsIntentHandler.swift; sourceTree = "<group>"; };
 		FAA14A182728C7FC0052FDB8 /* AppDelegate+Intents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate+Intents.swift"; sourceTree = "<group>"; };
 		FAAFB2A42A1A567D00316F79 /* AdvancedPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedPreferencesView.swift; sourceTree = "<group>"; };
-		FABE30D72D6FB51C00297F18 /* SwiftBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FABE30D72D6FB51C00297F18 /* menubar01Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = menubar01Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAC3F2EC2915D88300D8F346 /* ShortcutPluginsPreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutPluginsPreferencesView.swift; sourceTree = "<group>"; };
 		FAC3F2F02916A61800D8F346 /* AboutSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutSettingsView.swift; sourceTree = "<group>"; };
 		FAC4AE4829722CD2000BED63 /* EphemeralPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EphemeralPlugin.swift; sourceTree = "<group>"; };
@@ -320,9 +320,9 @@
 		3920747B25460FD000213DBE /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				3920747A25460FD000213DBE /* SwiftBar.app */,
-				39224E2A25F4344600BABF21 /* SwiftBar MAS.app */,
-				FABE30D72D6FB51C00297F18 /* SwiftBarTests.xctest */,
+				3920747A25460FD000213DBE /* menubar01.app */,
+				39224E2A25F4344600BABF21 /* menubar01 MAS.app */,
+				FABE30D72D6FB51C00297F18 /* menubar01Tests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -518,9 +518,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		3920747925460FD000213DBE /* SwiftBar */ = {
+		3920747925460FD000213DBE /* menubar01 */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 3920748D25460FD300213DBE /* Build configuration list for PBXNativeTarget "SwiftBar" */;
+			buildConfigurationList = 3920748D25460FD300213DBE /* Build configuration list for PBXNativeTarget "menubar01" */;
 			buildPhases = (
 				3920747625460FD000213DBE /* Sources */,
 				3920747725460FD000213DBE /* Frameworks */,
@@ -535,7 +535,7 @@
 			);
 			dependencies = (
 			);
-			name = SwiftBar;
+			name = menubar01;
 			packageProductDependencies = (
 				3989359D25896E29007CF2E8 /* HotKey */,
 				39B64C28260F70D900B7FA63 /* Preferences */,
@@ -543,13 +543,13 @@
 				FA9CA6D62ABF152F009B72F4 /* LaunchAtLogin */,
 				FABE30E52D70931000297F18 /* SwifCron */,
 			);
-			productName = SwiftBar;
-			productReference = 3920747A25460FD000213DBE /* SwiftBar.app */;
+			productName = menubar01;
+			productReference = 3920747A25460FD000213DBE /* menubar01.app */;
 			productType = "com.apple.product-type.application";
 		};
-		39224DE125F4344600BABF21 /* SwiftBar MAS */ = {
+		39224DE125F4344600BABF21 /* menubar01 MAS */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 39224E2725F4344600BABF21 /* Build configuration list for PBXNativeTarget "SwiftBar MAS" */;
+			buildConfigurationList = 39224E2725F4344600BABF21 /* Build configuration list for PBXNativeTarget "menubar01 MAS" */;
 			buildPhases = (
 				39224DEA25F4344600BABF21 /* Sources */,
 				39224E1425F4344600BABF21 /* Frameworks */,
@@ -562,20 +562,20 @@
 			);
 			dependencies = (
 			);
-			name = "SwiftBar MAS";
+			name = "menubar01 MAS";
 			packageProductDependencies = (
 				39224DE425F4344600BABF21 /* LaunchAtLogin */,
 				39224DE625F4344600BABF21 /* HotKey */,
 				39224DE825F4344600BABF21 /* SwifCron */,
 				39B64C34260F740E00B7FA63 /* Preferences */,
 			);
-			productName = SwiftBar;
-			productReference = 39224E2A25F4344600BABF21 /* SwiftBar MAS.app */;
+			productName = menubar01;
+			productReference = 39224E2A25F4344600BABF21 /* menubar01 MAS.app */;
 			productType = "com.apple.product-type.application";
 		};
-		FABE30D62D6FB51C00297F18 /* SwiftBarTests */ = {
+		FABE30D62D6FB51C00297F18 /* menubar01Tests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = FABE30DF2D6FB51C00297F18 /* Build configuration list for PBXNativeTarget "SwiftBarTests" */;
+			buildConfigurationList = FABE30DF2D6FB51C00297F18 /* Build configuration list for PBXNativeTarget "menubar01Tests" */;
 			buildPhases = (
 				FABE30D32D6FB51C00297F18 /* Sources */,
 				FABE30D42D6FB51C00297F18 /* Frameworks */,
@@ -589,11 +589,11 @@
 			fileSystemSynchronizedGroups = (
 				FABE30D82D6FB51C00297F18 /* SwiftBarTests */,
 			);
-			name = SwiftBarTests;
+			name = menubar01Tests;
 			packageProductDependencies = (
 			);
-			productName = SwiftBarTests;
-			productReference = FABE30D72D6FB51C00297F18 /* SwiftBarTests.xctest */;
+			productName = menubar01Tests;
+			productReference = FABE30D72D6FB51C00297F18 /* menubar01Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -615,7 +615,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 3920747525460FD000213DBE /* Build configuration list for PBXProject "SwiftBar" */;
+			buildConfigurationList = 3920747525460FD000213DBE /* Build configuration list for PBXProject "menubar01" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -641,9 +641,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				3920747925460FD000213DBE /* SwiftBar */,
-				39224DE125F4344600BABF21 /* SwiftBar MAS */,
-				FABE30D62D6FB51C00297F18 /* SwiftBarTests */,
+				3920747925460FD000213DBE /* menubar01 */,
+				39224DE125F4344600BABF21 /* menubar01 MAS */,
+				FABE30D62D6FB51C00297F18 /* menubar01Tests */,
 			);
 		};
 /* End PBXProject section */
@@ -1138,7 +1138,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 2.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ameba.SwiftBar;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lingyi.menubar01;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 			};
@@ -1168,7 +1168,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 2.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ameba.SwiftBar;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lingyi.menubar01;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 			};
@@ -1186,7 +1186,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"SwiftBar/Preview Content\"";
-				DEVELOPMENT_TEAM = X93LWC49WV;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = SwiftBar/Resources/Info.plist;
@@ -1196,7 +1196,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.2.3;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ameba.SwiftBar;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lingyi.menubar01;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG MAC_APP_STORE";
 				SWIFT_VERSION = 5.0;
@@ -1215,7 +1215,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"SwiftBar/Preview Content\"";
-				DEVELOPMENT_TEAM = X93LWC49WV;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = SwiftBar/Resources/Info.plist;
@@ -1225,7 +1225,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.2.3;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ameba.SwiftBar;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lingyi.menubar01;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[arch=*]" = MAC_APP_STORE;
@@ -1241,19 +1241,19 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = X93LWC49WV;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = co.ameba.SwiftBarTests;
+				PRODUCT_BUNDLE_IDENTIFIER = co.lingyi.menubar01Tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SwiftBar.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SwiftBar";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/menubar01.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/menubar01";
 			};
 			name = Debug;
 		};
@@ -1265,18 +1265,18 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = X93LWC49WV;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = co.ameba.SwiftBarTests;
+				PRODUCT_BUNDLE_IDENTIFIER = co.lingyi.menubar01Tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SwiftBar.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SwiftBar";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/menubar01.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/menubar01";
 			};
 			name = Release;
 		};

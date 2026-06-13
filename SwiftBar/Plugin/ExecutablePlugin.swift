@@ -11,7 +11,7 @@ class ExecutablePlugin: TimerArmingPlugin {
 
     var updateInterval: Double = pluginNeverUpdateInterval
     private var _metadata: PluginMetadata?
-    private let metadataQueue = DispatchQueue(label: "com.ameba.SwiftBar.ExecutablePlugin.metadata", attributes: .concurrent)
+    private let metadataQueue = DispatchQueue(label: "com.lingyi.menubar01.ExecutablePlugin.metadata", attributes: .concurrent)
     
     var metadata: PluginMetadata? {
         get {

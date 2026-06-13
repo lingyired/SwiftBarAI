@@ -1,6 +1,6 @@
 //
 //  LaunchAtLogin.swift
-//  SwiftBar
+//  menubar01
 //
 //  Modern implementation of LaunchAtLogin using ServiceManagement API
 //  Compatible with macOS 13.0+ including macOS Sequoia
@@ -13,7 +13,7 @@ import ServiceManagement
 import os.log
 
 public enum ModernLaunchAtLogin {
-    private static let logger = Logger(subsystem: "com.ameba.SwiftBar", category: "LaunchAtLogin")
+    private static let logger = Logger(subsystem: "com.lingyi.menubar01", category: "LaunchAtLogin")
     public static let observable = Observable()
 
     /**

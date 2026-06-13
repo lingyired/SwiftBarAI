@@ -83,9 +83,9 @@
 "APP_FOLDER_NOT_ALLOWED_MESSAGE" = "No se puede usar esta carpeta como ubicación de los complementos de SwiftBar";
 "APP_FOLDER_NOT_ALLOWED_ACTION" = "Elegir nueva ubicación";
 "APP_FOLDER_HAS_TOO_MANY_FILES_MESSAGE" = "GUAU! Tal parece que la carpeta elegida posee DEMASIADO ARCHIVOS, por favor elegir otra. Si un complemento necesita de una carpeta node_modules, hágala oculta.";
-"APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Establecer la ubicación de los complementos de SwiftBar";
+"APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Establecer la ubicación de los complementos de menubar01";
 "APP_CHOOSE_PLUGIN_FOLDER_INFO" = "Seleccionar una carpeta para guardar los repositorios de los complementos";
-"APP_QUIT" = "Salir de SwiftBar";
+"APP_QUIT" = "Salir de menubar01";
 "OK" = "OK";
 "CANCEL" = "Cancelar";
 

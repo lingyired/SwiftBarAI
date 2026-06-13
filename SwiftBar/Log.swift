@@ -1,6 +1,6 @@
 import os
 
-private let subsystem = "com.ameba.SwiftBar"
+private let subsystem = "com.lingyi.menubar01"
 
 enum Log {
     static let plugin = OSLog(subsystem: subsystem, category: "Plugin")

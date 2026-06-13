@@ -76,7 +76,7 @@ struct WebPanelView: View {
                     }
                     HStack {
                         Spacer()
-                        Text("SwiftBar: \(name)")
+                        Text("menubar01: \(name)")
                             .font(.headline)
                             .lineLimit(1)
 

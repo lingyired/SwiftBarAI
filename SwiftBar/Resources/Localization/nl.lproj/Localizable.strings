@@ -80,10 +80,10 @@
 
 //App strings
 "APP_CHOOSE_PLUGIN_FOLDER_TITLE" = "Kies map voor plug-ins";
-"APP_FOLDER_NOT_ALLOWED_MESSAGE" = "Deze map kan niet gebruikt worden voor SwiftBar plug-ins";
+"APP_FOLDER_NOT_ALLOWED_MESSAGE" = "Deze map kan niet gebruikt worden voor menubar01 plug-ins";
 "APP_FOLDER_NOT_ALLOWED_ACTION" = "Kies een andere map";
 "APP_FOLDER_HAS_TOO_MANY_FILES_MESSAGE" = "Wauw! De map die je hebt gekozen bevat heel veel bestanden. Kies een andere map, alsjeblieft. Als je een map genaamd 'node_modules' hebt die vereist is voor een plug-in, verberg die dan.";
-"APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Kies een locatie voor SwiftBar plug-ins";
+"APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Kies een locatie voor menubar01 plug-ins";
 "APP_CHOOSE_PLUGIN_FOLDER_INFO" = "Selecteer een map voor de plug-inverzameling";
 "APP_QUIT" = "Stop SwiftBar";
 "OK" = "OK";

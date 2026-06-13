@@ -31,6 +31,6 @@ enum AppVersion {
 
     /// Slightly longer label including the bundle name.
     static var fullLabel: String {
-        "SwiftBar \(shortLabel)"
+        "menubar01 \(shortLabel)"
     }
 }

@@ -35,9 +35,9 @@
 "PF_CHANGE_PATH" = "Изменить...";
 "PF_SHELL" = "Шелл";
 "PF_TERMINAL" = "Терминал";
-"PF_HIDE_SWIFTBAR_ICON" = "Скрыть иконку SwiftBar";
-"PF_STEALTH_MODE" = "Hide SwiftBar in the menu bar";
-"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Всегда показывать меню SwiftBar";
+"PF_HIDE_SWIFTBAR_ICON" = "Скрыть иконку menubar01";
+"PF_STEALTH_MODE" = "Hide menubar01 in the menu bar";
+"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Всегда показывать меню menubar01";
 "PF_CHECK_FOR_UPDATE" = "Обновить";
 "PF_CHECK_FOR_UPDATES" = "Проверить обновления";
 "PR_INCLUDE_BETA_UPDATES" = "Включая бета версии";
@@ -83,7 +83,7 @@
 "APP_FOLDER_NOT_ALLOWED_MESSAGE" = "Эту папку нельзя использовать как папку с плагинами";
 "APP_FOLDER_NOT_ALLOWED_ACTION" = "Выбрать другую папку";
 "APP_FOLDER_HAS_TOO_MANY_FILES_MESSAGE" = "Ого! В этой папке реально дофига файлов! Если вам реально нужна папка node_modules в папке с плагином, скройте ее.";
-"APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Установить папку с плагинами SwiftBar";
+"APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Установить папку с плагинами menubar01";
 "APP_CHOOSE_PLUGIN_FOLDER_INFO" = "Выбрать папку для хранения репозитория с плагинами";
 "APP_QUIT" = "Выход";
 "OK" = "OK";

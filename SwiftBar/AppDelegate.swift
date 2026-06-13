@@ -86,8 +86,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUStandardUserDriverDelegat
         // they are editing. The previous "still not working" reports
         // all turned out to be stale /Applications installs running
         // an older build; this log line removes that ambiguity.
-        os_log("SwiftBar startup stamp: %{public}@", log: Log.plugin, type: .info, AppVersion.fullLabel)
-        NSLog("[SwiftBar startup] %@", AppVersion.fullLabel)
+        os_log("menubar01 startup stamp: %{public}@", log: Log.plugin, type: .info, AppVersion.fullLabel)
+        NSLog("[menubar01 startup] %@", AppVersion.fullLabel)
 
         preferencesWindowController.window?.delegate = self
         setupToolbar()

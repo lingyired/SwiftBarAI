@@ -132,11 +132,11 @@ struct AboutPluginView_Previews: PreviewProvider {
         AboutPluginView(md:
             PluginMetadata(name: "Super Plugin",
                            version: "1.0",
-                           author: "SwiftBar",
+                           author: "menubar01",
                            github: "@melonamin",
                            desc: "This plugin is so cool you can't imagine your life before it!",
                            previewImageURL: URL(string: "https://upload.wikimedia.org/wikipedia/commons/6/6e/Golde33443.jpg"),
                            dependencies: ["ruby", "aws"],
-                           aboutURL: URL(string: "https://github.com/swiftbar")))
+                           aboutURL: URL(string: "https://github.com/lingyi/menubar01")))
     }
 }

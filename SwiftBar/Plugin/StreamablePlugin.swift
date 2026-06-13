@@ -12,7 +12,7 @@ class StreamablePlugin: Plugin {
     var refreshEnv: [String: String] = [:]
 
     private var _metadata: PluginMetadata?
-    private let metadataQueue = DispatchQueue(label: "com.ameba.SwiftBar.StreamablePlugin.metadata", attributes: .concurrent)
+    private let metadataQueue = DispatchQueue(label: "com.lingyi.menubar01.StreamablePlugin.metadata", attributes: .concurrent)
 
     var metadata: PluginMetadata? {
         get {
@@ -173,7 +173,7 @@ class StreamablePlugin: Plugin {
 
     func writeStdin(_ input: String) throws {
         guard let data = (input + "\n").data(using: .utf8) else {
-            throw NSError(domain: "SwiftBar.StreamablePlugin", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to encode input as UTF8"])
+            throw NSError(domain: "menubar01.StreamablePlugin", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to encode input as UTF8"])
         }
 
         do {
