@@ -102,7 +102,7 @@ created.
   files is either a historical reference inside `SWIFTBAR_REFERENCE_REPORT.md`'s
   deprecation stub, an explicit mention of the upstream project we
   forked from, or a reference to an unchanged file
-  (`SwiftBar.xcodeproj/`, the orphan plugin files, `docs/`,
+  (`menubar01.xcodeproj/`, the orphan plugin files (since renamed in `rename-files-to-menubar01`), `docs/`,
   `changes/archive/`).
 
 ## Related

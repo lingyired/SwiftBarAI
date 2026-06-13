@@ -81,7 +81,7 @@ menubar01 是一款 macOS 菜单栏自定义工具，用 Swift 编写，基于 A
 ---
 
 ## Build Commands
-- Open project: `open SwiftBar/SwiftBar.xcodeproj`
+- Open project: `open menubar01.xcodeproj`
 - Build: Press "Play" in Xcode
 - Test: Run unit tests through Xcode's Test Navigator
 - Debug: Enable Plugin Debug Mode with `defaults write com.lingyi.menubar01 PluginDebugMode -bool YES`

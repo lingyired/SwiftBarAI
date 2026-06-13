@@ -38,13 +38,9 @@ rebranded and re-platformed for new product directions:
 ## Build & run
 
 ```bash
-open SwiftBar/SwiftBar.xcodeproj
+open menubar01.xcodeproj
 # pick the menubar01 scheme → "My Mac" → Run (⌘R)
 ```
-
-> The Xcode project file is still named `SwiftBar.xcodeproj` for git
-> history continuity. Renaming it is a follow-up step tracked in
-> [`MIGRATION_PLAN.md`](MIGRATION_PLAN.md) § 4.
 
 ## Plugin Manifest Schema
 

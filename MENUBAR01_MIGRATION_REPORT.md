@@ -95,12 +95,12 @@ are dead code and candidates for a follow-up commit:
 ## 6. Build status
 
 ```
-$ xcodebuild -project SwiftBar.xcodeproj -scheme menubar01 \
+$ xcodebuild -project menubar01.xcodeproj -scheme menubar01 \
              -configuration Debug -destination 'platform=macOS' build
 
 ** BUILD SUCCEEDED **
 
-$ xcodebuild -project SwiftBar.xcodeproj -scheme menubar01 \
+$ xcodebuild -project menubar01.xcodeproj -scheme menubar01 \
              -configuration Debug -destination 'platform=macOS' build-for-testing
 
 ** TEST BUILD SUCCEEDED **
@@ -152,7 +152,7 @@ DEVELOPMENT_TEAM           = ""                       ; no team needed
 ENABLE_HARDENED_RUNTIME    = YES                      ; required for distribution
 ```
 
-`SwiftBar MAS.entitlements` and `SwiftBar.entitlements` are left in
+`menubar01 MAS.entitlements` and `menubar01.entitlements` are left in
 place (file names unchanged) so the Xcode project keeps compiling
 without re-pointing the `CODE_SIGN_ENTITLEMENTS` build setting. The
 file-name change is cosmetic and tracked as a follow-up.
@@ -168,14 +168,14 @@ To archive for distribution:
 
 1. Switch to the `menubar01 MAS` scheme only when targeting the Mac
    App Store; the default `menubar01` scheme uses the
-   `SwiftBar.entitlements` non-MAS entitlements and is what you want
+   `menubar01.entitlements` non-MAS entitlements and is what you want
    for direct distribution.
 
 ## 8. How to verify locally
 
 ```bash
 # 1. Open the project.
-open SwiftBar/SwiftBar.xcodeproj
+open menubar01.xcodeproj
 
 # 2. Pick the "menubar01" scheme and Run (⌘R).
 #    The app launches into the menu bar with the new icon and version
@@ -202,8 +202,8 @@ open "swiftbar://refreshallplugins"
 | Item | Why out of scope | Notes |
 | --- | --- | --- |
 | Delete the three orphan plugin files (`ExecutablePlugin`, `StreamablePlugin`, `PackagedPlugin`) + `isSwiftBarPackage` | Cosmetic cleanup after the no-compat commit | Tracked separately. |
-| Rename `SwiftBar.xcodeproj` → `menubar01.xcodeproj` | Touches paths in build settings; needs a clean Xcode project re-open. | |
-| Rename `SwiftBar/`, `SwiftBar.entitlements`, `SwiftBar MAS.entitlements`, `SwiftBarTests/` directories | Cosmetic; build settings still resolve via group `path = "SwiftBar"` keys. | |
+| ~~Rename `SwiftBar.xcodeproj` → `menubar01.xcodeproj`~~ | ~~Touches paths in build settings; needs a clean Xcode project re-open.~~ | **Done** in `rename-files-to-menubar01`. |
+| ~~Rename `SwiftBar/`, `SwiftBar.entitlements`, `SwiftBar MAS.entitlements`, `SwiftBarTests/` directories~~ | ~~Cosmetic; build settings still resolve via group `path = "SwiftBar"` keys.~~ | **Done** in `rename-files-to-menubar01`. |
 | Mirror SwiftPM forks at the new owner | Requires new GitHub org + ownership transfer. | |
 | Provision a real Sparkle appcast URL | Requires the new owner's GitHub Pages + EdDSA keypair. | |
 | Doc sweep (`docs/*.md`) | The 14 in-tree `docs/` files mirror the SwiftBar upstream copy. Their headers still reference SwiftBar. | |

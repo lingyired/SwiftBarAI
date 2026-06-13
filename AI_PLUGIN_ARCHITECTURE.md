@@ -217,7 +217,7 @@ adopt an explicit manifest field:
 The `PluginManager` enforces:
 
 - `network` → app sandbox hole punch (already supported via
-  `SwiftBar.entitlements`).
+  `menubar01.entitlements`).
 - `calendar` → requires `NSCalendarsUsageDescription` (already in
   `Info.plist`).
 - `clipboard` → new; gated behind a confirmation dialog.

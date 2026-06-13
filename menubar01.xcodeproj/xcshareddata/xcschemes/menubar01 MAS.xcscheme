@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "3920747925460FD000213DBE"
-               BuildableName = "menubar01.app"
-               BlueprintName = "menubar01"
-               ReferencedContainer = "container:SwiftBar.xcodeproj">
+               BlueprintIdentifier = "39224DE125F4344600BABF21"
+               BuildableName = "menubar01 MAS.app"
+               BlueprintName = "menubar01 MAS"
+               ReferencedContainer = "container:menubar01.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -28,17 +28,6 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "FABE30D62D6FB51C00297F18"
-               BuildableName = "menubar01Tests.xctest"
-               BlueprintName = "menubar01Tests"
-               ReferencedContainer = "container:SwiftBar.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -55,10 +44,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "3920747925460FD000213DBE"
-            BuildableName = "menubar01.app"
-            BlueprintName = "menubar01"
-            ReferencedContainer = "container:SwiftBar.xcodeproj">
+            BlueprintIdentifier = "39224DE125F4344600BABF21"
+            BuildableName = "menubar01 MAS.app"
+            BlueprintName = "menubar01 MAS"
+            ReferencedContainer = "container:menubar01.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,10 +61,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "3920747925460FD000213DBE"
-            BuildableName = "menubar01.app"
-            BlueprintName = "menubar01"
-            ReferencedContainer = "container:SwiftBar.xcodeproj">
+            BlueprintIdentifier = "39224DE125F4344600BABF21"
+            BuildableName = "menubar01 MAS.app"
+            BlueprintName = "menubar01 MAS"
+            ReferencedContainer = "container:menubar01.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

@@ -24,7 +24,7 @@ A condensed list:
 - `SWIFTBAR_*` environment variables
 - `Localizable.MenuBar.SwiftBar` / `AboutSwiftBar` / `HideSwiftBarIcon` / `AlwaysShowSwiftBarMenu` cases
 - `PreferencesStore.swiftBarItem` / `swiftBarIconIsHidden` / `alwaysShowSwiftBarMenu` / `HideSwiftBarIcon` / `AlwaysShowSwiftBarMenu`
-- The 625 lines of `SwiftBarTests.swift` covering the ignore-file and script-header parser paths
+- The 625 lines of `menubar01Tests/SwiftBarTests.swift` (file renamed in `rename-files-to-menubar01`) covering the ignore-file and script-header parser paths
 
 ## Current state of "SwiftBar" references in the repo
 
@@ -46,9 +46,12 @@ remaining residue is:
   `SwiftBar/Plugin/PackagedPlugin.swift`. They are dead code; safe to
   `git rm` in a follow-up.~~ — **Deleted** in
   [`changes/2026-06-13-delete-orphan-plugins.md`](changes/2026-06-13-delete-orphan-plugins.md).
-- **Xcode project file** `SwiftBar.xcodeproj/`: file name and the
+- ~~**Xcode project file** `SwiftBar.xcodeproj/`: file name and the
   four `SwiftBar*` scheme file names are unchanged for git history
-  continuity. Renaming is tracked separately.
+  continuity. Renaming is tracked separately.~~ - **Renamed** to
+  `menubar01.xcodeproj/` in [`changes/2026-06-13-rename-files-to-menubar01.md`](changes/2026-06-13-rename-files-to-menubar01.md); scheme file names
+  were already `menubar01.xcscheme` / `menubar01 MAS.xcscheme` since the
+  identity migration in `1acb6d0`.
 - **In-tree `docs/00-README.md` through `docs/13-Build-and-Run.md`**:
   the 14 developer-doc files mirror the SwiftBar upstream copy and
   still reference SwiftBar in their headers. They are tracked as a

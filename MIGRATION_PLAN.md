@@ -120,13 +120,12 @@ for what had to change to make the deletions possible.
 
 | Item | Notes |
 | --- | --- |
-| Delete the three orphan plugin files (above) + `URL.isSwiftBarPackage` extension (`SwiftBar/Plugin/PluginManger.swift`) | One-line `git rm` each. |
-| Rename `SwiftBar.xcodeproj` → `menubar01.xcodeproj` | Touches paths in build settings; needs a clean Xcode project re-open. |
-| Rename `SwiftBar/`, `SwiftBar.entitlements`, `SwiftBar MAS.entitlements`, `SwiftBarTests/` directories | Cosmetic; build settings still resolve via group `path = "SwiftBar"` keys. |
+| ~~Delete the three orphan plugin files (above) + `URL.isSwiftBarPackage` extension (`SwiftBar/Plugin/PluginManger.swift`)~~ | Done in `delete-orphan-plugins`. |
+| ~~Cosmetic comment cleanup in `NSImage.swift` / `NSFont+Offset.swift`~~ | Done in `99248b7`. |
+| ~~Rename `SwiftBar.xcodeproj` → `menubar01.xcodeproj`, `SwiftBar/` → `menubar01/`, `SwiftBarTests/` → `menubar01Tests/`, `SwiftBar.entitlements` → `menubar01.entitlements`, `SwiftBar MAS.entitlements` → `menubar01 MAS.entitlements`~~ | Done in `rename-files-to-menubar01`. |
 | Mirror SwiftPM forks at the new owner | Requires new GitHub org + ownership transfer. |
 | Provision a real Sparkle appcast URL | Requires the new owner's GitHub Pages + EdDSA keypair. |
 | `docs/00-README.md` through `docs/13-Build-and-Run.md` header rewrite | The 14 in-tree `docs/` files mirror the SwiftBar upstream copy. Their headers still reference SwiftBar; the body content is broadly correct but uses "SwiftBar" throughout. |
-| Cosmetic comment cleanup in `NSImage.swift` / `NSFont+Offset.swift` | A handful of historical-context comments still mention "SwiftBar". |
 | Test-suite state-isolation fixes | Pre-existing `Menubar01IntegrationTests` failures due to shared singleton state. |
 | `AIPluginGenerator` (M1) | See [`AI_PLUGIN_ARCHITECTURE.md`](AI_PLUGIN_ARCHITECTURE.md). |
 | `PluginMarketplace` (M4) | See [`AI_PLUGIN_ARCHITECTURE.md`](AI_PLUGIN_ARCHITECTURE.md). |
