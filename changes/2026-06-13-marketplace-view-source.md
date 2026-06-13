@@ -3,8 +3,8 @@
 - **Type:** feat
 - **Scope:** menubar01/UI/Marketplace Browser
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** fec3379
+- **Status:** done
 
 ## Summary
 
