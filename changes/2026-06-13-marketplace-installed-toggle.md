@@ -1,6 +1,6 @@
 # M5 enable/disable follow-up: marketplace Installed tab exposes a per-row toggle
 
-Status: done
+Status: done (fb6b656)
 
 ## Why
 
