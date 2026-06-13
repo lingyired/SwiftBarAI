@@ -11,8 +11,8 @@
   `menubar01.xcodeproj/project.pbxproj`,
   `menubar01Tests/GeneratorHistoryViewModelTests.swift`
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** 4075eb9
+- **Status:** done
 
 ## Summary
 

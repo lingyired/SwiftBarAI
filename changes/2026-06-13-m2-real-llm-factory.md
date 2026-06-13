@@ -3,8 +3,8 @@
 - **Type:** feat
 - **Scope:** `menubar01/AI/`, `menubar01/PreferencesStore.swift`, `menubar01.xcodeproj/project.pbxproj`, `menubar01Tests/`, `docs/`
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** 4075eb9
+- **Status:** done
 
 ## Summary
 

@@ -3,8 +3,8 @@
 - **Type:** feat
 - **Scope:** `menubar01/UI/Plugin Generator/`, `menubar01Tests/`
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** 4075eb9
+- **Status:** done
 
 ## Summary
 
