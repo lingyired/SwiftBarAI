@@ -3,8 +3,8 @@
 - **Type:** feat
 - **Scope:** `menubar01/AI/AIPluginGeneratorFactory.swift`, `menubar01/UI/Preferences/AIPreferencesView.swift`, `menubar01Tests/`
 - **Author(s):** Trae AI
-- **Commit(s):** in-progress
-- **Status:** in-progress
+- **Commit(s):** 4fe63bc
+- **Status:** done
 
 ## Summary
 
