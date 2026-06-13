@@ -109,6 +109,7 @@
 		56354F4C93CF490BA7AF72A9 /* PluginManager+MarketplaceInstall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FEB4F41823AF230C30E0B8D /* PluginManager+MarketplaceInstall.swift */; };
 		7011242E8E804B8286069094 /* MarketplaceInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */; };
 		721EF289AC9C4FB2B33B670E /* MarketplaceEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705AC70319E448669E96803B /* MarketplaceEntry.swift */; };
+		FBFBFBFBFBFBFBFBFBFBFBFB /* MarketplaceVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFAFAFAFAFAFAFAFAFAFAFAFA /* MarketplaceVersion.swift */; };
 		78D7470EB0C6BF949D6E040F /* PluginCapabilityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD64424289EDE0D80651231D /* PluginCapabilityGate.swift */; };
 		7B97A791D1E24D1BB4F1937A /* AIPluginGeneratorFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */; };
 		7D07491F954181639E58B1A8 /* PluginGeneratorMenuCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 454445FD953D89EB9E4E367E /* PluginGeneratorMenuCommand.swift */; };
@@ -290,6 +291,7 @@
 		070775436F2E9DC682BE1BFE /* RemoteAIPluginGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAIPluginGenerator.swift; sourceTree = "<group>"; };
 		7F1C3D1C5A1F4F9BA2D1061A /* LocalAIPluginGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAIPluginGenerator.swift; sourceTree = "<group>"; };
 		705AC70319E448669E96803B /* MarketplaceEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceEntry.swift; sourceTree = "<group>"; };
+		FAFAFAFAFAFAFAFAFAFAFAFAFA /* MarketplaceVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceVersion.swift; sourceTree = "<group>"; };
 		76224727A343C18081524B72 /* AIGeneratorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorSheet.swift; path = "menubar01/UI/Plugin Generator/AIGeneratorSheet.swift"; sourceTree = SOURCE_ROOT; };
 		7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceClient.swift; sourceTree = "<group>"; };
 		D57C671059D615A98EAAF4F5 /* RemoteMarketplaceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteMarketplaceClient.swift; sourceTree = "<group>"; };
@@ -590,6 +592,7 @@
 				D57C671059D615A98EAAF4F5 /* RemoteMarketplaceClient.swift */,
 				705AC70319E448669E96803B /* MarketplaceEntry.swift */,
 				3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */,
+				FAFAFAFAFAFAFAFAFAFAFAFAFA /* MarketplaceVersion.swift */,
 			);
 			path = Marketplace;
 			sourceTree = "<group>";
@@ -1019,6 +1022,7 @@
 				3338B9EDEEB106D21BF110F5 /* RemoteMarketplaceClient.swift in Sources */,
 				F096B206BDC343C8848D75A6 /* MarketplaceEntry.swift in Sources */,
 				7011242E8E804B8286069094 /* MarketplaceInstaller.swift in Sources */,
+				FBFBFBFBFBFBFBFBFBFBFBFB /* MarketplaceVersion.swift in Sources */,
 				51B44432A0FB14EEE6897054 /* AIGeneratorSheet.swift in Sources */,
 				FBF24F759C10F4AABDB802ED /* AIGeneratorViewModel.swift in Sources */,
 				2B1C3D4E5F6A7B8C9D0E1F2A /* AIGeneratorInstallPromptSheet.swift in Sources */,

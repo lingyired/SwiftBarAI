@@ -345,6 +345,7 @@ struct MarketplaceBrowserSheet: View {
                         .font(.caption2.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
+                updateBadge(for: snapshot)
             }
             HStack(spacing: 6) {
                 Text(snapshot.url.lastPathComponent)
@@ -361,6 +362,69 @@ struct MarketplaceBrowserSheet: View {
             }
         }
         .padding(.vertical, 2)
+    }
+
+    /// Render the "Update available" / "Local is newer" /
+    /// nothing pill on the Installed sidebar row. The badge
+    /// reflects `viewModel.updateAvailability(for:)` so the
+    /// sidebar stays in sync with the catalogue refresh
+    /// without manual re-rendering. When the badge reflects
+    /// an available update it is wired to
+    /// `runUpdateForInstalledSnapshot(snapshot)` so a
+    /// single tap on the pill kicks off the update flow
+    /// (the pill acts as a shortcut for "click the row +
+    /// click Update").
+    @ViewBuilder
+    private func updateBadge(
+        for snapshot: MarketplaceBrowserViewModel.InstalledPluginSnapshot
+    ) -> some View {
+        switch viewModel.updateAvailability(for: snapshot) {
+        case .unknown, .upToDate:
+            EmptyView()
+        case .available(let catalogueVersion):
+            Button {
+                Task { await runUpdateForInstalledSnapshot(snapshot) }
+            } label: {
+                let installed = snapshot.version ?? "?"
+                updatePill(
+                    text: "\(installed) → \(catalogueVersion.displayString)",
+                    systemImage: "arrow.up.circle.fill",
+                    tint: .green
+                )
+            }
+            .buttonStyle(.plain)
+            .help("Update to \(catalogueVersion.displayString)")
+            .disabled(viewModel.isUpdating)
+        case .aheadOfCatalogue:
+            updatePill(
+                text: "Local is newer",
+                systemImage: "checkmark.seal.fill",
+                tint: .blue
+            )
+        }
+    }
+
+    /// Small pill view used for the "Update available" /
+    /// "Local is newer" badges. Kept as a private helper
+    /// so both `.available(...)` and
+    /// `.aheadOfCatalogue(...)` cases share the same
+    /// visual style.
+    private func updatePill(
+        text: String,
+        systemImage: String,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: systemImage)
+                .font(.caption2)
+            Text(text)
+                .font(.caption2.weight(.semibold))
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .foregroundStyle(tint)
+        .background(tint.opacity(0.15))
+        .clipShape(Capsule())
     }
 
     private func sidebarRow(for entry: MarketplaceEntry) -> some View {
@@ -473,6 +537,33 @@ struct MarketplaceBrowserSheet: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            updateDetailLabel(for: snapshot)
+        }
+    }
+
+    /// Detail-pane counterpart to `updateBadge(for:)`. When
+    /// a catalogue-side update is available, the metadata
+    /// row surfaces a "v1.0.0 → v1.2.3" arrow so the user
+    /// can read the version delta at a glance. The
+    /// "Update" button below still drives the actual
+    /// install — the label is read-only.
+    @ViewBuilder
+    private func updateDetailLabel(
+        for snapshot: MarketplaceBrowserViewModel.InstalledPluginSnapshot
+    ) -> some View {
+        switch viewModel.updateAvailability(for: snapshot) {
+        case .available(let catalogueVersion):
+            let installed = snapshot.version ?? "?"
+            Label("\(installed) → \(catalogueVersion.displayString)",
+                  systemImage: "arrow.up.circle.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.green)
+        case .aheadOfCatalogue:
+            Label("Local is newer than catalogue", systemImage: "checkmark.seal.fill")
+                .font(.caption)
+                .foregroundStyle(.blue)
+        case .unknown, .upToDate:
+            EmptyView()
         }
     }
 

@@ -24,6 +24,17 @@ public struct MarketplaceEntry: Codable, Identifiable, Equatable, Hashable {
     /// Coarse category bucket (e.g. `"time"`, `"system"`, `"tools"`).
     /// The v1 browser uses this to filter and group entries.
     public let category: String
+    /// Catalogue-reported version string (e.g. `"1.2.3"`).
+    /// Used by the M5 update-detection follow-up to surface a
+    /// "Update available" badge on the Installed tab against
+    /// the on-disk manifest's `version`. `nil` when the
+    /// catalogue row omits the key (the badge logic treats
+    /// `nil` as unparseable / `.unknown`). The
+    /// `MarketplaceClient` stub client populates this with
+    /// `"1.0.0"` for the three seed entries; the
+    /// `RemoteMarketplaceClient` test fixtures omit the key
+    /// to exercise the `Codable` default-decode path.
+    public let version: String?
     /// Optional URL to a preview screenshot. `nil` means the browser
     /// should fall back to a generic icon.
     public let previewImageURL: URL?
@@ -49,6 +60,7 @@ public struct MarketplaceEntry: Codable, Identifiable, Equatable, Hashable {
         name: String,
         summary: String,
         category: String,
+        version: String = "",
         previewImageURL: URL? = nil,
         installCount: Int = 0,
         rating: Double = 0,
@@ -59,6 +71,7 @@ public struct MarketplaceEntry: Codable, Identifiable, Equatable, Hashable {
         self.name = name
         self.summary = summary
         self.category = category
+        self.version = version
         self.previewImageURL = previewImageURL
         self.installCount = installCount
         self.rating = rating

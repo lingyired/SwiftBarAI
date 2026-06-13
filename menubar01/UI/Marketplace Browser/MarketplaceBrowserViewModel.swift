@@ -447,6 +447,14 @@ final class MarketplaceBrowserViewModel: ObservableObject {
         /// Version from `manifest.json` (e.g. `"1.0.0"`).
         /// `nil` when the manifest omits it.
         let version: String?
+        /// Parsed `MarketplaceVersion` for
+        /// `version`. `nil` when the manifest omits
+        /// `version` or the string is unparseable. The
+        /// M5 update-detection follow-up uses this to
+        /// compute the "Update available" badge on
+        /// the Installed tab — see
+        /// `updateAvailability(for:)`.
+        let manifestVersion: MarketplaceVersion?
         /// File modification date of the manifest, used
         /// as a "last updated" hint. `nil` when the
         /// attribute lookup fails.
@@ -514,11 +522,27 @@ final class MarketplaceBrowserViewModel: ObservableObject {
             let modificationDate = (try? manifestURL.resourceValues(forKeys: [.contentModificationDateKey]))?
                 .contentModificationDate
             let name = manifest.name ?? entryURL.lastPathComponent
+            // Parse the on-disk manifest's version into a
+            // `MarketplaceVersion` so the Installed tab can
+            // surface a "Update available" badge against
+            // the catalogue row's `version` string. `nil`
+            // when the manifest omits `version` or the
+            // string is unparseable; the badge logic in
+            // `updateAvailability(for:)` treats that as
+            // "unknown".
+            let parsedManifestVersion: MarketplaceVersion? = {
+                guard let raw = manifest.version, !raw.isEmpty else { return nil }
+                return MarketplaceVersion(parsing: raw)
+            }()
+            os_log("refreshInstalledPlugins: parsed manifestVersion=%{public}@ for %{public}@",
+                   log: Log.plugin, type: .info,
+                   parsedManifestVersion?.displayString ?? "nil", name)
             snapshots.append(InstalledPluginSnapshot(
                 id: entryURL.standardizedFileURL.path,
                 url: entryURL.standardizedFileURL,
                 name: name,
                 version: manifest.version,
+                manifestVersion: parsedManifestVersion,
                 lastUpdated: modificationDate
             ))
         }
@@ -657,6 +681,109 @@ final class MarketplaceBrowserViewModel: ObservableObject {
             state = .error(humanReadable(error))
         }
         return result
+    }
+
+    // MARK: - Update detection (catalogue vs. installed)
+
+    /// Outcome of comparing the on-disk manifest's
+    /// `version` against the matching catalogue row's
+    /// `version`. Drives the "Update available" pill
+    /// on the Installed sidebar tab.
+    ///
+    /// The four cases mirror the four user-visible
+    /// states we want to render:
+    /// - `.unknown` — the version cannot be
+    ///   determined (manifest omits version, catalogue
+    ///   has no matching row, or the strings are
+    ///   unparseable). The Installed row shows no
+    ///   badge.
+    /// - `.upToDate` — the on-disk version matches
+    ///   the catalogue row's. No badge.
+    /// - `.available(catalogueVersion:)` — the
+    ///   catalogue is newer. The Installed row shows
+    ///   a green "Update" pill that triggers
+    ///   `updateSelectedWithCapabilityGate()` on
+    ///   tap.
+    /// - `.aheadOfCatalogue(catalogueVersion:)` —
+    ///   the on-disk version is newer than the
+    ///   catalogue. The Installed row shows a neutral
+    ///   "Local is newer" hint so a power user is not
+    ///   confused by the "no update" silence.
+    public enum UpdateAvailability: Equatable {
+        case unknown
+        case upToDate
+        case available(catalogueVersion: MarketplaceVersion)
+        case aheadOfCatalogue(catalogueVersion: MarketplaceVersion)
+    }
+
+    /// Compare the on-disk manifest's parsed version
+    /// against the catalogue row's version. Returns
+    /// `.unknown` when either side is unparseable or
+    /// the catalogue has no matching entry.
+    ///
+    /// The match is by `MarketplaceEntry.id` (the
+    /// stable slug) with a case-insensitive `name`
+    /// fallback — two plugins could share a
+    /// human-readable name but the on-disk folder
+    /// name is derived from the catalogue `id`
+    /// (after sanitisation) by the install path, so
+    /// looking up by `id` is the canonical match. The
+    /// `name` fallback exists because the v1
+    /// uninstall / update flows key the on-disk
+    /// URL off the catalogue row's `name` when the
+    /// package has not been loaded — keeping the
+    /// lookup consistent with those flows means a
+    /// row in the Installed tab always agrees with
+    /// the "Update" button's destination.
+    public func updateAvailability(
+        for snapshot: InstalledPluginSnapshot
+    ) -> UpdateAvailability {
+        guard let installedVersion = snapshot.manifestVersion else {
+            return .unknown
+        }
+        guard let catalogueEntry = entriesByFolder(for: snapshot) else {
+            return .unknown
+        }
+        // The catalogue row's `version` is itself
+        // optional (older catalogues ship without
+        // the key). Treat missing / empty as
+        // unparseable so the badge stays silent
+        // rather than guessing.
+        guard let rawCatalogueVersion = catalogueEntry.version,
+              !rawCatalogueVersion.isEmpty,
+              let catalogueVersion = MarketplaceVersion(parsing: rawCatalogueVersion)
+        else {
+            return .unknown
+        }
+        if catalogueVersion > installedVersion {
+            return .available(catalogueVersion: catalogueVersion)
+        }
+        if catalogueVersion == installedVersion {
+            return .upToDate
+        }
+        return .aheadOfCatalogue(catalogueVersion: catalogueVersion)
+    }
+
+    /// Resolve a `MarketplaceEntry` for an installed
+    /// snapshot. Prefers a direct `id` match against
+    /// the on-disk folder name (the install path
+    /// writes the folder name from the entry
+    /// filename's stem); falls back to a
+    /// case-insensitive `name` match so a snapshot
+    /// from the v1 uninstall path (which keys the
+    /// target URL off `entry.name`) still resolves.
+    /// Returns `nil` when no row matches — the
+    /// caller surfaces `.unknown` in that case.
+    private func entriesByFolder(
+        for snapshot: InstalledPluginSnapshot
+    ) -> MarketplaceEntry? {
+        let folderName = snapshot.url.lastPathComponent
+        if let match = entries.first(where: { $0.id == folderName }) {
+            return match
+        }
+        return entries.first { entry in
+            entry.name.localizedCaseInsensitiveCompare(snapshot.name) == .orderedSame
+        }
     }
 
     // MARK: - Private helpers
