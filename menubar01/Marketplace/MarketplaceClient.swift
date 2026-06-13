@@ -140,15 +140,33 @@ public struct StubMarketplaceClient: MarketplaceClient {
 
 /// Factory for `MarketplaceClient` instances.
 ///
-/// M4 only exposes `makeStub()`. A future `makeRemote(endpoint:)`
-/// is documented in `AI_PLUGIN_ARCHITECTURE.md` §1.6 and will land
-/// alongside the M2 / M5 remote implementation — keeping the
-/// factory surface stable means the M5 UI does not have to change
-/// when the real client appears.
+/// M4 exposes `makeStub()` (the deterministic in-memory client).
+/// The M2 / M5 follow-up adds `makeRemote(endpoint:transport:)`,
+/// which returns the real URLSession-backed
+/// `RemoteMarketplaceClient` defined in
+/// `RemoteMarketplaceClient.swift`. Keeping the factory surface
+/// stable means the M5 UI does not have to change when the real
+/// client is wired in — the only call site that flips is the
+/// `MarketplaceBrowserViewModel` default, which the future
+/// "switch to remote" commit will swap from
+/// `MarketplaceClientFactory.makeStub()` to
+/// `MarketplaceClientFactory.makeRemote(endpoint: …)`.
 public enum MarketplaceClientFactory {
     /// Returns the deterministic in-memory client. Default for
     /// development builds and the v1 marketplace browser.
     public static func makeStub() -> MarketplaceClient {
         return StubMarketplaceClient()
+    }
+
+    /// Returns the real URLSession-backed client pointed at
+    /// `endpoint`. The transport is injectable so tests can
+    /// swap in a stub without touching the network. The default
+    /// `URLSessionMarketplaceTransport()` wraps
+    /// `URLSession.shared`.
+    public static func makeRemote(
+        endpoint: URL,
+        transport: MarketplaceTransport = URLSessionMarketplaceTransport()
+    ) -> MarketplaceClient {
+        return RemoteMarketplaceClient(endpoint: endpoint, transport: transport)
     }
 }

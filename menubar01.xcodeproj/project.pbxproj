@@ -114,10 +114,12 @@
 		7D07491F954181639E58B1A8 /* PluginGeneratorMenuCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 454445FD953D89EB9E4E367E /* PluginGeneratorMenuCommand.swift */; };
 		846B4251AC37AC83DFC985D7 /* AIGeneratorMenuNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3F44F2B40C403EDCC0F57F /* AIGeneratorMenuNode.swift */; };
 		8BF42C414E384000A69A88B2 /* MarketplaceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */; };
+		1C8F703DC269A2679990AB57 /* RemoteMarketplaceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D57C671059D615A98EAAF4F5 /* RemoteMarketplaceClient.swift */; };
 		9F374506B6F0180C6FAE2EE1 /* GeneratorHistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00D54B6E986280BB1B0D476A /* GeneratorHistorySheet.swift */; };
 		A70651873CCB49F5884BEB7D /* MockAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */; };
 		A8F64891B552DF407EB3A4FF /* PluginCapabilityError.swift in Sources */ = {isa = PBXBuildFile; fileRef = C01E46C5B7D78CD61558CA32 /* PluginCapabilityError.swift */; };
 		A9D77907F8FD45B1BCF9FCDF /* MarketplaceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */; };
+		3338B9EDEEB106D21BF110F5 /* RemoteMarketplaceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D57C671059D615A98EAAF4F5 /* RemoteMarketplaceClient.swift */; };
 		AB00000000000000A00000A1 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000A00000A2 /* AppVersion.swift */; };
 		ABF91B7D2589C7920020590A /* NSFont+Offset.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF91B7C2589C7920020590A /* NSFont+Offset.swift */; };
 		BF1C3D1C5A1F4F9BA2D1060D /* EchoAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF1C3D1C5A1F4F9BA2D1060E /* EchoAIPluginGenerator.swift */; };
@@ -279,6 +281,7 @@
 		705AC70319E448669E96803B /* MarketplaceEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceEntry.swift; sourceTree = "<group>"; };
 		76224727A343C18081524B72 /* AIGeneratorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorSheet.swift; path = "menubar01/UI/Plugin Generator/AIGeneratorSheet.swift"; sourceTree = SOURCE_ROOT; };
 		7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceClient.swift; sourceTree = "<group>"; };
+		D57C671059D615A98EAAF4F5 /* RemoteMarketplaceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteMarketplaceClient.swift; sourceTree = "<group>"; };
 		7FEB4F41823AF230C30E0B8D /* PluginManager+MarketplaceInstall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PluginManager+MarketplaceInstall.swift"; path = "menubar01/Plugin/PluginManager+MarketplaceInstall.swift"; sourceTree = SOURCE_ROOT; };
 		8399450AB6E6F880B034E17B /* PluginCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginCapabilities.swift; path = menubar01/Plugin/PluginCapabilities.swift; sourceTree = SOURCE_ROOT; };
 		95EF42CEA9A275A956AD7AFE /* GeneratorHistoryMenuCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = GeneratorHistoryMenuCommand.swift; path = "menubar01/UI/Generator History/GeneratorHistoryMenuCommand.swift"; sourceTree = SOURCE_ROOT; };
@@ -572,6 +575,7 @@
 			isa = PBXGroup;
 			children = (
 				7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */,
+				D57C671059D615A98EAAF4F5 /* RemoteMarketplaceClient.swift */,
 				705AC70319E448669E96803B /* MarketplaceEntry.swift */,
 				3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */,
 			);
@@ -998,6 +1002,7 @@
 				BFC5B4F25B063E247047BE6C /* RemoteAIPluginGenerator.swift in Sources */,
 				7F1C3D1C5A1F4F9BA2D1061B /* LocalAIPluginGenerator.swift in Sources */,
 				A9D77907F8FD45B1BCF9FCDF /* MarketplaceClient.swift in Sources */,
+				3338B9EDEEB106D21BF110F5 /* RemoteMarketplaceClient.swift in Sources */,
 				F096B206BDC343C8848D75A6 /* MarketplaceEntry.swift in Sources */,
 				7011242E8E804B8286069094 /* MarketplaceInstaller.swift in Sources */,
 				51B44432A0FB14EEE6897054 /* AIGeneratorSheet.swift in Sources */,
@@ -1087,6 +1092,7 @@
 				1D1C38D68269CD69350E609D /* RemoteAIPluginGenerator.swift in Sources */,
 				7F1C3D1C5A1F4F9BA2D1061C /* LocalAIPluginGenerator.swift in Sources */,
 				8BF42C414E384000A69A88B2 /* MarketplaceClient.swift in Sources */,
+				1C8F703DC269A2679990AB57 /* RemoteMarketplaceClient.swift in Sources */,
 				721EF289AC9C4FB2B33B670E /* MarketplaceEntry.swift in Sources */,
 				188634133DA64CA2B479D00F /* MarketplaceInstaller.swift in Sources */,
 				E49E4B0A9F6784825DE62979 /* AIPreferencesView.swift in Sources */,

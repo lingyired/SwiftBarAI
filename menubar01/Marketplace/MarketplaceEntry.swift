@@ -144,9 +144,37 @@ public enum MarketplaceError: Error, Equatable, LocalizedError {
     /// A payload that should have been valid JSON (manifest, etc.)
     /// could not be encoded or decoded.
     case decodingFailed(reason: String)
-    /// Generic transport-layer failure. Not used by the M4 stub;
-    /// reserved for the future `RemoteMarketplaceClient`.
+    /// Generic transport-layer failure. Kept for the v1 stub's
+    /// in-memory "simulated transport" path; the real
+    /// `RemoteMarketplaceClient` uses the more specific
+    /// `.transportError`, `.providerFailure`, and
+    /// `.malformedResponse` cases below.
     case transport(reason: String)
+    /// The remote endpoint returned 401 / 403 — the marketplace
+    /// request is unauthorised. Surfaced as a distinct case so
+    /// the future marketplace Preferences pane can prompt the
+    /// user to re-enter credentials without conflating the
+    /// failure with a generic provider error. (M4 ships no
+    /// auth flow; this case is for the future M2 / M5 remote
+    /// client's v2+ auth path.)
+    case unauthorized
+    /// The remote endpoint returned 429 — the marketplace
+    /// service rate-limited the request. Distinct from
+    /// `.transportError` so the M5 browser can back off and
+    /// retry without conflating throttling with a real
+    /// transport failure.
+    case rateLimited
+    /// The remote endpoint returned a 4xx that is not 401 /
+    /// 403 / 404 / 429. The `reason` is `"<status> <body>"`.
+    case providerFailure(reason: String)
+    /// The remote endpoint returned 5xx. The `reason` is
+    /// `"<status> <body>"` so the diagnostic dump shows the
+    /// upstream server's own failure message verbatim.
+    case transportError(reason: String)
+    /// The remote endpoint returned a 2xx with a body the
+    /// client could not parse as the expected JSON shape. The
+    /// `reason` is the underlying `DecodingError` description.
+    case malformedResponse(reason: String)
 
     public var errorDescription: String? {
         switch self {
@@ -156,6 +184,16 @@ public enum MarketplaceError: Error, Equatable, LocalizedError {
             return "Could not decode marketplace payload: \(reason)"
         case .transport(let reason):
             return reason
+        case .unauthorized:
+            return "The remote marketplace rejected the request (HTTP 401 / 403). The marketplace endpoint may require credentials."
+        case .rateLimited:
+            return "The remote marketplace rate-limited the request. Please wait a moment and try again."
+        case .providerFailure(let reason):
+            return "Marketplace provider error: \(reason)"
+        case .transportError(let reason):
+            return "Could not reach the remote marketplace: \(reason)"
+        case .malformedResponse(let reason):
+            return "The remote marketplace returned an unparseable response: \(reason)"
         }
     }
 }
