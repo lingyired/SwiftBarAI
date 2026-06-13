@@ -11,14 +11,16 @@
 // `makeDefault()` is config-driven — it consults a
 // `PreferencesStore` key and returns the right `AIPluginGenerator`
 // for the user-selected provider — and `makeLocal(...)` is
-// non-throwing, returning a `LocalEchoAIPluginGenerator`
-// (placeholder type that records the inputs and returns a
-// deterministic `GeneratedPlugin`) or a `MockAIPluginGenerator`
-// when the user has not yet configured the inputs. `makeRemote(...)`
-// returns the real URLSession-backed `RemoteAIPluginGenerator` that
-// POSTs to the OpenAI-compatible `/v1/chat/completions` endpoint,
-// falling back to the mock when the user has not yet configured
-// the endpoint and API key.
+// non-throwing, returning a `LocalAIPluginGenerator` (M2+ v1
+// stub: validates a `.gguf` model file at the user-supplied
+// `modelPath` and returns a clear
+// `AIGeneratorError.providerFailure(reason:)` from `generate(...)`
+// explaining that local inference is not yet wired up) or a
+// `MockAIPluginGenerator` when the user has not yet configured a
+// path. `makeRemote(...)` returns the real URLSession-backed
+// `RemoteAIPluginGenerator` that POSTs to the OpenAI-compatible
+// `/v1/chat/completions` endpoint, falling back to the mock when
+// the user has not yet configured the endpoint and API key.
 
 import Foundation
 import os
@@ -157,10 +159,13 @@ public enum AIPluginGeneratorFactory {
 
     /// Build a generator backed by an on-device model at `modelPath`.
     ///
-    /// When `modelPath` is non-nil, returns a
-    /// `LocalEchoAIPluginGenerator` (the M2+ placeholder that
-    /// records the path and returns a deterministic
-    /// `GeneratedPlugin`). When `modelPath` is nil, logs a
+    /// When `modelPath` is non-nil, returns the
+    /// `LocalAIPluginGenerator` (M2+ v1 stub that validates the
+    /// `.gguf` file and returns a clear
+    /// `AIGeneratorError.providerFailure(reason:)` from
+    /// `generate(...)` explaining that local inference is not
+    /// yet wired up — see `LocalAIPluginGenerator.swift` for the
+    /// user-facing contract). When `modelPath` is nil, logs a
     /// warning and falls back to `MockAIPluginGenerator()` so the
     /// view model's "click Generate" path still produces a
     /// usable result.
@@ -170,10 +175,10 @@ public enum AIPluginGeneratorFactory {
     ) -> AIPluginGenerator {
         if let modelPath {
             os_log(
-                "AIPluginGenerator: makeLocal → LocalEchoAIPluginGenerator(modelPath=%{public}@)",
+                "AIPluginGenerator: makeLocal → LocalAIPluginGenerator(modelPath=%{public}@)",
                 log: log, type: .info, modelPath.path
             )
-            return LocalEchoAIPluginGenerator(modelPath: modelPath)
+            return LocalAIPluginGenerator(modelPath: modelPath)
         }
         os_log(
             "AIPluginGenerator: makeLocal falling back to MockAIPluginGenerator — no modelPath configured",

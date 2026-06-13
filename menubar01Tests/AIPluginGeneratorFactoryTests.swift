@@ -53,21 +53,29 @@ struct AIPluginGeneratorFactoryDefaultTests {
         #expect(generator is MockAIPluginGenerator)
     }
 
-    @Test func testMakeDefault_withLocalProviderKey_andModelPathSet_returnsLocalEchoGenerator() {
+    @Test func testMakeDefault_withLocalProviderKey_andModelPathSet_returnsLocalAIGenerator() {
         let prefs = makeIsolatedPreferencesStore()
         prefs.defaults.set(AIPluginGeneratorProvider.local.rawValue, forKey: AIPluginGeneratorFactory.providerKey)
         prefs.defaults.set("/tmp/fake-model.gguf", forKey: AIPluginGeneratorFactory.localModelPathKey)
 
         let generator = AIPluginGeneratorFactory.makeDefault(prefs: prefs)
-        #expect(generator is LocalEchoAIPluginGenerator)
-        // Strong-typed access to the placeholder's recorded
-        // input. A future real local provider will hold a
-        // different field, so the cast is on the placeholder
-        // type, not on the protocol.
-        if let local = generator as? LocalEchoAIPluginGenerator {
+        // The M2+ factory now returns the real
+        // `LocalAIPluginGenerator` v1 stub (validates the
+        // `.gguf` file and returns a clear
+        // `AIGeneratorError.providerFailure(reason:)` from
+        // `generate(...)`). The M2+ `LocalEchoAIPluginGenerator`
+        // placeholder is no longer the production return
+        // value; it is kept in the source tree for future
+        // reference only.
+        #expect(generator is LocalAIPluginGenerator)
+        // Strong-typed access to the real local generator's
+        // recorded input. A future v2 llama.cpp-backed
+        // implementation will keep the same `init` shape so
+        // the cast continues to hold.
+        if let local = generator as? LocalAIPluginGenerator {
             #expect(local.modelPath.path == "/tmp/fake-model.gguf")
         } else {
-            Issue.record("expected LocalEchoAIPluginGenerator, got \(type(of: generator))")
+            Issue.record("expected LocalAIPluginGenerator, got \(type(of: generator))")
         }
     }
 
@@ -138,12 +146,18 @@ struct AIPluginGeneratorFactoryLocalTests {
         #expect(generator is MockAIPluginGenerator)
     }
 
-    @Test func testMakeLocal_withModelPath_returnsLocalEchoGenerator() {
+    @Test func testMakeLocal_withModelPath_returnsLocalAIGenerator() {
         let prefs = makeIsolatedPreferencesStore()
         let url = URL(fileURLWithPath: "/tmp/some/local-model.gguf")
         let generator = AIPluginGeneratorFactory.makeLocal(modelPath: url, prefs: prefs)
-        #expect(generator is LocalEchoAIPluginGenerator)
-        if let local = generator as? LocalEchoAIPluginGenerator {
+        // The real v1 stub: validates the `.gguf` and returns
+        // a clear `AIGeneratorError.providerFailure(reason:)`
+        // from `generate(...)`. The `modelPath` is stored
+        // verbatim on the instance so a future v2 llama.cpp
+        // implementation can adopt the same `init` and start
+        // loading from the same path with no factory change.
+        #expect(generator is LocalAIPluginGenerator)
+        if let local = generator as? LocalAIPluginGenerator {
             #expect(local.modelPath == url)
         }
     }
