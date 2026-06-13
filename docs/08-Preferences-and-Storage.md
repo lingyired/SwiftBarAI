@@ -4,17 +4,17 @@ SwiftBar stores all user preferences in `UserDefaults` (a single `PreferencesSto
 
 ## `PreferencesStore`
 
-[PreferencesStore.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/PreferencesStore.swift) is a single class:
+[PreferencesStore.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/PreferencesStore.swift) is a single class:
 
 ```swift
 final class PreferencesStore: ObservableObject {
     static let shared = PreferencesStore()
-    private let userDefaults = UserDefaults(suiteName: "com.ameba.SwiftBar")!
+    private let userDefaults = UserDefaults(suiteName: "com.lingyi.menubar01")!
     …
 }
 ```
 
-It uses a custom `UserDefaults` suite so the data lives in `~/Library/Preferences/com.ameba.SwiftBar.plist`. Almost every property is wrapped in `get` / `set` pairs that read from `userDefaults` and write back through `userDefaults.set(_:forKey:)`.
+It uses a custom `UserDefaults` suite so the data lives in `~/Library/Preferences/com.lingyi.menubar01.plist`. Almost every property is wrapped in `get` / `set` pairs that read from `userDefaults` and write back through `userDefaults.set(_:forKey:)`.
 
 ### Published events
 
@@ -31,9 +31,9 @@ Subscribers (e.g. `PluginManager`, `AppShared`) use these to react and reconcile
 
 ## Exposed preferences
 
-Most of these have a UI in `SwiftBar/UI/Preferences/`. The full list (with type, default, and `defaults write` key) is below.
+Most of these have a UI in `menubar01/UI/Preferences/`. The full list (with type, default, and `defaults write` key) is below.
 
-| Property | Type | Default | `defaults write com.ameba.SwiftBar …` key |
+| Property | Type | Default | `defaults write com.lingyi.menubar01 …` key |
 | --- | --- | --- | --- |
 | `pluginDirectoryPath` | `String?` | `nil` | `PluginDirectoryPath` |
 | `showDefaultMenuBar` | `Bool` | `false` | `ShowDefaultMenuBar` |
@@ -81,7 +81,7 @@ These are not in the UI. They are useful for debugging and for power users.
 | Enable verbose logging | `Debug` (also `Verbose` shortcuts) | `false` | `os_log` at `.debug` level. |
 | Streamable plugin STDOUT | `StreamablePluginDebugOutput` | `false` | Write streamable plugin stdout to `os_log`. |
 | Use a debug cache dir | `DebugCacheDirectory` | `false` | Routes package caches to `/tmp`. |
-| Bundle-id override | `BundleIdentifier` | `com.ameba.SwiftBar` | For development builds. |
+| Bundle-id override | `BundleIdentifier` | `com.lingyi.menubar01` | For development builds. |
 | Date formatter | `DateFormat` | system locale | |
 | `RefreshPluginByDefault` | `RefreshPluginByDefault` | `false` | Always run the user's `defaultRefreshPlugin` script. |
 | `AppDelegate.firstRun` | `FirstRun` | `true` | Show the plugin-folder picker again. |
@@ -107,9 +107,9 @@ These are not in the UI. They are useful for debugging and for power users.
 A few defaults are read straight from `UserDefaults.standard` instead of the typed store. They are present for backward compatibility with old xbar/BitBar installations.
 
 ```
-defaults write com.ameba.SwiftBar UseImageSizeFromUserDefaults -bool YES
-defaults write com.ameba.SwiftBar UserImageSize 18
-defaults write com.ameba.SwiftBar MenuBarIconSize 18
+defaults write com.lingyi.menubar01 UseImageSizeFromUserDefaults -bool YES
+defaults write com.lingyi.menubar01 UserImageSize 18
+defaults write com.lingyi.menubar01 MenuBarIconSize 18
 ```
 
 ## Migration

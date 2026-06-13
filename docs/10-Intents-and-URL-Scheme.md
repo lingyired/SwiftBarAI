@@ -1,10 +1,10 @@
 # Intents and URL Scheme
 
-SwiftBar exposes its control surface through **two** parallel entry points: the legacy `swiftbar://` URL scheme (documented in [README.md](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/README.md)) and a set of `INIntent` subclasses (for Siri/Shortcuts).
+SwiftBar exposes its control surface through **two** parallel entry points: the legacy `menubar01://` URL scheme (documented in [README.md](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/README.md)) and a set of `INIntent` subclasses (for Siri/Shortcuts).
 
-## URL scheme — `swiftbar://`
+## URL scheme — `menubar01://`
 
-Declared in [Resources/Info.plist](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Resources/Info.plist) under `CFBundleURLTypes`. The handler is `AppDelegate.application(_:open:)`.
+Declared in [Resources/Info.plist](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Resources/Info.plist) under `CFBundleURLTypes`. The handler is `AppDelegate.application(_:open:)`.
 
 ### Hosts
 
@@ -36,31 +36,31 @@ The `refreshplugin` URL also accepts any number of `env.*=value` query parameter
 
 ## Intents — Siri / Shortcuts
 
-Defined in [Resources/Intents.intentdefinition](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Resources/Intents.intentdefinition). Implemented in [SwiftBar/Intents/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Intents).
+Defined in [Resources/Intents.intentdefinition](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Resources/Intents.intentdefinition). Implemented in [menubar01/Intents/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Intents).
 
 ### `GetPluginsIntent`
 
 - Parameter: `enabledOnly: Bool?`
 - Returns: `[String]` (list of plugin names)
-- Handler: [GetPluginsIntentHandler.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Intents/GetPluginsIntentHandler.swift)
+- Handler: [GetPluginsIntentHandler.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Intents/GetPluginsIntentHandler.swift)
 - Logic: returns `pluginManager.plugins.map(\.metadata.name)` filtered by `enabledOnly` if set.
 
 ### `EnablePluginIntent` / `DisablePluginIntent`
 
 - Parameter: `name: String`
-- Handler: [EnablePluginIntentHandler.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Intents/EnablePluginIntentHandler.swift) and [DisablePluginIntentHandler.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Intents/DisablePluginIntentHandler.swift)
+- Handler: [EnablePluginIntentHandler.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Intents/EnablePluginIntentHandler.swift) and [DisablePluginIntentHandler.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Intents/DisablePluginIntentHandler.swift)
 - Logic: mutate `prefs.disabledPlugins`; trigger `pluginManager.pluginsDidChange()`.
 
 ### `ReloadPluginIntent`
 
 - Parameter: `name: String`
-- Handler: [ReloadPluginIntentHandler.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Intents/ReloadPluginIntentHandler.swift)
+- Handler: [ReloadPluginIntentHandler.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Intents/ReloadPluginIntentHandler.swift)
 - Logic: find the plugin and call `plugin.run()`.
 
 ### `SetEphemeralPluginIntent`
 
 - Parameter: `name: String`, `content: String?`
-- Handler: [SetEphemeralPluginIntentHandler.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Intents/SetEphemeralPluginIntentHandler.swift)
+- Handler: [SetEphemeralPluginIntentHandler.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Intents/SetEphemeralPluginIntentHandler.swift)
 - Logic: calls `pluginManager.setEphemeralPlugin(...)` with the provided name/content/href/etc.
 
 ### Routing
@@ -75,7 +75,7 @@ if intent is ReloadPluginIntent     { return ReloadPluginIntentHandler() }
 if intent is SetEphemeralPluginIntent { return SetEphemeralPluginIntentHandler() }
 ```
 
-The MAS build replaces `SPUStandardUserDriverDelegate` etc. with empty protocols in [Resources/Intents/EmptyAdoption.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Resources/Intents/EmptyAdoption.swift) (the actual `Intents.intentdefinition` generates the `GetPluginsIntent`, etc. types at build time).
+The MAS build replaces `SPUStandardUserDriverDelegate` etc. with empty protocols in [Resources/Intents/EmptyAdoption.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Resources/Intents/EmptyAdoption.swift) (the actual `Intents.intentdefinition` generates the `GetPluginsIntent`, etc. types at build time).
 
 ## User notifications
 
@@ -95,4 +95,4 @@ When the user clicks the notification, the delegate (in `AppDelegate`) decodes t
 
 ## Tests
 
-A few URL-scheme scenarios are exercised by hand; there is no automated test for them in [SwiftBarTests/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBarTests), but a new test is straightforward via the URL parser in `AppDelegate` (it would need to be lifted into a helper for direct testing).
+A few URL-scheme scenarios are exercised by hand; there is no automated test for them in [menubar01Tests/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBarTests), but a new test is straightforward via the URL parser in `AppDelegate` (it would need to be lifted into a helper for direct testing).

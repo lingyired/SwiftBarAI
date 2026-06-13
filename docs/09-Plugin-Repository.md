@@ -4,7 +4,7 @@ The "Get Plugins…" window is a SwiftUI in-app browser for community-contribute
 
 ## `PluginRepository` — the data layer
 
-[PluginRepository.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/UI/Plugin%20Repository/PluginRepository.swift) is a `NSObject` that acts as the source of truth for the plugin browser.
+[PluginRepository.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/UI/Plugin%20Repository/PluginRepository.swift) is a `NSObject` that acts as the source of truth for the plugin browser.
 
 ### Singleton + persistence
 
@@ -56,7 +56,7 @@ The result is `repositoryPlugins.filter { … }`.
 
 ## `PluginRepositoryAPI` — the request layer
 
-[PluginRepositoryAPI.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/UI/Plugin%20Repository/PluginRepositoryAPI.swift) is a `NSObject` that performs HTTP requests. It uses `URLSession` and a `Result`-based completion style. All endpoints are POSTs to `https://api.github.com/repos/swiftbar/swiftbar-plugins/...`.
+[PluginRepositoryAPI.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/UI/Plugin%20Repository/PluginRepositoryAPI.swift) is a `NSObject` that performs HTTP requests. It uses `URLSession` and a `Result`-based completion style. All endpoints are POSTs to `https://api.github.com/repos/swiftbar/swiftbar-plugins/...`.
 
 ### Endpoints
 
@@ -87,7 +87,7 @@ The model `RepositoryPlugin` mirrors the JSON:
 
 ## `PluginRepositoryView` — the SwiftUI pane
 
-[PluginRepositoryView.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/UI/Plugin%20Repository/PluginRepositoryView.swift) wraps the data in a `NavigationSplitView` (sidebar with categories, detail with the plugin list). It uses:
+[PluginRepositoryView.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/UI/Plugin%20Repository/PluginRepositoryView.swift) wraps the data in a `NavigationSplitView` (sidebar with categories, detail with the plugin list). It uses:
 
 - `PluginListView` — main list with `PluginEntryView` cells.
 - `PluginEntryModalView` — the install modal.
@@ -98,11 +98,11 @@ The view listens for `.repositoirySearchUpdate` notifications and updates the se
 
 ## `PluginEntryView` — the cell
 
-[PluginEntryView.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/UI/Plugin%20Repository/PluginEntryView.swift) is a rounded-rectangle card with title, author (linking to GitHub if available), image, description, and footer with links to "Plugin Source" and "About Plugin". Tapping the card opens `PluginEntryModalView`.
+[PluginEntryView.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/UI/Plugin%20Repository/PluginEntryView.swift) is a rounded-rectangle card with title, author (linking to GitHub if available), image, description, and footer with links to "Plugin Source" and "About Plugin". Tapping the card opens `PluginEntryModalView`.
 
 ## `PluginEntryModalView` — the install modal
 
-Also in [PluginEntryView.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/UI/Plugin%20Repository/PluginEntryView.swift). The modal shows:
+Also in [PluginEntryView.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/UI/Plugin%20Repository/PluginEntryView.swift). The modal shows:
 
 - Title and author.
 - Image.

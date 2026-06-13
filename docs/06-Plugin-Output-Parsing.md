@@ -20,7 +20,7 @@ Submenu item 2 | href=... bash=...
 
 ## `MenuLineParameters` — the line parser
 
-[MenuLineParameters.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/MenuBar/MenuLineParameters.swift) is a value type (struct) and `Codable`. It supports both the SwiftBar style (`key=value`) and the xbar style (`key=value` with quoted values).
+[MenuLineParameters.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/MenuBar/MenuLineParameters.swift) is a value type (struct) and `Codable`. It supports both the SwiftBar style (`key=value`) and the xbar style (`key=value` with quoted values).
 
 ```swift
 public struct MenuLineParameters: Codable, Equatable {

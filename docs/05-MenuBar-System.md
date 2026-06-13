@@ -4,7 +4,7 @@ The MenuBar subsystem takes a plugin's `content: String?` and renders it as an `
 
 ## `MenubarItem` — per-plugin renderer
 
-[MenuBarItem.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/MenuBar/MenuBarItem.swift) is the only file that talks to `NSStatusItem` for a given plugin.
+[MenuBarItem.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/MenuBar/MenuBarItem.swift) is the only file that talks to `NSStatusItem` for a given plugin.
 
 ### Owned state
 
@@ -80,7 +80,7 @@ private func refreshMenuItems(force: Bool) {
 
 ## `MenuItemNode` — the rendered tree
 
-[MenuItemNode.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/MenuBar/MenuItemNode.swift) is a recursive `Equatable` tree that mirrors a single `Plugin`'s output.
+[MenuItemNode.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/MenuBar/MenuItemNode.swift) is a recursive `Equatable` tree that mirrors a single `Plugin`'s output.
 
 ### Top-level structure
 
@@ -150,11 +150,11 @@ This is the bridge from `MenuItemNode` → `NSMenuItem`:
 
 ## `MenuDiff`
 
-[MenuDiff.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/MenuBar/MenuDiff.swift) provides the structural diff for **shape** changes (insert/remove/move). It is used by `MenuItemNode.update(menu:previous:)` and by the menu in cases where structural diffs are not enough (e.g. adding an item into a new position, where a rebuild is preferred). The diff is hash-based: each `MenuItemNode` is hashed via a string that concatenates its kind, key fields, and a hash of its children.
+[MenuDiff.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/MenuBar/MenuDiff.swift) provides the structural diff for **shape** changes (insert/remove/move). It is used by `MenuItemNode.update(menu:previous:)` and by the menu in cases where structural diffs are not enough (e.g. adding an item into a new position, where a rebuild is preferred). The diff is hash-based: each `MenuItemNode` is hashed via a string that concatenates its kind, key fields, and a hash of its children.
 
 ## `FoldableMenuItemView`
 
-[FoldableMenuItemView.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/MenuBar/FoldableMenuItemView.swift) is a SwiftUI view used to render popover-style sub-menus that are *not* real `NSMenuItem` submenus. It's used when `dropdown=true` and the plugin author wants a SwiftUI panel instead of a traditional `NSMenu`. The view handles:
+[FoldableMenuItemView.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/MenuBar/FoldableMenuItemView.swift) is a SwiftUI view used to render popover-style sub-menus that are *not* real `NSMenuItem` submenus. It's used when `dropdown=true` and the plugin author wants a SwiftUI panel instead of a traditional `NSMenu`. The view handles:
 
 - A top-level button (the title of the node).
 - An accordion-style child list that animates open/close.

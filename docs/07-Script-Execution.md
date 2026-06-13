@@ -4,7 +4,7 @@ This document covers the three core pieces that turn a plugin into a live proces
 
 ## `runScript(to:args:runInBash:env:)` — the workhorse
 
-[RunScript.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Utility/RunScript.swift) is the single function that SwiftBar uses to spawn a child process.
+[RunScript.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/RunScript.swift) is the single function that SwiftBar uses to spawn a child process.
 
 ```swift
 func runScript(to executable: String,
@@ -41,17 +41,17 @@ It returns `nil` for `out` only when the process could not be launched or exceed
 
 ## `Environment` — the env-var provider
 
-[Environment.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Utility/Environment.swift) is a singleton that every plugin run is enriched with. It exposes a dictionary of `String: String` that is merged with the inherited environment.
+[Environment.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/Environment.swift) is a singleton that every plugin run is enriched with. It exposes a dictionary of `String: String` that is merged with the inherited environment.
 
 ### Injected variables
 
 | Variable | Value | Notes |
 | --- | --- | --- |
-| `SWIFTBAR_VERSION` | `appVersion` | Cached at app start. |
-| `SWIFTBAR_BUILD` | `appBuild` | Cached at app start. |
-| `SWIFTBAR_PLUGIN_PATH` | The plugin file path. | Re-set per-invocation. |
-| `SWIFTBAR_PLUGIN_CACHE_PATH` | The plugin's data folder under `cacheDirectory`. |  |
-| `SWIFTBAR_PLUGIN_DATA_PATH` | The plugin's data folder under `dataDirectory`. |  |
+| `MENUBAR01_VERSION` | `appVersion` | Cached at app start. |
+| `MENUBAR01_BUILD` | `appBuild` | Cached at app start. |
+| `MENUBAR01_PLUGIN_PATH` | The plugin file path. | Re-set per-invocation. |
+| `MENUBAR01_PLUGIN_CACHE_PATH` | The plugin's data folder under `cacheDirectory`. |  |
+| `MENUBAR01_PLUGIN_DATA_PATH` | The plugin's data folder under `dataDirectory`. |  |
 | `OS_LAST_SLEEP_TIME` / `OS_LAST_WAKE_TIME` | Updated on sleep/wake. | ISO-8601 strings. |
 | `OS_START_TIME` | When the app started. |  |
 | `HOME`, `TMPDIR`, `LANG`, `LC_ALL` | Re-exposed. |  |
@@ -65,7 +65,7 @@ It returns `nil` for `out` only when the process could not be launched or exceed
 
 ## `ShortcutsManager` — Apple Shortcuts bridge
 
-[ShortcutsManager.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Utility/ShortcutsManager.swift) wraps `NSAppleScript` calls into `Shortcuts.app` to run Apple Shortcuts as if they were scripts.
+[ShortcutsManager.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/ShortcutsManager.swift) wraps `NSAppleScript` calls into `Shortcuts.app` to run Apple Shortcuts as if they were scripts.
 
 ### Functions
 
@@ -98,7 +98,7 @@ Errors from `NSAppleScript` (e.g. "Shortcuts is not running") are surfaced via t
 
 ## `PluginUtilities` — refresh interval parsing & plugin operations
 
-[PluginUtilities.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Utility/PluginUtilities.swift) is a thin module-level file:
+[PluginUtilities.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/PluginUtilities.swift) is a thin module-level file:
 
 - `parseRefreshInterval(...)` — supports `Ns`, `Nm`, `Nh`, `Nd`, `wN` (1 minute minimum). The unit is one of `[s, m, h, d, w]`. Returns `nil` on parse failure (the plugin will use the default 10s).
 - `RunPluginOperation<T: Plugin>` — an `Operation` subclass that invokes a plugin and assigns the result to `content`. The operation's `start()` cancels the plugin's in-flight work, then enqueues a script invocation. On `cancel()` the operation signals the plugin to terminate before its `run()` finishes.
@@ -107,7 +107,7 @@ Errors from `NSAppleScript` (e.g. "Shortcuts is not running") are surfaced via t
 
 ## Terminal launching
 
-[AppShared.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/AppShared.swift) hosts the terminal-laundering logic.
+[AppShared.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/AppShared.swift) hosts the terminal-laundering logic.
 
 ### `runInTerminal(script:args:runInBackground:env:runInBash:completionHandler:)`
 

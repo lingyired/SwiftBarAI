@@ -1,10 +1,10 @@
 # Plugin System
 
-The plugin system is the heart of SwiftBar. Every "menu bar item" is a `Plugin`, an object that knows how to produce a textual output and how to react when the user clicks it.
+The plugin system is the heart of menubar01. Every "menu bar item" is a `Plugin`, an object that knows how to produce a textual output and how to react when the user clicks it. The discovery pipeline in `PluginManager.getPluginList()` matches folders that contain a `manifest.json`; single-file scripts and legacy `.swiftbar` directory bundles are no longer recognised (see [`README-MANIFEST-PLUGINS.md`](../README-MANIFEST-PLUGINS.md) and [`changes/2026-06-13-drop-legacy-compat.md`](../changes/2026-06-13-drop-legacy-compat.md)).
 
 ## `Plugin` — the protocol
 
-[Plugin.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Plugin/Plugin.swift) defines `Plugin` as a class-only protocol that extends `ObservableObject`. It is intentionally lightweight so each concrete type can be cheap to construct.
+[Plugin.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin/Plugin.swift) defines `Plugin` as a class-only protocol that extends `ObservableObject`. It is intentionally lightweight so each concrete type can be cheap to construct.
 
 ### Identity
 
@@ -12,7 +12,7 @@ The plugin system is the heart of SwiftBar. Every "menu bar item" is a `Plugin`,
 | --- | --- | --- |
 | `metadata` | `PluginMetadata` | Refresh interval, type, custom env, name, etc. |
 | `content` | `String?` | **The output** of the most recent run. The setter is `didSet` and publishes via `contentUpdatePublisher`. |
-| `type` | `PluginType` | `.executable`, `.streamable`, `.packaged`, `.ephemeral`, `.shortcut`. |
+| `type` | `PluginType` | `.executable` (default), `.shortcut`, `.ephemeral`. The historical `.streamable` and `.packaged` cases were removed in commit `1ccd8ef`. |
 | `run` | `() -> Void` | Triggers a single execution immediately. |
 | `stop` | `() -> Void` | Cancels in-flight execution. |
 | `terminate` | `() -> Void` | Stop and re-arm timers as appropriate. |
@@ -44,7 +44,7 @@ The `disabled` property in `PluginMetadata` (synced into `prefs.disabledPlugins`
 
 ## Concrete types
 
-All five concrete `Plugin` types are constructed by `PluginManager`. They live in [SwiftBar/Plugin/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Plugin).
+All five concrete `Plugin` types are constructed by `PluginManager`. They live in [menubar01/Plugin/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin).
 
 ### `ExecutablePlugin` — finite scripts
 
@@ -56,7 +56,7 @@ For a file like `battery.10s.sh` in the plugin folder. Lifecycle:
    - The interval encoded in the filename (e.g. `.10s.`).
 3. When the timer fires, `RunPluginOperation(self, refreshEnv:)` is enqueued on `pluginInvokeQueue`. The operation:
    - Cancels in-flight work.
-   - Calls `runScript(to:args:runInBash:env:)` from [RunScript.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Utility/RunScript.swift).
+   - Calls `runScript(to:args:runInBash:env:)` from [RunScript.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/RunScript.swift).
    - Sets `self.content` to the script's `out` (truncating on errors).
    - On error, prepends a marker line and updates `lastError` / `lastErrorRefresh`.
    - Re-arms the timer.
@@ -104,7 +104,7 @@ If no content is provided, the menu-bar item is removed. Ephemeral plugins never
 
 ### `PackagedPlugin` — `.swiftbar` bundles
 
-A `.swiftbar` package is a directory whose name ends in `.swiftbar`, recognized as a `com.ameba.SwiftBar.PluginPackage` UTI. Inside:
+A `.swiftbar` package is a directory whose name ends in `.swiftbar`, recognized as a `com.lingyi.menubar01.PluginPackage` UTI. Inside:
 
 ```
 myplugin.swiftbar/
@@ -130,7 +130,7 @@ On macOS, `.swiftbar` packages are also `FilePackage` document bundles; opening 
 
 ## `PluginMetadata`
 
-[PluginMetadata.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Plugin/PluginMetadata.swift) holds the resolved configuration. Two factories:
+[PluginMetadata.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin/PluginMetadata.swift) holds the resolved configuration. Two factories:
 
 - `PluginMetadata(filename:)` — parses `<name>.<interval>.<ext>`.
 - `PluginMetadata(file:)` — delegates to the filename factory.
@@ -156,7 +156,7 @@ Notable fields:
 
 ## `PluginManager`
 
-[PluginManger.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Plugin/PluginManger.swift) (typo preserved for git-blame stability). Singleton (`PluginManager.shared`).
+[PluginManger.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin/PluginManger.swift) (typo preserved for git-blame stability). Singleton (`PluginManager.shared`).
 
 ### Owned state
 
@@ -214,7 +214,7 @@ Notable fields:
 
 ## `PluginDebugInfo` — per-plugin debug event log
 
-[PluginDebugInfo.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Plugin/PluginDebugInfo.swift) keeps a rolling `maxEntries`-bounded `entries` array of `PluginDebugInfo.Entry { timestamp, content }`. The debug popover (`AppShared.showPluginDebug(plugin:)`) shows this list and offers a copy / clear action. It is shared across runs and re-read on `init` from `Application Support/<AppName>/Plugins/<plugin-id>.log` if it exists, so past events persist across restarts.
+[PluginDebugInfo.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin/PluginDebugInfo.swift) keeps a rolling `maxEntries`-bounded `entries` array of `PluginDebugInfo.Entry { timestamp, content }`. The debug popover (`AppShared.showPluginDebug(plugin:)`) shows this list and offers a copy / clear action. It is shared across runs and re-read on `init` from `Application Support/<AppName>/Plugins/<plugin-id>.log` if it exists, so past events persist across restarts.
 
 ## Putting it together — an item's full lifecycle
 

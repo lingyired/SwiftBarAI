@@ -12,7 +12,7 @@ This document explains how SwiftBar is built, how to run it from Xcode, and how 
 ## Project layout (build-side)
 
 ```
-SwiftBar.xcodeproj/
+menubar01.xcodeproj/
 └── project.pbxproj         # Two targets, two schemes
 
 SwiftBar/
@@ -21,7 +21,7 @@ SwiftBar/
 ├── AppDelegate+*.swift     # Toolbar, Menu, Intents
 ├── …                       # The rest of the app
 
-SwiftBarTests/
+menubar01Tests/
 ├── Info.plist
 └── …                       # Minimal tests
 ```
@@ -30,14 +30,14 @@ The Xcode project defines two targets:
 
 | Target | Build flavor | Purpose |
 | --- | --- | --- |
-| `SwiftBar` | Direct distribution | Includes Sparkle. Uses [Resources/Info.plist](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Resources/Info.plist) and `SwiftBar.entitlements`. |
-| `SwiftBar MAS` | Mac App Store | No Sparkle. Uses `SwiftBar MAS.entitlements`. Compiled with the `MAC_APP_STORE` Swift flag. |
+| `SwiftBar` | Direct distribution | Includes Sparkle. Uses [Resources/Info.plist](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Resources/Info.plist) and `menubar01.entitlements`. |
+| `SwiftBar MAS` | Mac App Store | No Sparkle. Uses `menubar01 MAS.entitlements`. Compiled with the `MAC_APP_STORE` Swift flag. |
 
 ## How to build and run
 
 ### From Xcode
 
-1. Open `SwiftBar.xcodeproj`.
+1. Open `menubar01.xcodeproj`.
 2. Select the `SwiftBar` scheme (top toolbar).
 3. Pick **My Mac** as the destination.
 4. **Product → Run** (⌘R). Xcode will resolve packages and build.
@@ -48,10 +48,10 @@ For the MAS build, switch the scheme to `SwiftBar MAS` before running.
 
 ```bash
 # Direct distribution build
-xcodebuild -project SwiftBar.xcodeproj -scheme SwiftBar -configuration Release
+xcodebuild -project menubar01.xcodeproj -scheme menubar01 -configuration Release
 
 # Mac App Store build
-xcodebuild -project SwiftBar.xcodeproj -scheme "SwiftBar MAS" -configuration Release
+xcodebuild -project menubar01.xcodeproj -scheme "menubar01 MAS" -configuration Release
 ```
 
 To open the built `.app` and launch it:
@@ -66,7 +66,7 @@ The two targets use different code-signing identities. The default for local dev
 
 ## Dependencies
 
-Dependencies are resolved automatically by SwiftPM through [Package.resolved](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved). They are:
+Dependencies are resolved automatically by SwiftPM through [Package.resolved](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved). They are:
 
 - `HotKey` (forked under `swiftbar/`) — 0.1.3
 - `LaunchAtLogin` (sindresorhus) — 5.0.0
@@ -91,8 +91,8 @@ When defined:
 When undefined (the default `SwiftBar` target):
 
 - `SPUUpdater` updates are enabled, with the feed URL controlled by `prefs.includeBetaUpdates`:
-  - `https://swiftbar.github.io/SwiftBar/appcast.xml`
-  - `https://swiftbar.github.io/SwiftBar/appcast-beta.xml`
+  - `https://lingyi.github.io/menubar01/appcast.xml`
+  - `https://lingyi.github.io/menubar01/appcast-beta.xml`
 - `DirectoryObserver` is used to live-update when the plugin folder changes.
 
 ### Hidden preference toggles
@@ -100,16 +100,16 @@ When undefined (the default `SwiftBar` target):
 Useful for development and debugging:
 
 ```
-defaults write com.ameba.SwiftBar Debug -bool YES
-defaults write com.ameba.SwiftBar StreamablePluginDebugOutput -bool YES
-defaults write com.ameba.SwiftBar IncludeBetaUpdates -bool YES
-defaults write com.ameba.SwiftBar ForceDarkMode -bool YES
+defaults write com.lingyi.menubar01 Debug -bool YES
+defaults write com.lingyi.menubar01 StreamablePluginDebugOutput -bool YES
+defaults write com.lingyi.menubar01 IncludeBetaUpdates -bool YES
+defaults write com.lingyi.menubar01 ForceDarkMode -bool YES
 ```
 
 Reset the defaults with:
 
 ```
-defaults delete com.ameba.SwiftBar
+defaults delete com.lingyi.menubar01
 ```
 
 ## First-run flow
@@ -122,15 +122,15 @@ defaults delete com.ameba.SwiftBar
 ## Logging
 
 ```
-log stream --predicate 'subsystem == "com.ameba.SwiftBar"' --style compact
+log stream --predicate 'subsystem == "com.lingyi.menubar01"' --style compact
 ```
 
-Or, in Xcode's console, filter by `com.ameba.SwiftBar`. To enable debug-level output, set `Debug` and `StreamablePluginDebugOutput` to `YES` (see above) and relaunch.
+Or, in Xcode's console, filter by `com.lingyi.menubar01`. To enable debug-level output, set `Debug` and `StreamablePluginDebugOutput` to `YES` (see above) and relaunch.
 
 ## Tests
 
 ```bash
-xcodebuild test -project SwiftBar.xcodeproj -scheme SwiftBar -destination 'platform=macOS'
+xcodebuild test -project menubar01.xcodeproj -scheme menubar01 -destination 'platform=macOS'
 ```
 
 The current test target is light; consider it a starting point for unit-testing the script/output/grammar layers.
@@ -140,7 +140,7 @@ The current test target is light; consider it a starting point for unit-testing 
 ### Direct distribution (Sparkle)
 
 - Build the `SwiftBar` Release configuration.
-- The `.app` is uploaded to GitHub Releases with a Sparkle `appcast.xml` entry. The `appcast.xml` is published at `https://swiftbar.github.io/SwiftBar/appcast.xml` (and a `*-beta.xml` variant for pre-releases).
+- The `.app` is uploaded to GitHub Releases with a Sparkle `appcast.xml` entry. The `appcast.xml` is published at `https://lingyi.github.io/menubar01/appcast.xml` (and a `*-beta.xml` variant for pre-releases).
 
 ### Mac App Store
 
@@ -153,8 +153,8 @@ The current test target is light; consider it a starting point for unit-testing 
 - **Plugin folder permission** — On the first run, the user must pick the plugin folder via the GUI. SwiftBar stores a security-scoped bookmark for the directory in MAS builds, so simply changing `PluginDirectoryPath` in `defaults` may not work in MAS.
 - **Apple Events / Automation** — The first time a user runs a script in Terminal/iTerm, macOS prompts for permission. SwiftBar launches `osascript` (via `ShortcutsManager`), which the user must allow.
 - **Plugin output order** — Plugins are sorted by `metadata.priority` (descending) and then by file name. The `DisablePluginReordering` default forces the file-name sort.
-- **Sparkle updates** — On a development build, `SPUUpdater.start()` is called and will hit the production `appcast.xml`. To prevent updates during local development, set the bundle id to something unique (e.g. `com.ameba.SwiftBar-dev`):
+- **Sparkle updates** — On a development build, `SPUUpdater.start()` is called and will hit the production `appcast.xml`. To prevent updates during local development, set the bundle id to something unique (e.g. `com.lingyi.menubar01-dev`):
 
   ```
-  defaults write com.ameba.SwiftBar BundleIdentifier com.ameba.SwiftBar-dev
+  defaults write com.lingyi.menubar01 BundleIdentifier com.lingyi.menubar01-dev
   ```

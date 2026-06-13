@@ -46,14 +46,14 @@ SwiftBar is structured around **three coordinated layers**: the **App layer** (N
 
 ## Bootstrapping flow
 
-1. [main.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/main.swift) creates an `AppDelegate` and calls `NSApplicationMain`. There is no `@main` attribute; the `main.swift` file is the entry.
+1. [main.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/main.swift) creates an `AppDelegate` and calls `NSApplicationMain`. There is no `@main` attribute; the `main.swift` file is the entry.
 2. `AppDelegate.applicationDidFinishLaunching`:
    1. Configures the preferences window and toolbar.
    2. Removes stray `NSStatusItem Visible` keys from `UserDefaults` (these can hide items incorrectly when plugins emit no output).
    3. Starts the Sparkle updater (non-MAS only).
    4. Determines the user's login shell (env `SHELL`, fallback to `dscl`).
    5. Prompts for a plugin folder on first launch.
-   6. Constructs [`PluginManager.shared`](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Plugin/PluginManger.swift) and calls `loadPlugins()`.
+   6. Constructs [`PluginManager.shared`](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin/PluginManger.swift) and calls `loadPlugins()`.
    7. Subscribes to `NSWorkspace.willSleep` / `didWake` to terminate / start plugins and refresh the env time stamps.
 3. Each discovered file becomes an `ExecutablePlugin` or `StreamablePlugin`; each persisted Shortcut becomes a `ShortcutPlugin`; each `.swiftbar` directory becomes a `PackagedPlugin`. URL-scheme-driven plugins become `EphemeralPlugin` on demand.
 4. For every enabled plugin, a `MenubarItem` is created (`PluginManager.pluginsDidChange`).
@@ -98,8 +98,8 @@ SwiftBar is structured around **three coordinated layers**: the **App layer** (N
 
 SwiftBar exposes three external entry points:
 
-1. **`swiftbar://` URL scheme** — see [10-Intents-and-URL-Scheme.md](./10-Intents-and-URL-Scheme.md). Hosts include `refreshplugin`, `enableplugin`, `addplugin`, `setephemeralplugin`, `notify`, `copysystemreport`, etc.
-2. **Siri/Shortcuts Intents** — `GetPluginsIntent`, `EnablePluginIntent`, `DisablePluginIntent`, `ReloadPluginIntent`, `SetEphemeralPluginIntent`. Routed via `AppDelegate.application(_:handlerFor:)` to handlers in [SwiftBar/Intents/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Intents).
+1. **`menubar01://` URL scheme** — see [10-Intents-and-URL-Scheme.md](./10-Intents-and-URL-Scheme.md). Hosts include `refreshplugin`, `enableplugin`, `addplugin`, `setephemeralplugin`, `notify`, `copysystemreport`, etc.
+2. **Siri/Shortcuts Intents** — `GetPluginsIntent`, `EnablePluginIntent`, `DisablePluginIntent`, `ReloadPluginIntent`, `SetEphemeralPluginIntent`. Routed via `AppDelegate.application(_:handlerFor:)` to handlers in [menubar01/Intents/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Intents).
 3. **Plugin-driven notifications** — plugins can post `UNNotificationRequest` through `PluginManager.showNotification(...)`; the delegate re-acts on click via `userNotificationCenter(_:didReceive:withCompletionHandler:)`.
 
 ## Diagnostics

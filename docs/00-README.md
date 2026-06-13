@@ -1,8 +1,8 @@
-# SwiftBar Code Wiki
+# menubar01 Code Wiki
 
-> Structured technical documentation for the SwiftBar macOS application.
+> Structured technical documentation for the menubar01 macOS application.
 
-SwiftBar is a macOS menu-bar app that lets users add custom menu bar items by writing small executable scripts. It is the spiritual successor of [BitBar](https://github.com/matryer/bitbar) / [xbar](https://github.com/matryer/xbar), written in Swift and built with AppKit + SwiftUI.
+menubar01 is a macOS menu-bar app that lets users add custom menu bar items by writing small executable scripts packaged as a folder containing a `manifest.json` and an entry script. It is an independent fork of [SwiftBar](https://github.com/swiftbar/SwiftBar) with the legacy SwiftBar plugin format removed; only the folder-based `manifest.json` format is supported (see [`README-MANIFEST-PLUGINS.md`](../README-MANIFEST-PLUGINS.md)).
 
 ## Table of Contents
 
@@ -21,7 +21,7 @@ SwiftBar is a macOS menu-bar app that lets users add custom menu bar items by wr
 
 ### Extensions and Surfaces
 10. [Plugin Repository](./09-Plugin-Repository.md) — in-app plugin browsing, `PluginRepository`, `Agent`
-11. [Intents and URL Scheme](./10-Intents-and-URL-Scheme.md) — Siri/Shortcuts intents, `swiftbar://` URLs
+11. [Intents and URL Scheme](./10-Intents-and-URL-Scheme.md) — Siri/Shortcuts intents, `menubar01://` URLs
 12. [User Interface](./11-User-Interface.md) — preferences panes, plugin repository window, popovers
 13. [Utilities](./12-Utilities.md) — helpers, extensions, observability
 

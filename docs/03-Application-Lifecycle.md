@@ -106,9 +106,9 @@ When a plugin-driven notification is clicked:
 
 ```swift
 if prefs.includeBetaUpdates {
-    return "https://swiftbar.github.io/SwiftBar/appcast-beta.xml"
+    return "https://lingyi.github.io/menubar01/appcast-beta.xml"
 }
-return "https://swiftbar.github.io/SwiftBar/appcast.xml"
+return "https://lingyi.github.io/menubar01/appcast.xml"
 ```
 
 ### Activation policy
@@ -122,7 +122,7 @@ return "https://swiftbar.github.io/SwiftBar/appcast.xml"
 
 ## `AppShared` (static facade)
 
-[AppShared.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/AppShared.swift) is a class of `static` methods that any menu item or SwiftUI pane can call. It is the only place outside the delegate that can perform cross-window actions.
+[AppShared.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/AppShared.swift) is a class of `static` methods that any menu item or SwiftUI pane can call. It is the only place outside the delegate that can perform cross-window actions.
 
 | Method | Purpose |
 | --- | --- |
@@ -160,19 +160,19 @@ Implements `NSToolbarDelegate` for the plugin repository window. The toolbar inc
 
 ## `AppDelegate+Intents.swift` — Siri/Shortcuts routing
 
-`application(_:handlerFor:)` returns the correct intent handler for each `INIntent` defined in [Intents.intentdefinition](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBar/Resources/Intents.intentdefinition). See [10-Intents-and-URL-Scheme.md](./10-Intents-and-URL-Scheme.md).
+`application(_:handlerFor:)` returns the correct intent handler for each `INIntent` defined in [Intents.intentdefinition](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Resources/Intents.intentdefinition). See [10-Intents-and-URL-Scheme.md](./10-Intents-and-URL-Scheme.md).
 
 ## `Log.swift` — observability
 
 ```swift
 enum Log {
-    static let plugin      = OSLog(subsystem: "com.ameba.SwiftBar", category: "Plugin")
-    static let repository  = OSLog(subsystem: "com.ameba.SwiftBar", category: "Plugin Repository")
-    static let diagnostics = OSLog(subsystem: "com.ameba.SwiftBar", category: "Diagnostics")
+    static let plugin      = OSLog(subsystem: "com.lingyi.menubar01", category: "Plugin")
+    static let repository  = OSLog(subsystem: "com.lingyi.menubar01", category: "Plugin Repository")
+    static let diagnostics = OSLog(subsystem: "com.lingyi.menubar01", category: "Diagnostics")
 }
 ```
 
-Use `os_log("…", log: Log.plugin, type: .info)` everywhere. To see streamable-plugin STDOUT, set `defaults write com.ameba.SwiftBar StreamablePluginDebugOutput -bool YES`.
+Use `os_log("…", log: Log.plugin, type: .info)` everywhere. To see streamable-plugin STDOUT, set `defaults write com.lingyi.menubar01 StreamablePluginDebugOutput -bool YES`.
 
 ## Hidden preferences (not exposed in UI)
 
