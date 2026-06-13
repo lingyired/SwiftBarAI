@@ -531,6 +531,85 @@ public final class RemoteAIPluginGenerator: AIPluginGenerator {
         }
     }
 
+    /// M2+ "Improve" helper. POSTs the user's request to the
+    /// remote provider with a dedicated system prompt that asks
+    /// the model to rewrite the request as a single, specific
+    /// instruction a menubar01 plugin generator could act on,
+    /// and returns the trimmed
+    /// `choices[0].message.content`. Uses a low temperature
+    /// (`0.3`) so the rewrite is consistent across clicks, and
+    /// `stream: false` because the consumer (the M2 sheet's
+    /// `improveRequest()` view-model method) just needs the
+    /// final string — there is no UI to stream into.
+    ///
+    /// Re-uses the same `performWithRetry` helper as
+    /// `generate(...)` so a 429 / 5xx response is retried with
+    /// the same exponential-backoff / `Retry-After` policy. 401
+    /// / 403 / other 4xx are surfaced as
+    /// `AIGeneratorError.unauthorized` / `.providerFailure`
+    /// without retry, identical to the `generate(...)` path.
+    public func improve(
+        request: String,
+        context: AIGeneratorContext
+    ) async throws -> String {
+        // Encode the request body with a temperature of 0.3 and
+        // `stream: false`. `response_format: json_object` is kept
+        // so the model cannot leak prose around the rewritten
+        // prompt; the consumer (the view model) trims the
+        // returned string anyway.
+        let bodyData: Data
+        do {
+            bodyData = try JSONEncoder().encode(
+                RemoteChatCompletionsRequest(
+                    model: context.model,
+                    systemPrompt: Self.improveSystemPrompt,
+                    userPrompt: request,
+                    stream: false,
+                    temperature: 0.3
+                )
+            )
+        } catch {
+            throw AIGeneratorError.malformedResponse(
+                reason: "could not encode improve request: \(error.localizedDescription)"
+            )
+        }
+
+        var urlRequest = URLRequest(url: Self.requestURL(for: endpoint))
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.httpBody = bodyData
+
+        let data: Data
+        let response: URLResponse
+        (data, response) = try await performWithRetry(
+            urlRequest: urlRequest,
+            remaining: maxRetries
+        )
+        _ = response
+
+        let envelope: RemoteChatCompletionsResponse
+        do {
+            envelope = try JSONDecoder().decode(
+                RemoteChatCompletionsResponse.self,
+                from: data
+            )
+        } catch {
+            throw AIGeneratorError.malformedResponse(
+                reason: error.localizedDescription
+            )
+        }
+        guard let content = envelope.choices.first?.message.content,
+              !content.isEmpty
+        else {
+            throw AIGeneratorError.malformedResponse(
+                reason: "missing or empty choices[0].message.content"
+            )
+        }
+        return content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     // MARK: - Helpers (shared with stream)
 
     /// Builds a `GeneratedPlugin` from the model's assembled
@@ -601,6 +680,39 @@ public final class RemoteAIPluginGenerator: AIPluginGenerator {
        describing what the plugin does and how to use it.
 
     Do not include any text outside the JSON object.
+    """
+
+    /// The system prompt sent as the first message in the
+    /// `messages` array by `improve(request:context:)`. Asks
+    /// the model to rewrite the user's natural-language
+    /// request as a single, specific instruction a menubar01
+    /// plugin generator could act on, and to return only the
+    /// rewritten prompt — no surrounding prose, no JSON
+    /// envelope, no markdown fences. The consumer
+    /// (`AIGeneratorViewModel.improveRequest()`) trims the
+    /// result and splats it straight into the request editor.
+    static let improveSystemPrompt: String = """
+    You are a prompt rewriter for the menubar01 AI plugin generator. \
+    The user will give you a short, often vague, natural-language \
+    description of a macOS menu bar plugin. Rewrite it as a single, \
+    clear, specific instruction that another LLM (the plugin \
+    generator) could act on to produce a working menubar01 plugin.
+
+    Make the rewrite:
+      * Specific — name the data source (e.g. weather, battery, \
+        calendar, current track, system status), the unit (Celsius \
+        vs Fahrenheit, hours vs minutes), and the refresh cadence \
+        when it matters.
+      * Concrete — describe the menu layout the user probably \
+        wants (top-level line, submenu, submenu items) in one \
+        sentence.
+      * Single-paragraph — one paragraph, no bullet points, no \
+        numbered list, no leading phrases like "Rewrite: " or \
+        "Improved: ".
+
+    Reply with the rewritten prompt only — no surrounding prose, \
+    no markdown fences, no JSON envelope. The whole response will \
+    be dropped into a text editor and reviewed by the user.
     """
 
     /// Resolves the request URL. If the endpoint's path already
@@ -1023,13 +1135,13 @@ private struct RemoteChatCompletionsRequest: Encodable {
         let type: String
     }
 
-    init(model: String, systemPrompt: String, userPrompt: String, stream: Bool = false) {
+    init(model: String, systemPrompt: String, userPrompt: String, stream: Bool = false, temperature: Double = 0.2) {
         self.model = model
         self.messages = [
             Message(role: "system", content: systemPrompt),
             Message(role: "user", content: userPrompt)
         ]
-        self.temperature = 0.2
+        self.temperature = temperature
         self.response_format = ResponseFormat(type: "json_object")
         self.stream = stream
     }

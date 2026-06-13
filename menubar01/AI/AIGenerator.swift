@@ -201,6 +201,13 @@ public enum AIGeneratorError: Error, Equatable, LocalizedError {
     /// with a real OpenAI-compatible SSE parser; the Mock /
     /// Local stub generators inherit the default.
     case streamingUnsupported
+    /// The generator does not support the "improve prompt"
+    /// helper. Thrown by the default `improve(request:context:)`
+    /// implementation so the M2 sheet can detect non-supporting
+    /// providers (Local / Echo stubs) and disable the "Improve"
+    /// footer button. The M2+ Mock and Remote generators
+    /// override the default with a real rewrite.
+    case improvementUnsupported
 
     public var errorDescription: String? {
         switch self {
@@ -220,6 +227,8 @@ public enum AIGeneratorError: Error, Equatable, LocalizedError {
             return "The remote provider returned an unparseable response: \(reason)"
         case .streamingUnsupported:
             return "This generator does not support streaming responses."
+        case .improvementUnsupported:
+            return "This generator does not support the prompt-improvement helper."
         }
     }
 }
@@ -297,6 +306,38 @@ public protocol AIPluginGenerator {
         request: String,
         context: AIGeneratorContext
     ) -> AsyncThrowingStream<AIPluginGeneratorStreamEvent, Error>
+
+    /// Rewrite the user's natural-language request as a single,
+    /// more specific instruction a menubar01 plugin generator
+    /// could act on. The M2+ "Improve" footer button calls this
+    /// with the current request text and replaces the editor's
+    /// contents with the returned string. The improved string is
+    /// **not** sent through the generator's `generate(...)`
+    /// pipeline — the user has to click "Generate" themselves
+    /// after reviewing the rewrite.
+    ///
+    /// The default implementation throws
+    /// `AIGeneratorError.improvementUnsupported` so the existing
+    /// implementations (Local / Echo stubs) keep working
+    /// unchanged. The M2+ `MockAIPluginGenerator` and
+    /// `RemoteAIPluginGenerator` override the default with a
+    /// real rewrite.
+    ///
+    /// - Parameters:
+    ///   - request: The user's current request text. May be
+    ///     empty; implementations may return the empty string
+    ///     or throw — see their own contract.
+    ///   - context: Pre-filled parameters from the generator
+    ///     UI. Implementations should read at least
+    ///     `context.model` so the rewrite is consistent with
+    ///     the model that would later consume it.
+    /// - Returns: A single, rewritten request string. Whitespace
+    ///   at the ends is trimmed by the implementation so the
+    ///   sheet can splat the result straight into the editor.
+    func improve(
+        request: String,
+        context: AIGeneratorContext
+    ) async throws -> String
 }
 
 // MARK: - Stream events
@@ -362,5 +403,20 @@ public extension AIPluginGenerator {
         AsyncThrowingStream { continuation in
             continuation.finish(throwing: AIGeneratorError.streamingUnsupported)
         }
+    }
+
+    /// Default `improve(...)` implementation. Throws
+    /// `AIGeneratorError.improvementUnsupported` so the M2 sheet
+    /// can detect non-supporting providers (Local / Echo stubs)
+    /// and disable the "Improve" footer button. The M2+
+    /// `MockAIPluginGenerator` and `RemoteAIPluginGenerator`
+    /// override the default with a real rewrite.
+    func improve(
+        request: String,
+        context: AIGeneratorContext
+    ) async throws -> String {
+        _ = request
+        _ = context
+        throw AIGeneratorError.improvementUnsupported
     }
 }

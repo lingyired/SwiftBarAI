@@ -46,6 +46,24 @@ public final class MockAIPluginGenerator: AIPluginGenerator {
         return Self.makeMockPlugin(promptId: promptId, context: context)
     }
 
+    /// M2+ "Improve" helper. Returns `"Improved: " + request` so
+    /// the M2 sheet can verify the round-trip without an LLM.
+    /// The empty-input case throws
+    /// `AIGeneratorError.improvementUnsupported` so the
+    /// `improveRequest()` view-model method's
+    /// "skip on empty" guard does not silently no-op when the
+    /// user reaches the footer button through a different path.
+    public func improve(
+        request: String,
+        context: AIGeneratorContext
+    ) async throws -> String {
+        _ = context
+        if request.isEmpty {
+            throw AIGeneratorError.improvementUnsupported
+        }
+        return "Improved: " + request
+    }
+
     // MARK: - Hashing
 
     /// Computes the deterministic `promptId` from

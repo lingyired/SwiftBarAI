@@ -90,6 +90,15 @@ final class AIGeneratorViewModel: ObservableObject {
     /// or `.failure(_)`.
     @Published private(set) var isStreaming: Bool = false
 
+    /// `true` while the "Improve" helper is mid-flight. The
+    /// M2+ sheet's footer "Improve" button flips this on click
+    /// and shows a small spinner next to the label; a second
+    /// click while `true` is a no-op (see `improveRequest()`).
+    /// Always `false` when the helper is idle. Independent of
+    /// `isStreaming` / `isLoading` so the spinner never races
+    /// with the streaming-preview spinner.
+    @Published private(set) var isImproving: Bool = false
+
     // MARK: - Dependencies
 
     /// The generator used by `generate()`. Default factory comes
@@ -219,6 +228,43 @@ final class AIGeneratorViewModel: ObservableObject {
             }
         } catch {
             state = .failure(error.localizedDescription)
+        }
+    }
+
+    /// M2+ "Improve" helper. Asks the active generator to
+    /// rewrite the user's current `request` as a single, more
+    /// specific instruction and, on success, replaces the
+    /// request text in place so the user can immediately
+    /// review and click "Generate".
+    ///
+    /// Concurrency: a second click while `isImproving` is
+    /// `true` is a no-op, so a user double-click does not
+    /// fire two LLM round-trips.
+    ///
+    /// Empty-input guard: an empty / whitespace-only request
+    /// short-circuits before the LLM call, mirroring the
+    /// `canGenerate` rule. The guard exists so the footer
+    /// button does not need its own disabled state — the
+    /// SwiftUI button is bound to `request.isEmpty` and is
+    /// already disabled in that case.
+    ///
+    /// Failure: any thrown error is **swallowed** (logged via
+    /// `os_log` at `.error`) and the existing `request` is
+    /// preserved. The user keeps typing; the failure is not
+    /// surfaced through `state` so a stray "Improve" error
+    /// does not overwrite a previous generation's banner.
+    func improveRequest() async {
+        guard !isImproving else { return }
+        guard !request.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        isImproving = true
+        defer { isImproving = false }
+        do {
+            let improved = try await generator.improve(request: request, context: context)
+            request = improved
+        } catch {
+            // Keep existing state, do not overwrite request.
+            os_log("AIGenerator: improve failed: %{public}@",
+                   log: Self.log, type: .error, error.localizedDescription)
         }
     }
 

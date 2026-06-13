@@ -551,6 +551,31 @@ struct AIGeneratorSheet: View {
                 showingSaveTemplateSheet = true
             }
             .disabled(!canSaveAsTemplate)
+            // M2+ "Improve" affordance. Sits next to "Save as
+            // Template" because both are secondary actions —
+            // they mutate / persist the request, they do not
+            // fire a generator round-trip themselves. Calls
+            // `viewModel.improveRequest()`, which is gated by
+            // `isImproving` so a double-click does not fire two
+            // LLM round-trips. The button shows a small spinner
+            // while the helper is mid-flight and is disabled
+            // when the request is empty (so the user can never
+            // burn a round-trip on a blank prompt).
+            Button {
+                Task { await viewModel.improveRequest() }
+            } label: {
+                HStack(spacing: 4) {
+                    if viewModel.isImproving {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "wand.and.stars")
+                    }
+                    Text("Improve")
+                }
+            }
+            .disabled(!canImprove)
+            .help("Ask the active AI to rewrite your request as a more specific instruction.")
             Spacer()
             Button("Cancel", role: .cancel) {
                 // M2's sheet is hosted in a standalone `NSWindow`
@@ -610,5 +635,18 @@ struct AIGeneratorSheet: View {
     private var canSaveAsTemplate: Bool {
         !viewModel.request.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !viewModel.isLoading
+    }
+
+    /// `true` when the "Improve" footer button should be
+    /// enabled. Mirrors `canSaveAsTemplate` (non-empty request,
+    /// not currently loading) plus a guard against
+    /// `isImproving` so a second click during a round-trip is
+    /// a no-op rather than a parallel LLM call. Centralised
+    /// here so the SwiftUI `.disabled` modifier does not have
+    /// to repeat the rule.
+    private var canImprove: Bool {
+        !viewModel.request.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !viewModel.isLoading
+            && !viewModel.isImproving
     }
 }
