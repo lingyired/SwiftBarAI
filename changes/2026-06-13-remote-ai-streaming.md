@@ -3,8 +3,8 @@
 - **Type:** feat
 - **Scope:** menubar01/AI/AIGenerator, menubar01/AI/RemoteAIPluginGenerator, menubar01/UI/Plugin Generator/AIGeneratorViewModel, menubar01/UI/Plugin Generator/AIGeneratorSheet, menubar01Tests/RemoteAIPluginGeneratorStreamTests
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** _pending_
-- **Status:** open
+- **Commit(s):** 8868172
+- **Status:** done
 
 ## Summary
 
