@@ -27,6 +27,11 @@ enum ShellOptions: String, CaseIterable {
 
 class PreferencesStore: ObservableObject {
     static let shared = PreferencesStore()
+
+    /// The `UserDefaults` instance this store reads from and writes to. Tests
+    /// inject a per-suite instance (via `UserDefaults(suiteName:)`) so they do
+    /// not contaminate `UserDefaults.standard` for other test cases.
+    private let defaults: UserDefaults
     enum PreferencesKeys: String {
         case PluginDirectory
         case ShortcutsFolder
@@ -54,13 +59,13 @@ class PreferencesStore: ObservableObject {
 
     @Published var pluginDirectoryPath: String? {
         didSet {
-            PreferencesStore.setValue(value: pluginDirectoryPath, key: .PluginDirectory)
+            PreferencesStore.setValue(value: pluginDirectoryPath, key: .PluginDirectory, defaults: defaults)
         }
     }
 
     @Published var shortcutsFolder: String {
         didSet {
-            PreferencesStore.setValue(value: shortcutsFolder, key: .ShortcutsFolder)
+            PreferencesStore.setValue(value: shortcutsFolder, key: .ShortcutsFolder, defaults: defaults)
         }
     }
 
@@ -76,7 +81,7 @@ class PreferencesStore: ObservableObject {
     @Published var disabledPlugins: [PluginID] {
         didSet {
             let unique = Array(Set(disabledPlugins))
-            PreferencesStore.setValue(value: unique, key: .DisabledPlugins)
+            PreferencesStore.setValue(value: unique, key: .DisabledPlugins, defaults: defaults)
             disabledPluginsPublisher.send("")
         }
     }
@@ -102,70 +107,71 @@ class PreferencesStore: ObservableObject {
 
     @Published var terminal: TerminalOptions {
         didSet {
-            PreferencesStore.setValue(value: terminal.rawValue, key: .Terminal)
+            PreferencesStore.setValue(value: terminal.rawValue, key: .Terminal, defaults: defaults)
         }
     }
 
     @Published var shell: ShellOptions {
         didSet {
-            PreferencesStore.setValue(value: shell.rawValue, key: .Shell)
+            PreferencesStore.setValue(value: shell.rawValue, key: .Shell, defaults: defaults)
         }
     }
 
     @Published var menubar01IconIsHidden: Bool {
         didSet {
-            PreferencesStore.setValue(value: menubar01IconIsHidden, key: .HideMenubar01Icon)
+            PreferencesStore.setValue(value: menubar01IconIsHidden, key: .HideMenubar01Icon, defaults: defaults)
             delegate.pluginManager.rebuildAllMenus()
         }
     }
 
     @Published var includeBetaUpdates: Bool {
         didSet {
-            PreferencesStore.setValue(value: includeBetaUpdates, key: .IncludeBetaUpdates)
+            PreferencesStore.setValue(value: includeBetaUpdates, key: .IncludeBetaUpdates, defaults: defaults)
         }
     }
 
     @Published var collectCrashReports: Bool {
         didSet {
-            PreferencesStore.setValue(value: collectCrashReports, key: .CollectCrashReports)
+            PreferencesStore.setValue(value: collectCrashReports, key: .CollectCrashReports, defaults: defaults)
         }
     }
 
     @Published var dimOnManualRefresh: Bool {
         didSet {
-            PreferencesStore.setValue(value: dimOnManualRefresh, key: .DimOnManualRefresh)
+            PreferencesStore.setValue(value: dimOnManualRefresh, key: .DimOnManualRefresh, defaults: defaults)
         }
     }
 
     @Published var shortcutsPlugins: [PersistentShortcutPlugin] {
         didSet {
-            PreferencesStore.setValue(value: try? PropertyListEncoder().encode(shortcutsPlugins), key: .ShortcutPlugins)
+            PreferencesStore.setValue(value: try? PropertyListEncoder().encode(shortcutsPlugins), key: .ShortcutPlugins, defaults: defaults)
         }
     }
 
     var makePluginExecutable: Bool {
-        guard let out = PreferencesStore.getValue(key: .MakePluginExecutable) as? Bool else {
-            PreferencesStore.setValue(value: true, key: .MakePluginExecutable)
+        guard let out = defaults.value(forKey: PreferencesKeys.MakePluginExecutable.rawValue) as? Bool else {
+            defaults.setValue(true, forKey: PreferencesKeys.MakePluginExecutable.rawValue)
+            defaults.synchronize()
             return true
         }
         return out
     }
 
     var pluginDeveloperMode: Bool {
-        PreferencesStore.getValue(key: .PluginDeveloperMode) as? Bool ?? false
+        defaults.value(forKey: PreferencesKeys.PluginDeveloperMode.rawValue) as? Bool ?? false
     }
 
     var pluginDebugMode: Bool {
-        PreferencesStore.getValue(key: .PluginDebugMode) as? Bool ?? false
+        defaults.value(forKey: PreferencesKeys.PluginDebugMode.rawValue) as? Bool ?? false
     }
 
     var disableBashWrapper: Bool {
-        PreferencesStore.getValue(key: .DisableBashWrapper) as? Bool ?? false
+        defaults.value(forKey: PreferencesKeys.DisableBashWrapper.rawValue) as? Bool ?? false
     }
 
     @Published var stealthMode: Bool {
         didSet {
-            PreferencesStore.setValue(value: stealthMode, key: .StealthMode)
+            PreferencesStore.setValue(value: stealthMode, key: .StealthMode, defaults: defaults)
         }
     }
 
@@ -176,17 +182,17 @@ class PreferencesStore: ObservableObject {
     /// the menu bar empty.
     @Published var alwaysShowMenubar01Menu: Bool {
         didSet {
-            PreferencesStore.setValue(value: alwaysShowMenubar01Menu, key: .AlwaysShowMenubar01Menu)
+            PreferencesStore.setValue(value: alwaysShowMenubar01Menu, key: .AlwaysShowMenubar01Menu, defaults: defaults)
             delegate.pluginManager.updateDefaultBarItemVisibility()
         }
     }
 
     var debugLoggingEnabled: Bool {
-        PreferencesStore.getValue(key: .DebugLoggingEnabled) as? Bool ?? false
+        defaults.value(forKey: PreferencesKeys.DebugLoggingEnabled.rawValue) as? Bool ?? false
     }
 
     var pluginRepositoryURL: URL {
-        guard let str = PreferencesStore.getValue(key: .PluginRepositoryURL) as? String,
+        guard let str = defaults.value(forKey: PreferencesKeys.PluginRepositoryURL.rawValue) as? String,
               let url = URL(string: str)
         else {
             return URL(string: "https://xbarapp.com/docs/plugins/")!
@@ -195,7 +201,7 @@ class PreferencesStore: ObservableObject {
     }
 
     var pluginSourceCodeURL: URL {
-        guard let str = PreferencesStore.getValue(key: .PluginSourceCodeURL) as? String,
+        guard let str = defaults.value(forKey: PreferencesKeys.PluginSourceCodeURL.rawValue) as? String,
               let url = URL(string: str)
         else {
             return URL(string: "https://github.com/matryer/xbar-plugins/blob/master/")!
@@ -203,47 +209,51 @@ class PreferencesStore: ObservableObject {
         return url
     }
 
-    init() {
-        pluginDirectoryPath = PreferencesStore.getValue(key: .PluginDirectory) as? String
-        shortcutsFolder = PreferencesStore.getValue(key: .ShortcutsFolder) as? String ?? ""
-        disabledPlugins = PreferencesStore.getValue(key: .DisabledPlugins) as? [PluginID] ?? []
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        pluginDirectoryPath = PreferencesStore.getValue(key: .PluginDirectory, defaults: defaults) as? String
+        shortcutsFolder = PreferencesStore.getValue(key: .ShortcutsFolder, defaults: defaults) as? String ?? ""
+        disabledPlugins = PreferencesStore.getValue(key: .DisabledPlugins, defaults: defaults) as? [PluginID] ?? []
         terminal = .Terminal
         shell = .Bash
-        menubar01IconIsHidden = PreferencesStore.getValue(key: .HideMenubar01Icon) as? Bool ?? false
-        includeBetaUpdates = PreferencesStore.getValue(key: .IncludeBetaUpdates) as? Bool ?? false
-        collectCrashReports = PreferencesStore.getValue(key: .CollectCrashReports) as? Bool ?? true
-        dimOnManualRefresh = PreferencesStore.getValue(key: .DimOnManualRefresh) as? Bool ?? true
-        stealthMode = PreferencesStore.getValue(key: .StealthMode) as? Bool ?? false
-        alwaysShowMenubar01Menu = PreferencesStore.getValue(key: .AlwaysShowMenubar01Menu) as? Bool ?? true
+        menubar01IconIsHidden = PreferencesStore.getValue(key: .HideMenubar01Icon, defaults: defaults) as? Bool ?? false
+        includeBetaUpdates = PreferencesStore.getValue(key: .IncludeBetaUpdates, defaults: defaults) as? Bool ?? false
+        collectCrashReports = PreferencesStore.getValue(key: .CollectCrashReports, defaults: defaults) as? Bool ?? true
+        dimOnManualRefresh = PreferencesStore.getValue(key: .DimOnManualRefresh, defaults: defaults) as? Bool ?? true
+        stealthMode = PreferencesStore.getValue(key: .StealthMode, defaults: defaults) as? Bool ?? false
+        alwaysShowMenubar01Menu = PreferencesStore.getValue(key: .AlwaysShowMenubar01Menu, defaults: defaults) as? Bool ?? true
         shortcutsPlugins = {
-            guard let data = PreferencesStore.getValue(key: .ShortcutPlugins) as? Data,
+            guard let data = PreferencesStore.getValue(key: .ShortcutPlugins, defaults: defaults) as? Data,
                   let plugins = try? PropertyListDecoder().decode([PersistentShortcutPlugin].self, from: data) else { return [] }
             return plugins
         }()
-        if let savedTerminal = PreferencesStore.getValue(key: .Terminal) as? String,
+        if let savedTerminal = PreferencesStore.getValue(key: .Terminal, defaults: defaults) as? String,
            let value = TerminalOptions(rawValue: savedTerminal)
         {
             terminal = value
         }
-        if let savedShell = PreferencesStore.getValue(key: .Shell) as? String,
+        if let savedShell = PreferencesStore.getValue(key: .Shell, defaults: defaults) as? String,
            let value = ShellOptions(rawValue: savedShell)
         {
             shell = value
         }
     }
 
-    static func removeAll() {
-        let domain = Bundle.main.bundleIdentifier!
-        UserDefaults.standard.removePersistentDomain(forName: domain)
-        UserDefaults.standard.synchronize()
+    /// Wipe the persistent domain backing this store. Operates on whichever
+    /// `UserDefaults` instance was injected, so tests that pass a suite-backed
+    /// instance clean up only that suite.
+    func removeAll() {
+        guard let domain = Bundle.main.bundleIdentifier else { return }
+        defaults.removePersistentDomain(forName: domain)
+        defaults.synchronize()
     }
 
-    private static func setValue(value: Any?, key: PreferencesKeys) {
-        UserDefaults.standard.setValue(value, forKey: key.rawValue)
-        UserDefaults.standard.synchronize()
+    private static func getValue(key: PreferencesKeys, defaults: UserDefaults) -> Any? {
+        defaults.value(forKey: key.rawValue)
     }
 
-    private static func getValue(key: PreferencesKeys) -> Any? {
-        UserDefaults.standard.value(forKey: key.rawValue)
+    private static func setValue(value: Any?, key: PreferencesKeys, defaults: UserDefaults) {
+        defaults.setValue(value, forKey: key.rawValue)
+        defaults.synchronize()
     }
 }

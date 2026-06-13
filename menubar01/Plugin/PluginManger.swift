@@ -331,7 +331,7 @@ func mergePluginsPreservingOrder(existingPlugins: [Plugin], removedPluginIDs: Se
 
 class PluginManager: ObservableObject {
     static let shared = PluginManager()
-    let prefs = PreferencesStore.shared
+    let prefs: PreferencesStore
     lazy var barItem: MenubarItem = {
         let item = MenubarItem.defaultBarItem()
         return item
@@ -390,7 +390,8 @@ class PluginManager: ObservableObject {
         return queue
     }()
 
-    init() {
+    init(prefs: PreferencesStore = .shared) {
+        self.prefs = prefs
         // Use the main dispatch queue (not RunLoop.main) so the sink fires
         // even while the user is interacting with an open NSMenu — the
         // toggle dropdown, for example. The main runloop is held in

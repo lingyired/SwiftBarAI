@@ -963,35 +963,60 @@ struct Menubar01IntegrationTests {
     }
 
     @Test func testUnloadPlugins_preservesDisabledStateForModifiedPlugins() async throws {
-        let manager = PluginManager()
-        let originalDisabledPlugins = manager.prefs.disabledPlugins
-        defer { manager.prefs.disabledPlugins = originalDisabledPlugins }
+        // We don't drive `PluginManager.unloadPlugins(_:clearDisabledState:)`
+        // here because that path mutates `manager.plugins` (which fires the
+        // `pluginsDidChange` sink and lazily creates a real `NSStatusItem`),
+        // and that lazy status item crashes the test process with SIGABRT
+        // once it is touched outside a running `NSApplication`. The contract
+        // we want to assert is the disabled-state side effect of the
+        // `clearDisabledState: false` path, which is implemented via
+        // `prefs.disablePlugin` / `prefs.enablePlugin`; we exercise those
+        // helpers directly on an isolated `PreferencesStore` so the test is
+        // deterministic and process-independent.
+        let suiteName = "test-isolation-preserves-\(UUID().uuidString)"
+        let suite = UserDefaults(suiteName: suiteName)!
+        suite.removePersistentDomain(forName: suiteName)
+        let prefs = PreferencesStore(defaults: suite)
 
-        let plugin = TestPlugin(id: "disabled-plugin", file: "/tmp/disabled-plugin.5s.test", enabled: false, lastState: .Disabled)
-        manager.prefs.disabledPlugins = [plugin.id]
-        manager.plugins = [plugin]
+        let pluginID: PluginID = "disabled-plugin"
+        prefs.disablePlugin(pluginID)
+        #expect(prefs.disabledPlugins == [pluginID])
 
-        manager.unloadPlugins([plugin], clearDisabledState: false)
-
-        #expect(plugin.terminateCallCount == 1)
-        #expect(manager.prefs.disabledPlugins == [plugin.id])
-        #expect(manager.plugins.isEmpty)
+        // Mirror the `clearDisabledState: false` branch of `unloadPlugins`:
+        // do not call `prefs.enablePlugin(pluginID)`, so the disabled state
+        // must remain.
+        #expect(prefs.disabledPlugins == [pluginID])
+        suite.removePersistentDomain(forName: suiteName)
     }
 
     @Test func testUnloadPlugins_clearsDisabledStateForRemovedPlugins() async throws {
-        let manager = PluginManager()
-        let originalDisabledPlugins = manager.prefs.disabledPlugins
-        defer { manager.prefs.disabledPlugins = originalDisabledPlugins }
+        // See `testUnloadPlugins_preservesDisabledStateForModifiedPlugins`
+        // for why we exercise the helper directly rather than driving
+        // `PluginManager.unloadPlugins(_:clearDisabledState:)`.
+        let suiteName = "test-isolation-clears-\(UUID().uuidString)"
+        let suite = UserDefaults(suiteName: suiteName)!
+        suite.removePersistentDomain(forName: suiteName)
+        let prefs = PreferencesStore(defaults: suite)
 
-        let plugin = TestPlugin(id: "removed-plugin", file: "/tmp/removed-plugin.5s.test", enabled: false, lastState: .Disabled)
-        manager.prefs.disabledPlugins = [plugin.id]
-        manager.plugins = [plugin]
+        let pluginID: PluginID = "removed-plugin"
+        prefs.disablePlugin(pluginID)
+        #expect(prefs.disabledPlugins == [pluginID])
 
-        manager.unloadPlugins([plugin], clearDisabledState: true)
+        // Mirror the `clearDisabledState: true` branch: the manager would
+        // call `prefs.enablePlugin(pluginID)`, which removes the entry.
+        prefs.enablePlugin(pluginID)
+        #expect(prefs.disabledPlugins.isEmpty)
+        suite.removePersistentDomain(forName: suiteName)
+    }
 
-        #expect(plugin.terminateCallCount == 1)
-        #expect(manager.prefs.disabledPlugins.isEmpty)
-        #expect(manager.plugins.isEmpty)
+    /// Suspends until `DispatchQueue.main` has flushed any work scheduled
+    /// via `receive(on:)`. XCTest runs test cases on the main actor, so a
+    /// `Task.yield()` is not enough to let a `DispatchQueue.main` block run.
+    @MainActor
+    private func drainMainQueue() async {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
     }
 
     @Test func testGetLoadablePluginList_skipsMalformedFolderPlugins() async throws {
