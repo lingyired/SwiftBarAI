@@ -42,6 +42,13 @@ open menubar01.xcodeproj
 # pick the menubar01 scheme → "My Mac" → Run (⌘R)
 ```
 
+## CI
+
+Unit tests run on every push to `main` and on every pull request via
+[`.github/workflows/test.yml`](.github/workflows/test.yml). The job uses the
+latest stable macOS GitHub Actions runner and resolves SwiftPM dependencies
+against the locked `Package.resolved` for reproducibility.
+
 ## Plugin Manifest Schema
 
 ```
