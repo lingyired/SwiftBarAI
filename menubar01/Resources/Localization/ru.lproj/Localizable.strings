@@ -36,9 +36,9 @@
 "PF_CHANGE_PATH" = "Изменить...";
 "PF_SHELL" = "Шелл";
 "PF_TERMINAL" = "Терминал";
-"PF_HIDE_SWIFTBAR_ICON" = "Скрыть иконку menubar01";
+"PF_HIDE_MENUBAR01_ICON" = "Скрыть иконку menubar01";
 "PF_STEALTH_MODE" = "Hide menubar01 in the menu bar";
-"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Всегда показывать меню menubar01";
+"PF_ALWAYS_SHOW_MENUBAR01_MENU" = "Всегда показывать меню menubar01";
 "PF_CHECK_FOR_UPDATE" = "Обновить";
 "PF_CHECK_FOR_UPDATES" = "Проверить обновления";
 "PR_INCLUDE_BETA_UPDATES" = "Включая бета версии";

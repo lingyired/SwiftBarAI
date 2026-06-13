@@ -53,7 +53,7 @@ struct PluginManifest: Codable {
     /// Extra environment variables to inject when running the entry script.
     var environment: [String: String]?
     /// User-configurable parameters. Persisted via the existing `xbar.var`
-    /// storage so the values flow into the script as `SWIFTBAR_PLUGIN_PARAM_*`
+    /// storage so the values flow into the script as `MENUBAR01_PARAM_*`
     /// environment variables.
     var parameters: [PluginManifestParameter]?
     /// Comma-separated tool/runtime dependencies shown in the About panel
@@ -244,7 +244,7 @@ struct PluginCapabilityDescriptor: Codable, Equatable {
 /// internal `PluginVariable` Codable expects.
 struct PluginManifestParameter: Codable, Equatable {
     /// Variable name — also used as the on-disk `vars.json` key and the
-    /// `SWIFTBAR_PLUGIN_PARAM_<NAME>` environment variable.
+    /// `MENUBAR01_PARAM_<NAME>` environment variable.
     let name: String
     /// One of `string`, `number`, `boolean`, `select`.
     let type: PluginVariableType

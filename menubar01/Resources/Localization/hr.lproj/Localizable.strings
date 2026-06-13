@@ -36,9 +36,9 @@
 "PF_CHANGE_PATH" = "Promijeni …";
 "PF_SHELL" = "Naredbeni redak";
 "PF_TERMINAL" = "Terminal";
-"PF_HIDE_SWIFTBAR_ICON" = "Sakrij ikonu menubar01";
+"PF_HIDE_MENUBAR01_ICON" = "Sakrij ikonu menubar01";
 "PF_STEALTH_MODE" = "Hide menubar01 in the menu bar";
-"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Uvijek prikaži izbornik menubar01";
+"PF_ALWAYS_SHOW_MENUBAR01_MENU" = "Uvijek prikaži izbornik menubar01";
 "PF_CHECK_FOR_UPDATE" = "Aktualiziraj";
 "PF_CHECK_FOR_UPDATES" = "Traži nove verzije";
 "PR_INCLUDE_BETA_UPDATES" = "Uključuju Verzije Prije Izdanja";

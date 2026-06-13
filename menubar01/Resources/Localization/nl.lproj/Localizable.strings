@@ -36,9 +36,9 @@
 "PF_CHANGE_PATH" = "Wijzig…";
 "PF_SHELL" = "Shell";
 "PF_TERMINAL" = "Shell-applicatie";
-"PF_HIDE_SWIFTBAR_ICON" = "Verberg menubar01-icoon";
+"PF_HIDE_MENUBAR01_ICON" = "Verberg menubar01-icoon";
 "PF_STEALTH_MODE" = "Hide menubar01 in the menu bar";
-"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "menubar01-menu altijd weergeven";
+"PF_ALWAYS_SHOW_MENUBAR01_MENU" = "menubar01-menu altijd weergeven";
 "PF_CHECK_FOR_UPDATE" = "Updates";
 "PF_CHECK_FOR_UPDATES" = "Controleer op updates…";
 "PR_INCLUDE_BETA_UPDATES" = "Pre-releaseversies Opnemen";

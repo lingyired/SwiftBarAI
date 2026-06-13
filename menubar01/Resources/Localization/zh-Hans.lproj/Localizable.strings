@@ -36,9 +36,9 @@
 "PF_CHANGE_PATH" = "修改...";
 "PF_SHELL" = "命令行解释器";
 "PF_TERMINAL" = "终端";
-"PF_HIDE_SWIFTBAR_ICON" = "隐藏 menubar01 图标";
+"PF_HIDE_MENUBAR01_ICON" = "隐藏 menubar01 图标";
 "PF_STEALTH_MODE" = "在菜单栏隐藏 menubar01";
-"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "始终显示 menubar01 菜单";
+"PF_ALWAYS_SHOW_MENUBAR01_MENU" = "始终显示 menubar01 菜单";
 "PF_CHECK_FOR_UPDATE" = "更新";
 "PF_CHECK_FOR_UPDATES" = "检查更新";
 "PR_INCLUDE_BETA_UPDATES" = "包括预发布版本";

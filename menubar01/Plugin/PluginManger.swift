@@ -82,7 +82,10 @@ private func looksLikeFolderPluginEntry(_ fileURL: URL) -> Bool {
 
 /// Heuristic check for "this directory name is reasonable for a folder plugin".
 /// Excludes dotfiles and legacy `.swiftbar` suffixes. There is no ignore-file
-/// mechanism in menubar01 — the manifest is the only opt-in.
+/// mechanism in menubar01 — the manifest is the only opt-in. The
+/// `.swiftbar` filter is kept as a back-compat safety net for users who
+/// still have legacy-named folders; the bundled-plugin format itself is no
+/// longer supported — see `changes/2026-06-13-drop-legacy-compat.md`.
 private func isPlausibleFolderName(_ name: String) -> Bool {
     !name.isEmpty
         && !name.hasPrefix(".")

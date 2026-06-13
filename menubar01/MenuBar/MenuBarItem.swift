@@ -466,7 +466,7 @@ extension MenubarItem {
         if !firstLevel {
             statusBarMenu.addItem(NSMenuItem.separator())
 
-            // put swiftbar menu as submenu
+            // put the menubar01 menu as a submenu
             menubar01Item.attributedTitle = NSAttributedString(string: menubar01Item.title, attributes: [.font: NSFont.menuBarFont(ofSize: 0)])
             menubar01Item.submenu = menu
             menubar01Item.image = PreferencesStore.shared.menubar01IconIsHidden ? nil : NSImage(named: "AppIcon")?.resizedCopy(w: 21, h: 21)

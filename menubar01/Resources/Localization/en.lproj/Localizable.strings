@@ -36,9 +36,9 @@
 "PF_CHANGE_PATH" = "Change...";
 "PF_SHELL" = "Shell";
 "PF_TERMINAL" = "Terminal";
-"PF_HIDE_SWIFTBAR_ICON" = "Hide menubar01 Icon";
+"PF_HIDE_MENUBAR01_ICON" = "Hide menubar01 Icon";
 "PF_STEALTH_MODE" = "Hide menubar01 in the menu bar";
-"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Always show menubar01 menu";
+"PF_ALWAYS_SHOW_MENUBAR01_MENU" = "Always show menubar01 menu";
 "PF_CHECK_FOR_UPDATE" = "Update";
 "PF_CHECK_FOR_UPDATES" = "Check for Updates";
 "PR_INCLUDE_BETA_UPDATES" = "Include Pre-Release Versions";

@@ -43,8 +43,8 @@ func buildTerminalCommand(script: String, args: [String] = [], env: [String: Str
                                   stdinPipe: Pipe? = nil,
                                   onOutputUpdate: @escaping (String?) -> Void = { _ in }) throws -> (out: String, err: String?)
 {
-    let swiftbarEnv = sharedEnv.systemEnvStr.merging(env) { _, new in new }
-    process.environment = swiftbarEnv.merging(ProcessInfo.processInfo.environment) { current, _ in current }
+    let menubar01Env = sharedEnv.systemEnvStr.merging(env) { _, new in new }
+    process.environment = menubar01Env.merging(ProcessInfo.processInfo.environment) { current, _ in current }
     if let workingDirectory {
         process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
     }
