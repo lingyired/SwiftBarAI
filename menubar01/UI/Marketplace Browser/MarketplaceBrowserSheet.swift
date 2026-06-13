@@ -360,6 +360,25 @@ struct MarketplaceBrowserSheet: View {
                         .foregroundStyle(.tertiary)
                 }
                 Spacer(minLength: 0)
+                // Per-row "View source" button. Opens
+                // the on-disk `manifest.json` for the
+                // plugin in the user's default JSON
+                // editor via
+                // `viewModel.viewSource(snapshot:)`. The
+                // button is intentionally icon-only at
+                // `.mini` control size so it does not
+                // push the Enable / Disable toggle off
+                // the right edge of the sidebar on long
+                // folder names; the tooltip spells out
+                // the action.
+                Button {
+                    viewModel.viewSource(snapshot: snapshot)
+                } label: {
+                    Image(systemName: "doc.text")
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.mini)
+                .help("View manifest.json for \(snapshot.name)")
                 // Per-row enable / disable toggle. Bound
                 // to a Binding<Bool> that maps through
                 // `viewModel.toggleEnabled(for:)` so the

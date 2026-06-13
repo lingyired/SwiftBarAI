@@ -15,6 +15,7 @@
 // real work — and it follows the M4 plan-then-install split so
 // the data layer stays unit-testable in isolation.
 
+import AppKit
 import Foundation
 import SwiftUI
 import os
@@ -98,6 +99,18 @@ final class MarketplaceBrowserViewModel: ObservableObject {
     /// the `internal(set)` setter, mirroring the DI pattern in
     /// `AIGeneratorViewModel.pluginCapabilityGate`.
     var pluginCapabilityGate: PluginCapabilityGate = PluginManager.shared.pluginCapabilityGate
+
+    /// Underlying opener for `viewSource(snapshot:)`. The
+    /// default delegates to `NSWorkspace.shared.open(_:)`
+    /// (which honours the user's default-app binding for
+    /// `.json` files — typically Xcode, TextEdit, or VS
+    /// Code). Tests inject a recording closure so the
+    /// xctest host does not actually launch an editor. The
+    /// `var` (not `let`) follows the same injection pattern
+    /// as `pluginCapabilityGate` above.
+    var viewSourceOpener: (URL) -> Void = { url in
+        _ = NSWorkspace.shared.open(url)
+    }
 
     // MARK: - Init
 
@@ -750,6 +763,48 @@ final class MarketplaceBrowserViewModel: ObservableObject {
         // reflects the new state. Cheap and
         // idempotent.
         refreshInstalledPlugins()
+    }
+
+    // MARK: - View source
+
+    /// Open the on-disk `manifest.json` for the given
+    /// installed plugin snapshot in the user's default
+    /// JSON editor. The Installed tab surfaces a small
+    /// "View source" button per row that calls this
+    /// method; the editor is whatever the user has
+    /// bound to `.json` in Finder (Xcode, TextEdit, VS
+    /// Code, etc.) — the call delegates to
+    /// `NSWorkspace.shared.open(_:)` so the system
+    /// handles the launch.
+    ///
+    /// The actual open is funneled through the
+    /// `viewSourceOpener` closure (default
+    /// `NSWorkspace.shared.open(_:)`) so tests can
+    /// intercept the call without the xctest host
+    /// popping a real editor window.
+    ///
+    /// No-op shape:
+    /// - The snapshot's `url` does not point at a
+    ///   directory containing a `manifest.json` — the
+    ///   opener is still called with the computed
+    ///   `manifest.json` URL, but `NSWorkspace.open`
+    ///   will surface a Finder "Choose Application"
+    ///   dialog. We deliberately do not pre-check the
+    ///   file's existence: the file is expected to
+    ///   exist for every marketplace install, and a
+    ///   missing manifest is a real failure the user
+    ///   should see (not silently swallow).
+    ///
+    /// The method does not touch the
+    /// `MarketplaceBrowserState` machine — viewing
+    /// source is a regular in-app action that does
+    /// not need a banner.
+    func viewSource(snapshot: InstalledPluginSnapshot) {
+        let manifestURL = snapshot.url
+            .appendingPathComponent(pluginManifestFileName)
+        os_log("viewSource: opening manifest at %{public}@",
+               log: Log.plugin, type: .info, manifestURL.path)
+        viewSourceOpener(manifestURL)
     }
 
     // MARK: - Update
