@@ -3,8 +3,8 @@
 - **Type:** docs
 - **Scope:** `docs/12-Utilities.md`, `docs/13-Build-and-Run.md`
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** _fill in after commit_
-- **Status:** pending
+- **Commit(s):** 3e55032
+- **Status:** done
 
 ## Summary
 
