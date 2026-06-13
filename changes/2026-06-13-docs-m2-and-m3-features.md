@@ -1,6 +1,6 @@
 # 2026-06-13 — docs: M2 / M3 / M5 feature documentation
 
-> **Status:** open → done
+> **Status:** open → done (commit `40b5876`)
 > **Authors:** Trae AI (M3 generation)
 > **Date:** 2026-06-13
 
