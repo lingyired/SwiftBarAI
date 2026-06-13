@@ -493,8 +493,13 @@ struct AIGeneratorSheet: View {
             regenerateHeader(for: plugin)
             explanationSection(for: plugin)
             promptIdSection(for: plugin)
-            manifestSection
-            entryScriptSection(for: plugin)
+            editModeErrorBanner
+            if viewModel.isEditing {
+                editSection
+            } else {
+                manifestSection
+                entryScriptSection(for: plugin)
+            }
         }
     }
 
@@ -516,6 +521,29 @@ struct AIGeneratorSheet: View {
             Text("Generated")
                 .font(.headline)
             Spacer()
+            // M2+ "Continue editing" affordance. Sits next to
+            // the "Re-generate" button so the user can either
+            // ask the LLM for a fresh take (re-generate) or
+            // tweak the current output themselves (continue
+            // editing). Toggling this opens two monospaced
+            // `TextEditor` views in place of the read-only
+            // manifest / entry-script panels; cancelling
+            // discards the in-flight edits and restores the
+            // originals. The button is hidden while the
+            // sheet is in edit mode so the user does not
+            // double-click and re-snapshot their
+            // half-finished edits.
+            if !viewModel.isEditing {
+                Button {
+                    viewModel.enterEditMode()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "pencil")
+                        Text("Continue editing")
+                    }
+                }
+                .help("Tweak the manifest and entry script in place before saving.")
+            }
             Button {
                 // Fire-and-forget task: the closure runs on
                 // the main actor (the button is in a SwiftUI
@@ -606,6 +634,148 @@ struct AIGeneratorSheet: View {
             }
             .frame(maxHeight: 180)
             .background(Color.secondary.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+    }
+
+    /// M2+ "Continue editing" panel. Renders two monospaced
+    /// `TextEditor` views side by side — manifest JSON on the
+    /// left, entry script on the right — plus a Save / Cancel
+    /// row underneath. Replaces the read-only manifest /
+    /// entry-script sections while `viewModel.isEditing` is
+    /// `true` (see `resultSection(for:)`). The two editors
+    /// are laid out side-by-side on viewports wide enough to
+    /// fit both at ~300 pt each and stack vertically
+    /// otherwise (a `GeometryReader` picks the layout so the
+    /// panel stays usable when the sheet is shrunk).
+    ///
+    /// Save calls `viewModel.saveEdits()`; Cancel calls
+    /// `viewModel.exitEditMode()`. After a successful save
+    /// the read-only panels re-render with the new manifest
+    /// / script; the "Save to Plugin Folder" and "Export…"
+    /// footer buttons keep working because they read
+    /// `viewModel.latestPlugin`, which `saveEdits()` updated
+    /// in place.
+    private var editSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Editing manifest + entry script")
+                    .font(.headline)
+                Spacer()
+                Text("Save replaces the in-memory plugin; cancel discards edits.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            // `GeometryReader` picks the layout based on
+            // the available width. The horizontal
+            // `HStack` is used on wide viewports (≥ 700 pt)
+            // so the user sees both editors at once; the
+            // vertical `VStack` is the fallback for narrow
+            // viewports. The threshold matches the
+            // `minWidth: 560` / `idealWidth: 640` defaults
+            // on the sheet — anything above ~700 pt leaves
+            // enough room for two ~300 pt editors.
+            GeometryReader { proxy in
+                if proxy.size.width >= 700 {
+                    HStack(alignment: .top, spacing: 8) {
+                        manifestEditor
+                        entryScriptEditor
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        manifestEditor
+                        entryScriptEditor
+                    }
+                }
+            }
+            .frame(minHeight: 260)
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) {
+                    viewModel.exitEditMode()
+                }
+                Button {
+                    // Fire-and-forget task: the closure runs
+                    // on the main actor (the button is in a
+                    // SwiftUI view body), and the `Task`
+                    // re-enters the view model's `@MainActor`
+                    // `saveEdits()`. The button does not need
+                    // to await the result — `isEditing` and
+                    // `editModeErrorMessage` drive the UI.
+                    Task { await viewModel.saveEdits() }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle")
+                        Text("Save edits")
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+    }
+
+    /// Left-hand editor in `editSection` — the manifest
+    /// JSON. Binds the editor straight to
+    /// `viewModel.editedManifestJSON` so every keystroke is
+    /// captured by the view model. Renders in monospaced
+    /// text with a 1-pt secondary border so the editing
+    /// surface matches the read-only panel's chrome.
+    private var manifestEditor: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("manifest.json")
+                .font(.subheadline.weight(.semibold))
+            TextEditor(text: $viewModel.editedManifestJSON)
+                .font(.system(.caption, design: .monospaced))
+                .frame(minHeight: 220)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                )
+        }
+    }
+
+    /// Right-hand editor in `editSection` — the entry
+    /// script body. Binds to
+    /// `viewModel.editedEntryScript`. Same chrome as
+    /// `manifestEditor`.
+    private var entryScriptEditor: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Entry script")
+                .font(.subheadline.weight(.semibold))
+            TextEditor(text: $viewModel.editedEntryScript)
+                .font(.system(.caption, design: .monospaced))
+                .frame(minHeight: 220)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                )
+        }
+    }
+
+    /// Red banner that surfaces the most recent
+    /// `saveEdits()` parse error. Renders only while
+    /// `viewModel.isEditing` is `true` **and** a non-nil
+    /// `viewModel.editModeErrorMessage` exists; otherwise
+    /// the @ViewBuilder returns an empty `EmptyView` so the
+    /// success view's vertical rhythm is unchanged.
+    @ViewBuilder
+    private var editModeErrorBanner: some View {
+        if viewModel.isEditing, let message = viewModel.editModeErrorMessage {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Could not save edits")
+                        .font(.subheadline.weight(.semibold))
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.red.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 6))
         }
     }

@@ -110,6 +110,43 @@ final class AIGeneratorViewModel: ObservableObject {
     /// streaming-preview / improve / first-run spinners.
     @Published private(set) var isRegenerating: Bool = false
 
+    /// `true` when the M2+ "Continue editing" mode is active.
+    /// Toggled by `enterEditMode()` / `exitEditMode()` /
+    /// `saveEdits()`. When `true`, the success view replaces
+    /// the read-only manifest / entry-script panels with two
+    /// monospaced `TextEditor` views so the user can tweak the
+    /// generator's output before saving. Independent of every
+    /// other in-flight flag because edit-mode is purely a
+    /// local UI toggle — it never overlaps with a generator
+    /// round-trip.
+    @Published private(set) var isEditing: Bool = false
+
+    /// Pretty-printed manifest JSON sitting in the edit-mode
+    /// left-hand `TextEditor`. Populated by `enterEditMode()`
+    /// from the current `latestPlugin.manifest`; re-parsed by
+    /// `saveEdits()` to build the new `GeneratedPlugin`.
+    /// Empty while `isEditing` is `false` and the user has
+    /// not yet entered edit mode.
+    @Published var editedManifestJSON: String = ""
+
+    /// Entry script body sitting in the edit-mode right-hand
+    /// `TextEditor`. Populated by `enterEditMode()` from the
+    /// current `latestPlugin.entryScript`; saved verbatim by
+    /// `saveEdits()` into the new `GeneratedPlugin.entryScript`.
+    /// Empty while `isEditing` is `false` and the user has not
+    /// yet entered edit mode.
+    @Published var editedEntryScript: String = ""
+
+    /// Human-readable error from the most recent failed
+    /// `saveEdits()` call. `nil` when there is no error to
+    /// surface (i.e. save succeeded, or edit mode is not
+    /// active). The SwiftUI sheet binds the edit-mode Save
+    /// button to a red banner / caption next to the
+    /// `TextEditor` so the user can fix the manifest JSON
+    /// and re-click Save without losing the read-only
+    /// success view.
+    @Published private(set) var editModeErrorMessage: String?
+
     // MARK: - Dependencies
 
     /// The generator used by `generate()`. Default factory comes
@@ -545,6 +582,136 @@ final class AIGeneratorViewModel: ObservableObject {
 
     // MARK: - Install-prompt integration
 
+    /// Enter "Continue editing" mode. Snapshots the current
+    /// `latestPlugin.manifest` as pretty-printed JSON into
+    /// `editedManifestJSON` and copies `entryScript` into
+    /// `editedEntryScript`, then flips `isEditing` to `true`
+    /// so the SwiftUI sheet renders the two monospaced
+    /// `TextEditor` views. No-op when `latestPlugin` is
+    /// `nil` (the edit mode only makes sense after a
+    /// successful generation) or when `isEditing` is already
+    /// `true` (so a stray double-click does not re-snapshot
+    /// the user's in-progress edits and clobber them).
+    func enterEditMode() {
+        guard !isEditing else { return }
+        guard let plugin = latestPlugin else { return }
+        editedManifestJSON = AIGeneratorViewModel.prettyJSON(
+            for: plugin.manifest
+        ) ?? ""
+        editedEntryScript = plugin.entryScript
+        isEditing = true
+        os_log("AIGenerator: entered edit mode for %{public}@",
+               log: Self.log, type: .info, plugin.promptId)
+    }
+
+    /// Leave "Continue editing" mode without saving any
+    /// edits. Clears `editedManifestJSON` /
+    /// `editedEntryScript` and flips `isEditing` back to
+    /// `false` so the success view goes back to its
+    /// read-only panels. No-op when `isEditing` is already
+    /// `false` so a Cancel click from the read-only view
+    /// does not fire a redundant state transition.
+    func exitEditMode() {
+        guard isEditing else { return }
+        editedManifestJSON = ""
+        editedEntryScript = ""
+        isEditing = false
+        os_log("AIGenerator: exited edit mode (no save)",
+               log: Self.log, type: .info)
+    }
+
+    /// Save the user's in-flight edits. Parses
+    /// `editedManifestJSON` back into a `PluginManifest` and
+    /// builds a fresh `GeneratedPlugin` with the parsed
+    /// manifest and the current `editedEntryScript`. On
+    /// success, replaces `latestPlugin`, transitions the
+    /// `state` to `.success(newPlugin)`, leaves edit mode
+    /// (`isEditing` back to `false`), and clears the edit
+    /// buffers. On parse failure, sets
+    /// `editModeErrorMessage` to a human-readable reason so
+    /// the SwiftUI sheet can render it next to the
+    /// `TextEditor`; the `state` / `latestPlugin` are left
+    /// unchanged so the user keeps their read-only result
+    /// as a fallback.
+    ///
+    /// Logs through `os_log` at `.info` on success and
+    /// `.error` on parse failure so the edit-mode save
+    /// failures show up in the unified AIGenerator
+    /// category.
+    func saveEdits() async {
+        guard isEditing else { return }
+        guard let previous = latestPlugin else {
+            // No plugin to derive a sibling from — bail.
+            isEditing = false
+            return
+        }
+        let trimmedJSON = editedManifestJSON.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard !trimmedJSON.isEmpty else {
+            editModeErrorMessage = "Manifest JSON is empty."
+            os_log("AIGenerator: saveEdits failed: empty manifest JSON",
+                   log: Self.log, type: .error)
+            return
+        }
+        guard let data = trimmedJSON.data(using: .utf8) else {
+            editModeErrorMessage = "Manifest JSON is not valid UTF-8."
+            os_log("AIGenerator: saveEdits failed: invalid UTF-8",
+                   log: Self.log, type: .error)
+            return
+        }
+        let decoder = JSONDecoder()
+        let newManifest: PluginManifest
+        do {
+            newManifest = try decoder.decode(PluginManifest.self, from: data)
+        } catch {
+            editModeErrorMessage = "Invalid manifest JSON: \(error.localizedDescription)"
+            os_log("AIGenerator: saveEdits failed to parse manifest: %{public}@",
+                   log: Self.log, type: .error, error.localizedDescription)
+            return
+        }
+        let newPlugin = GeneratedPlugin(
+            manifest: newManifest,
+            entryScript: editedEntryScript,
+            explanation: previous.explanation,
+            promptId: previous.promptId,
+            promptVersion: previous.promptVersion
+        )
+        latestPlugin = newPlugin
+        state = .success(newPlugin)
+        editModeErrorMessage = nil
+        isEditing = false
+        editedManifestJSON = ""
+        editedEntryScript = ""
+        os_log("AIGenerator: saveEdits applied edits to %{public}@",
+               log: Self.log, type: .info, newPlugin.promptId)
+        // Record a fresh history row for the edited plugin so
+        // the M5 history sheet shows the post-edit version
+        // alongside the original LLM output. Mirrors the
+        // streaming / non-streaming / regenerate paths so
+        // every state transition that produces a new
+        // `latestPlugin` lands a history row.
+        recordHistory(plugin: newPlugin, request: request)
+    }
+
+    /// Encode a `PluginManifest` as a pretty-printed JSON
+    /// string. Mirrors the format `manifestJSON` uses
+    /// (`.prettyPrinted` + `.withoutEscapingSlashes`) so
+    /// the edit-mode editor opens with the same body the
+    /// user saw in the read-only view. Returns `nil` when
+    /// the manifest is not encodable — the caller should
+    /// fall back to an empty string and let the user
+    /// retype.
+    private static func prettyJSON(for manifest: PluginManifest) -> String? {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
+        guard let data = try? encoder.encode(EncodedManifest(manifest: manifest))
+        else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    // MARK: - Install-prompt integration
+
     /// Capabilities the current `latestPlugin.manifest` declares.
     /// Empty when there is no `latestPlugin` — the parent sheet
     /// reads this to decide whether to even open the install-prompt
@@ -601,6 +768,10 @@ final class AIGeneratorViewModel: ObservableObject {
         installedPluginURL = nil
         streamingPreview = ""
         isStreaming = false
+        isEditing = false
+        editedManifestJSON = ""
+        editedEntryScript = ""
+        editModeErrorMessage = nil
     }
 }
 
