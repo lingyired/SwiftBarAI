@@ -1,7 +1,7 @@
 # 2026-06-13 — Marketplace uninstall & update
 
 Status: done
-Commit: <backfilled by `git commit` after tests pass>
+Commit: 8964f92b3172867bcd08809d4e8aa5b1a300de55
 
 ## Summary
 
