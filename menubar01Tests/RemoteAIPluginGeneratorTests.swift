@@ -541,3 +541,351 @@ struct RemoteAIPluginGeneratorContractTests {
         #expect(!plugin.explanation.contains(probe))
     }
 }
+
+// MARK: - Retry policy
+
+/// `RemoteTransport` that returns a pre-registered sequence of
+/// responses, one per call. The first call returns `responses[0]`,
+/// the second `responses[1]`, and so on. If `send` is called more
+/// times than there are responses (i.e. the generator retried
+/// past the script), the stub throws `URLError(.badServerResponse)`
+/// so the test can distinguish "stopped retrying because the
+/// status was non-retryable" from "ran out of canned responses
+/// because the retry budget was wrong".
+///
+/// The transport also records the timestamp of every call so
+/// `testGenerate_respectsRetryAfterHeader` can assert on the
+/// delay between calls without mocking the clock.
+private final class SequencedStubRemoteTransport: RemoteTransport, @unchecked Sendable {
+    private let lock = NSLock()
+    private var responses: [(Data, URLResponse)]
+    private var capturedRequests: [URLRequest] = []
+    private var callTimestamps: [Date] = []
+
+    init(responses: [(Data, URLResponse)]) {
+        self.responses = responses
+    }
+
+    var callCount: Int {
+        lock.lock(); defer { lock.unlock() }
+        return callTimestamps.count
+    }
+
+    var timestamps: [Date] {
+        lock.lock(); defer { lock.unlock() }
+        return callTimestamps
+    }
+
+    var lastRequest: URLRequest? {
+        lock.lock(); defer { lock.unlock() }
+        return capturedRequests.last
+    }
+
+    func send(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        lock.lock()
+        capturedRequests.append(request)
+        callTimestamps.append(Date())
+        guard !responses.isEmpty else {
+            lock.unlock()
+            throw URLError(.badServerResponse)
+        }
+        let next = responses.removeFirst()
+        lock.unlock()
+        return next
+    }
+}
+
+struct RemoteAIPluginGeneratorRetryTests {
+
+    // MARK: - Retry on 429 / 5xx
+
+    @Test func testGenerate_retriesOn429_thenSucceeds() async throws {
+        let endpoint = makeUniqueEndpoint()
+        let response429 = HTTPURLResponse(
+            url: endpoint, statusCode: 429,
+            httpVersion: "HTTP/1.1", headerFields: nil
+        )!
+        let response200 = HTTPURLResponse(
+            url: endpoint, statusCode: 200,
+            httpVersion: "HTTP/1.1", headerFields: nil
+        )!
+        let body = makeOpenAISuccessBody(
+            manifestJSON: validManifestJSON,
+            entryScript: "#!/bin/bash\necho battery\n",
+            explanation: "Battery watcher."
+        )
+        let transport = SequencedStubRemoteTransport(responses: [
+            (Data("rate limited".utf8), response429),
+            (body, response200)
+        ])
+        let generator = RemoteAIPluginGenerator(
+            endpoint: endpoint, apiKey: "k",
+            model: "gpt-4o-mini", transport: transport
+        )
+        let plugin = try await generator.generate(
+            request: "show battery",
+            context: AIGeneratorContext(model: "gpt-4o-mini")
+        )
+        #expect(plugin.manifest.name == "Battery")
+        #expect(transport.callCount == 2)
+    }
+
+    @Test func testGenerate_retriesOn5xx_thenSucceeds() async throws {
+        let endpoint = makeUniqueEndpoint()
+        let response500 = HTTPURLResponse(
+            url: endpoint, statusCode: 500,
+            httpVersion: "HTTP/1.1", headerFields: nil
+        )!
+        let response200 = HTTPURLResponse(
+            url: endpoint, statusCode: 200,
+            httpVersion: "HTTP/1.1", headerFields: nil
+        )!
+        let body = makeOpenAISuccessBody(
+            manifestJSON: validManifestJSON,
+            entryScript: "#!/bin/bash\n",
+            explanation: "n/a"
+        )
+        let transport = SequencedStubRemoteTransport(responses: [
+            (Data("internal error".utf8), response500),
+            (body, response200)
+        ])
+        let generator = RemoteAIPluginGenerator(
+            endpoint: endpoint, apiKey: "k", transport: transport
+        )
+        let plugin = try await generator.generate(
+            request: "x", context: AIGeneratorContext.empty
+        )
+        #expect(plugin.manifest.name == "Battery")
+        #expect(transport.callCount == 2)
+    }
+
+    // MARK: - No-retry paths
+
+    @Test func testGenerate_doesNotRetryOn401() async throws {
+        let endpoint = makeUniqueEndpoint()
+        let response401 = HTTPURLResponse(
+            url: endpoint, statusCode: 401,
+            httpVersion: "HTTP/1.1", headerFields: nil
+        )!
+        // Only one response is registered. If the generator
+        // were to retry on 401, the second call would throw
+        // `URLError(.badServerResponse)` from the stub, which
+        // the generator would surface as `.transportError` —
+        // not `.unauthorized`. The `unauthorized` assertion
+        // below is therefore the "did not retry" check; the
+        // `callCount` is a belt-and-braces second check.
+        let transport = SequencedStubRemoteTransport(responses: [
+            (Data("unauthorized".utf8), response401)
+        ])
+        let generator = RemoteAIPluginGenerator(
+            endpoint: endpoint, apiKey: "k", transport: transport
+        )
+        do {
+            _ = try await generator.generate(
+                request: "x", context: AIGeneratorContext.empty
+            )
+            Issue.record("expected .unauthorized, got success")
+        } catch let error as AIGeneratorError {
+            #expect(error == .unauthorized)
+        }
+        #expect(transport.callCount == 1)
+    }
+
+    @Test func testGenerate_doesNotRetryOnOther4xx() async throws {
+        let endpoint = makeUniqueEndpoint()
+        let response400 = HTTPURLResponse(
+            url: endpoint, statusCode: 400,
+            httpVersion: "HTTP/1.1", headerFields: nil
+        )!
+        let transport = SequencedStubRemoteTransport(responses: [
+            (Data("bad request".utf8), response400)
+        ])
+        let generator = RemoteAIPluginGenerator(
+            endpoint: endpoint, apiKey: "k", transport: transport
+        )
+        do {
+            _ = try await generator.generate(
+                request: "x", context: AIGeneratorContext.empty
+            )
+            Issue.record("expected .providerFailure, got success")
+        } catch let error as AIGeneratorError {
+            #expect(error == .providerFailure(
+                reason: "400 bad request"
+            ))
+        }
+        #expect(transport.callCount == 1)
+    }
+
+    @Test func testGenerate_doesNotRetryOnTransportError() async throws {
+        final class AlwaysFailTransport: RemoteTransport, @unchecked Sendable {
+            var callCount = 0
+            func send(_ request: URLRequest) async throws -> (Data, URLResponse) {
+                callCount += 1
+                throw URLError(.notConnectedToInternet)
+            }
+        }
+        let transport = AlwaysFailTransport()
+        let endpoint = makeUniqueEndpoint()
+        let generator = RemoteAIPluginGenerator(
+            endpoint: endpoint, apiKey: "k", transport: transport
+        )
+        do {
+            _ = try await generator.generate(
+                request: "x", context: AIGeneratorContext.empty
+            )
+            Issue.record("expected .transportError, got success")
+        } catch let error as AIGeneratorError {
+            guard case .transportError(let reason) = error else {
+                Issue.record("expected .transportError, got \(error)")
+                return
+            }
+            #expect(!reason.isEmpty)
+        }
+        #expect(transport.callCount == 1)
+    }
+
+    // MARK: - Retry budget
+
+    @Test func testGenerate_givesUpAfterMaxRetries() async throws {
+        let endpoint = makeUniqueEndpoint()
+        let response429 = HTTPURLResponse(
+            url: endpoint, statusCode: 429,
+            httpVersion: "HTTP/1.1", headerFields: nil
+        )!
+        // `maxRetries: 2` → up to 3 total calls (initial + 2
+        // retries). All three return 429, so the generator
+        // surfaces `.rateLimited` after the third call.
+        let transport = SequencedStubRemoteTransport(responses: [
+            (Data("rate limited".utf8), response429),
+            (Data("rate limited".utf8), response429),
+            (Data("rate limited".utf8), response429)
+        ])
+        let generator = RemoteAIPluginGenerator(
+            endpoint: endpoint, apiKey: "k",
+            transport: transport, maxRetries: 2
+        )
+        do {
+            _ = try await generator.generate(
+                request: "x", context: AIGeneratorContext.empty
+            )
+            Issue.record("expected .rateLimited, got success")
+        } catch let error as AIGeneratorError {
+            #expect(error == .rateLimited)
+        }
+        #expect(transport.callCount == 3)
+    }
+
+    @Test func testGenerate_initialResponseCountsAsAttempt() async throws {
+        // The first call (the "initial response") is the
+        // first of the `maxRetries + 1` total calls. With
+        // `maxRetries: 2`, the generator makes exactly 3
+        // calls before giving up — not 2, not 4.
+        let endpoint = makeUniqueEndpoint()
+        let response429 = HTTPURLResponse(
+            url: endpoint, statusCode: 429,
+            httpVersion: "HTTP/1.1", headerFields: nil
+        )!
+        let transport = SequencedStubRemoteTransport(responses: [
+            (Data("rate limited".utf8), response429),
+            (Data("rate limited".utf8), response429),
+            (Data("rate limited".utf8), response429)
+        ])
+        let generator = RemoteAIPluginGenerator(
+            endpoint: endpoint, apiKey: "k",
+            transport: transport, maxRetries: 2
+        )
+        do {
+            _ = try await generator.generate(
+                request: "x", context: AIGeneratorContext.empty
+            )
+        } catch {
+            // Ignore — we're asserting on callCount below.
+        }
+        #expect(transport.callCount == 3)
+    }
+
+    // MARK: - Retry-After
+
+    @Test func testGenerate_respectsRetryAfterHeader() async throws {
+        let endpoint = makeUniqueEndpoint()
+        // `Retry-After: 2` → the generator should wait 2
+        // seconds (not the default 1s exponential) before the
+        // first retry. The exponential path would still cap at
+        // ≤ 1s, so the test only passes if the header is being
+        // honoured.
+        let response429 = HTTPURLResponse(
+            url: endpoint, statusCode: 429,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Retry-After": "2"]
+        )!
+        let response200 = HTTPURLResponse(
+            url: endpoint, statusCode: 200,
+            httpVersion: "HTTP/1.1", headerFields: nil
+        )!
+        let body = makeOpenAISuccessBody(
+            manifestJSON: validManifestJSON,
+            entryScript: "#!/bin/bash\n",
+            explanation: "n/a"
+        )
+        let transport = SequencedStubRemoteTransport(responses: [
+            (Data("rate limited".utf8), response429),
+            (body, response200)
+        ])
+        let generator = RemoteAIPluginGenerator(
+            endpoint: endpoint, apiKey: "k", transport: transport
+        )
+        _ = try await generator.generate(
+            request: "x", context: AIGeneratorContext.empty
+        )
+        let timestamps = transport.timestamps
+        #expect(timestamps.count == 2)
+        // Allow 0.5s tolerance: the header is "2" seconds, and
+        // `Task.sleep` rounds down to the scheduler's
+        // resolution. We don't enforce a tight upper bound
+        // because CI runners are occasionally slow.
+        let delay = timestamps[1].timeIntervalSince(timestamps[0])
+        #expect(delay >= 1.5)
+    }
+
+    @Test func testGenerate_capsRetryAfterAt60Seconds() async throws {
+        let endpoint = makeUniqueEndpoint()
+        // A hostile / misconfigured server asking the client
+        // to wait ~2.7 hours. The cap at 60s means the test
+        // completes in a reasonable time; without the cap the
+        // CI runner would block until the global timeout.
+        let response429 = HTTPURLResponse(
+            url: endpoint, statusCode: 429,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Retry-After": "9999"]
+        )!
+        let response200 = HTTPURLResponse(
+            url: endpoint, statusCode: 200,
+            httpVersion: "HTTP/1.1", headerFields: nil
+        )!
+        let body = makeOpenAISuccessBody(
+            manifestJSON: validManifestJSON,
+            entryScript: "#!/bin/bash\n",
+            explanation: "n/a"
+        )
+        let transport = SequencedStubRemoteTransport(responses: [
+            (Data("rate limited".utf8), response429),
+            (body, response200)
+        ])
+        let generator = RemoteAIPluginGenerator(
+            endpoint: endpoint, apiKey: "k", transport: transport
+        )
+        _ = try await generator.generate(
+            request: "x", context: AIGeneratorContext.empty
+        )
+        let timestamps = transport.timestamps
+        #expect(timestamps.count == 2)
+        // 65s upper bound: cap is 60s, with a small tolerance
+        // for scheduler jitter and the time spent in the
+        // transport / decoder between the two calls. If the
+        // cap were broken, the second timestamp would be ~9999
+        // seconds after the first and this test would
+        // time-out the entire suite.
+        let delay = timestamps[1].timeIntervalSince(timestamps[0])
+        #expect(delay < 65)
+    }
+}
