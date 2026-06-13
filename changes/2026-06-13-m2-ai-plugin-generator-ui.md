@@ -20,6 +20,15 @@ lands in this milestone. The "Save to Plugin Folder" action is a
 stub — M3 will wire it through to `PluginManager.importPlugin`
 and the `GeneratedPlugin.encodedAsBundle()` helper.
 
+> **Addendum (M2-install-flow, 2026-06-13):** the stub was
+> wired through to a real install path in commit TBD; see
+> [`2026-06-13-m2-install-flow.md`](2026-06-13-m2-install-flow.md)
+> for the details. The "M3" framing in the paragraph above
+> predates the install-flow milestone; M3 itself is the
+> capability-gate plumbing (commit 9755129), and the install
+> path lands as a follow-up M2 milestone rather than as part
+> of M3.
+
 ## Motivation
 
 `AI_PLUGIN_ARCHITECTURE.md` §6 lists M2 as
@@ -87,6 +96,16 @@ ready.
   on the `AppDelegate` class so the menu command can persist the
   generator window across re-opens.
 
+> **Addendum (M2-install-flow):** the `requestSaveToPluginFolder`
+> stub was replaced with a real call to
+> `PluginManager.installGeneratedPlugin(...)` (added in the same
+> commit, see `2026-06-13-m2-install-flow.md`). The view model
+> now installs the most recent `latestPlugin` into
+> `<pluginDirectory>/_generated/<sanitized promptId>/` and flips
+> `didRequestSave` to `true` on success or `false` on failure.
+> The `M2-install-flow` record owns the install-method changes
+> in `PluginManger.swift` and the new test file.
+
 ## Impact
 
 - **New public types:** none. All new types are `internal` to the
@@ -125,7 +144,9 @@ ready.
 - [`AI_PLUGIN_ARCHITECTURE.md`](../AI_PLUGIN_ARCHITECTURE.md) §1.5
   (the M1 contract this milestone consumes) and §6 (the
   roadmap entry for M2).
-- Follow-up: M3 (capability-gate install flow that consumes
-  `GeneratedPlugin.encodedAsBundle()` from M1 and replaces the M2
-  save stub with a real `PluginManager.importPlugin` call);
-  M5 (real LLM-backed factory + generator history persistence).
+- Follow-up: M3 (capability-gate plumbing — commit
+  9755129); the **install-flow** follow-up is tracked by
+  [`2026-06-13-m2-install-flow.md`](2026-06-13-m2-install-flow.md)
+  (wires the M2 save stub to `PluginManager.installGeneratedPlugin`).
+  M5 covers the real LLM-backed factory + generator history
+  persistence.

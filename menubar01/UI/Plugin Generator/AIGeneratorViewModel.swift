@@ -11,6 +11,7 @@
 // `MockAIPluginGenerator` without touching the factory.
 
 import Foundation
+import os
 import SwiftUI
 
 /// State of the generator sheet. Mirrors the §2 end-to-end flow in
@@ -58,10 +59,12 @@ final class AIGeneratorViewModel: ObservableObject {
     /// `.empty` so the visible "language" is always "en".
     @Published var context: AIGeneratorContext = .empty
 
-    /// Set to `true` after the user clicks "Save to Plugin Folder"
-    /// at least once. The sheet reads this to show a confirmation
-    /// alert (in v1 the alert is a no-op — M3 will wire it through
-    /// to `PluginManager.importPlugin`).
+    /// Set to `true` after a successful `PluginManager.installGeneratedPlugin`
+    /// call. The sheet reads this to show the "Saved" confirmation
+    /// alert and to swap the button label back to its "Save to Plugin
+    /// Folder" idle state. Reset to `false` when a re-generate lands
+    /// (see `generate()`) or when an install fails (see
+    /// `requestSaveToPluginFolder()`).
     @Published var didRequestSave: Bool = false
 
     // MARK: - Dependencies
@@ -72,6 +75,11 @@ final class AIGeneratorViewModel: ObservableObject {
     /// behaviour without going through the protocol's real
     /// implementation.
     let generator: AIPluginGenerator
+
+    /// M2 logs through this category. Mirrors `GeneratedPlugin.log`
+    /// in `AIGenerator.swift` so the two flows' log messages show up
+    /// under the same subsystem / split out by category.
+    private static let log = OSLog(subsystem: "com.lingyi.menubar01", category: "AIGenerator")
 
     // MARK: - Init
 
@@ -139,13 +147,28 @@ final class AIGeneratorViewModel: ObservableObject {
         }
     }
 
-    /// Stub for the M3 "Save to Plugin Folder" action. v1 simply
-    /// flips `didRequestSave` so the view can show a friendly
-    /// alert ("M3 will wire this to `PluginManager.importPlugin`")
-    /// without performing any disk I/O. M3 replaces this method
-    /// body with a real `pluginManager.importPlugin(from:)` call.
+    /// Install the most recent `latestPlugin` into the user's Plugin
+    /// Folder by handing it to `PluginManager.installGeneratedPlugin`.
+    ///
+    /// The M2 stub simply flipped `didRequestSave`; M2-install-flow
+    /// replaces that with a real install so the user sees the new
+    /// plugin appear in the menu bar (via `PluginManager.loadPlugins`
+    /// firing on the directory observer) without an extra "Confirm"
+    /// step. The explicit install-prompt sheet (capability grant +
+    /// user confirmation) is a follow-up — for v1, "I just generated
+    /// this" is treated as a reasonable provenance for the manifest's
+    /// `capabilities`. See `changes/2026-06-13-m2-install-flow.md`
+    /// for the full rationale.
     func requestSaveToPluginFolder() {
-        didRequestSave = true
+        guard let plugin = latestPlugin else { return }
+        switch PluginManager.shared.installGeneratedPlugin(plugin) {
+        case .success(let url):
+            os_log("AIGenerator: installed plugin at %{public}@", log: Self.log, type: .info, url.path)
+            didRequestSave = true
+        case .failure(let error):
+            os_log("AIGenerator: install failed: %{public}@", log: Self.log, type: .error, String(describing: error))
+            didRequestSave = false
+        }
     }
 
     /// Reset the sheet back to its initial state. Useful for the

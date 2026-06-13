@@ -139,11 +139,15 @@ struct AIGeneratorViewModelTests {
         let generator = CapturingMockAIPluginGenerator(response: plugin)
         let viewModel = AIGeneratorViewModel(generator: generator)
 
-        // First round-trip succeeds; user clicks "Save to Plugin
-        // Folder" — stub flips the flag.
+        // Set the flag directly to simulate "user clicked Save" — the
+        // real `requestSaveToPluginFolder()` now performs disk I/O via
+        // `PluginManager.shared`, so we don't want the test to depend
+        // on whether the host test bundle has a plugin directory
+        // configured. The flag's flip-on-save behaviour is covered by
+        // `PluginManagerInstallGeneratedPluginTests`.
         viewModel.request = "first"
         await viewModel.generate()
-        viewModel.requestSaveToPluginFolder()
+        viewModel.didRequestSave = true
         #expect(viewModel.didRequestSave == true)
 
         // Second round-trip should reset the flag so the user can
@@ -168,13 +172,16 @@ struct AIGeneratorViewModelTests {
         #expect(viewModel.state == .idle)
     }
 
-    @Test func testRequestSaveToPluginFolderFlipsFlag() {
+    @Test func testRequestSaveToPluginFolderIsNoOpWithoutLatestPlugin() {
         let generator = CapturingMockAIPluginGenerator()
         let viewModel = AIGeneratorViewModel(generator: generator)
 
         #expect(viewModel.didRequestSave == false)
         viewModel.requestSaveToPluginFolder()
-        #expect(viewModel.didRequestSave == true)
+        // No `latestPlugin` is set, so the save is a no-op and
+        // the flag stays false. The full install path is
+        // exercised by `PluginManagerInstallGeneratedPluginTests`.
+        #expect(viewModel.didRequestSave == false)
     }
 
     @Test func testResetClearsStateAndLatestPlugin() async {

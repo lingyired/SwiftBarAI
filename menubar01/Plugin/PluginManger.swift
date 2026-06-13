@@ -967,6 +967,126 @@ class PluginManager: ObservableObject {
         downloadTask.resume()
     }
 
+    // MARK: - AI Generator install path
+
+    /// Errors surfaced by `installGeneratedPlugin(_:)`. The cases are
+    /// mapped 1-to-1 to the failure modes a user can hit when saving
+    /// an M2-generated plugin: a missing Plugin Folder preference,
+    /// a disk write failure (permissions, full disk, etc.), and a
+    /// failure to mark the entry script executable.
+    public enum InstallGeneratedPluginError: Error, Equatable {
+        /// `prefs.pluginDirectoryResolvedURL` returned `nil` — the
+        /// user has not picked a Plugin Folder yet (or the saved
+        /// value is unusable). M2 callers should surface this as
+        /// "Pick a Plugin Folder first".
+        case pluginDirectoryUnavailable
+        /// `FileManager` rejected the manifest / entry script write.
+        /// The associated string is the underlying
+        /// `localizedDescription` for logging.
+        case writeFailed(reason: String)
+        /// `chmod +x` exited non-zero. The associated string is the
+        /// underlying `localizedDescription` for logging.
+        case chmodFailed(reason: String)
+    }
+
+    /// Install a `GeneratedPlugin` produced by the M2 AI generator
+    /// sheet into the user's Plugin Folder.
+    ///
+    /// The install path is deliberately minimal for M2:
+    /// 1. Resolve `pluginDirectoryURL` (the user's Plugin Folder).
+    /// 2. Compute a subfolder under `_generated/<sanitized
+    ///    promptId>/` — `_generated` keeps AI output visually
+    ///    grouped in the folder listing, and the sanitization rule
+    ///    (see `sanitizedPromptId(_:)`) defeats the obvious
+    ///    path-traversal payloads a hostile `promptId` could carry.
+    /// 3. Ask the plugin for its bundle via
+    ///    `GeneratedPlugin.encodedAsBundle()`, then drop
+    ///    `manifest.json` and the entry script verbatim into the
+    ///    subfolder.
+    /// 4. Mark the entry script executable with the same
+    ///    `runScript(to: "chmod", args: ["+x", ...])` idiom the
+    ///    existing `installImportedPlugin` uses.
+    /// 5. Return the target URL so the caller can show a "Saved
+    ///    to …" hint.
+    ///
+    /// The install is idempotent: re-installing a plugin with the
+    /// same `promptId` overwrites `manifest.json` and the entry
+    /// script in place rather than creating a new subfolder. This
+    /// matches the "Re-generate → Save" loop the M2 sheet exposes.
+    ///
+    /// **Capability-gate interaction:** the M3
+    /// `PluginCapabilityGate` is enforced on the *load* side (see
+    /// `loadPlugin(fileURL:)`), not on install. M2's sheet
+    /// performs no capability prompt — the user has just authored
+    /// the manifest, so any `capabilities` it declares have a
+    /// reasonable provenance. The explicit install-prompt sheet
+    /// (capability grant + confirmation) is a follow-up.
+    @discardableResult
+    public func installGeneratedPlugin(_ plugin: GeneratedPlugin) -> Result<URL, InstallGeneratedPluginError> {
+        guard let pluginDirectoryURL else {
+            return .failure(.pluginDirectoryUnavailable)
+        }
+
+        let sanitizedId = Self.sanitizedPromptId(plugin.promptId)
+        let targetURL = pluginDirectoryURL
+            .appendingPathComponent("_generated", isDirectory: true)
+            .appendingPathComponent(sanitizedId, isDirectory: true)
+
+        let bundle = plugin.encodedAsBundle()
+
+        do {
+            try FileManager.default.createDirectory(
+                at: targetURL,
+                withIntermediateDirectories: true
+            )
+            try bundle.manifestData.write(
+                to: targetURL.appendingPathComponent(pluginManifestFileName)
+            )
+            try bundle.entryData.write(
+                to: targetURL.appendingPathComponent(bundle.entryFilename)
+            )
+        } catch {
+            os_log("installGeneratedPlugin: write failed for %{public}@: %{public}@",
+                   log: Log.plugin, type: .error, targetURL.path, error.localizedDescription)
+            return .failure(.writeFailed(reason: error.localizedDescription))
+        }
+
+        let entryPath = targetURL.appendingPathComponent(bundle.entryFilename).path
+        do {
+            try runScript(to: "chmod", args: ["+x", "\(entryPath.escaped())"])
+        } catch {
+            os_log("installGeneratedPlugin: chmod failed for %{public}@: %{public}@",
+                   log: Log.plugin, type: .error, entryPath, error.localizedDescription)
+            return .failure(.chmodFailed(reason: error.localizedDescription))
+        }
+
+        return .success(targetURL)
+    }
+
+    /// Sanitize a `GeneratedPlugin.promptId` for use as a directory
+    /// name. Replaces every `/`, `\`, `~`, and `:` with `_` so a
+    /// hostile or sloppy `promptId` cannot be used to break out of
+    /// the `_generated/` subfolder, then collapses any remaining
+    /// `..` sequence to a single `_` to defeat the `../` path
+    /// traversal payload, and finally clips to 64 characters so a
+    /// runaway generator response cannot create a path that
+    /// overflows the file system. Empty input falls back to
+    /// `"unnamed"`.
+    static func sanitizedPromptId(_ promptId: String) -> String {
+        let replaced = promptId.map { char -> Character in
+            switch char {
+            case "/", "\\", "~", ":":
+                return "_"
+            default:
+                return char
+            }
+        }
+        var result = String(replaced)
+        result = result.replacingOccurrences(of: "..", with: "_")
+        if result.isEmpty { return "unnamed" }
+        return String(result.prefix(64))
+    }
+
     #if !MAC_APP_STORE
         func configureDirectoryObserver() {
             if let url = pluginDirectoryURL {
