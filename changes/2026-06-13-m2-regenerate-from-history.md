@@ -5,8 +5,8 @@
   `menubar01/UI/Generator History/GeneratorHistoryMenuCommand.swift`,
   `menubar01Tests/GeneratorHistoryMenuCommandTests.swift`
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** c60a88c
+- **Status:** done
 
 ## Summary
 
