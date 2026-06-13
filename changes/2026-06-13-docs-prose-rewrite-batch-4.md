@@ -3,8 +3,8 @@
 - **Type:** docs
 - **Scope:** `docs/00-README.md`, `docs/04-Plugin-System.md`, `docs/06-Plugin-Output-Parsing.md`
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** _pending_
-- **Status:** in-progress
+- **Commit(s):** 0c4f1c6
+- **Status:** done
 
 ## Summary
 
