@@ -3,8 +3,8 @@
 - **Type:** feat
 - **Scope:** menubar01/AI/RemoteAIPluginGenerator
 - **Author(s):** Trae AI
-- **Commit(s):** (pending)
-- **Status:** in-progress
+- **Commit(s):** 7416789
+- **Status:** done
 
 ## Summary
 Adds an automatic retry policy to `RemoteAIPluginGenerator` so a 429
