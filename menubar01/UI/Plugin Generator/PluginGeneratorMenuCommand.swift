@@ -72,10 +72,24 @@ enum PluginGeneratorMenuCommand {
     /// not present a real AppKit sheet — a standalone window keeps
     /// the menu → window plumbing identical to the existing
     /// Plugin Repository flow.
+    ///
+    /// The `appDelegate:` parameter is optional for backwards
+    /// compatibility with the M2 call site
+    /// (`AppMenu.openAIGenerator`). When supplied, the
+    /// `GeneratorHistoryMenuCommand`'s "Re-generate" hook uses the
+    /// same window controller so the history → generator → history
+    /// round-trip reuses the in-flight VM state.
     @MainActor
-    static func presentSheet() {
-        guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
-        let windowController = ensureWindowController(appDelegate: appDelegate)
+    static func presentSheet(appDelegate: AppDelegate? = nil) {
+        let resolvedDelegate: AppDelegate
+        if let appDelegate {
+            resolvedDelegate = appDelegate
+        } else if let appDelegate = NSApp.delegate as? AppDelegate {
+            resolvedDelegate = appDelegate
+        } else {
+            return
+        }
+        let windowController = ensureWindowController(appDelegate: resolvedDelegate)
         if windowController.contentViewController == nil {
             let viewModel = AIGeneratorViewModel()
             windowController.contentViewController = NSHostingController(

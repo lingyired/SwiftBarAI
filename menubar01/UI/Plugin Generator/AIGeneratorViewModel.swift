@@ -59,13 +59,18 @@ final class AIGeneratorViewModel: ObservableObject {
     /// `.empty` so the visible "language" is always "en".
     @Published var context: AIGeneratorContext = .empty
 
-    /// Set to `true` after a successful `PluginManager.installGeneratedPlugin`
-    /// call. The sheet reads this to show the "Saved" confirmation
-    /// alert and to swap the button label back to its "Save to Plugin
-    /// Folder" idle state. Reset to `false` when a re-generate lands
-    /// (see `generate()`) or when an install fails (see
-    /// `requestSaveToPluginFolder()`).
+    /// Set to `true` after a successful install initiated by the
+    /// `AIGeneratorInstallPromptSheet` completion handler. The sheet
+    /// reads this to show the "Installed!" success banner. Reset to
+    /// `false` when a re-generate lands (see `generate()`) or when an
+    /// install fails (see `didFailInstall(reason:)`).
     @Published var didRequestSave: Bool = false
+
+    /// URL of the directory the most recent successful install wrote
+    /// the plugin into. Set by `didCompleteInstall(at:)`; cleared by
+    /// `didFailInstall(reason:)` and `reset()`. Read by
+    /// `AIGeneratorSheet` to render the success banner.
+    @Published var installedPluginURL: URL?
 
     // MARK: - Dependencies
 
@@ -76,6 +81,25 @@ final class AIGeneratorViewModel: ObservableObject {
     /// implementation.
     let generator: AIPluginGenerator
 
+    /// M3 capability gate used by the install-prompt sheet to read
+    /// / grant the per-plugin capability set. Default points at
+    /// `PluginManager.shared.pluginCapabilityGate` so the
+    /// production sheet uses the same store the loader reads from
+    /// on next refresh. Tests inject a fresh instance backed by an
+    /// isolated `UserDefaults(suiteName:)` via the
+    /// `internal(set)` setter.
+    var pluginCapabilityGate: PluginCapabilityGate = PluginManager.shared.pluginCapabilityGate
+
+    /// M5 history store. Persists every successful `generate()`
+    /// result so the user can audit, re-generate, or downgrade a
+    /// generated plugin later. The default factory points at the
+    /// file-system store rooted at
+    /// `~/Library/Application Support/menubar01/AIGenerator/` so
+    /// the production call site stays a one-liner; tests inject a
+    /// fresh `FileSystemAIGeneratorHistoryStore` rooted at a temp
+    /// dir to keep assertions hermetic.
+    let historyStore: AIGeneratorHistoryStore
+
     /// M2 logs through this category. Mirrors `GeneratedPlugin.log`
     /// in `AIGenerator.swift` so the two flows' log messages show up
     /// under the same subsystem / split out by category.
@@ -84,10 +108,15 @@ final class AIGeneratorViewModel: ObservableObject {
     // MARK: - Init
 
     /// Default initializer. Pulls a generator from
-    /// `AIPluginGeneratorFactory.makeDefault()` so the production
-    /// sheet call site can stay one-liner.
-    init(generator: AIPluginGenerator = AIPluginGeneratorFactory.makeDefault()) {
+    /// `AIPluginGeneratorFactory.makeDefault()` and a history store
+    /// from `AIGeneratorHistoryStoreFactory.makeDefault()` so the
+    /// production sheet call site can stay one-liner.
+    init(
+        generator: AIPluginGenerator = AIPluginGeneratorFactory.makeDefault(),
+        historyStore: AIGeneratorHistoryStore = AIGeneratorHistoryStoreFactory.makeDefault()
+    ) {
         self.generator = generator
+        self.historyStore = historyStore
     }
 
     // MARK: - Derived State
@@ -138,37 +167,96 @@ final class AIGeneratorViewModel: ObservableObject {
         guard !trimmed.isEmpty else { return }
         state = .loading
         didRequestSave = false
+        installedPluginURL = nil
         do {
             let plugin = try await generator.generate(request: trimmed, context: context)
             latestPlugin = plugin
             state = .success(plugin)
+            // Persist the result so the user can audit, re-generate, or
+            // downgrade a generated plugin later (AI_PLUGIN_ARCHITECTURE.md §4).
+            do {
+                try historyStore.record(AIGeneratorHistoryEntry(
+                    promptId: plugin.promptId,
+                    createdAt: Date(),
+                    request: trimmed,
+                    model: context.model,
+                    plugin: plugin,
+                    menuTreeJSON: nil  // M5+; the generator's sandboxed dry-run
+                                       // will populate this in a follow-up.
+                ))
+            } catch {
+                os_log("AIGenerator: failed to record history entry: %{public}@",
+                       log: Self.log, type: .error, error.localizedDescription)
+                // Non-fatal: the user still sees the generated plugin.
+            }
         } catch {
             state = .failure(error.localizedDescription)
         }
     }
 
-    /// Install the most recent `latestPlugin` into the user's Plugin
-    /// Folder by handing it to `PluginManager.installGeneratedPlugin`.
+    /// Trigger the install flow.
     ///
-    /// The M2 stub simply flipped `didRequestSave`; M2-install-flow
-    /// replaces that with a real install so the user sees the new
-    /// plugin appear in the menu bar (via `PluginManager.loadPlugins`
-    /// firing on the directory observer) without an extra "Confirm"
-    /// step. The explicit install-prompt sheet (capability grant +
-    /// user confirmation) is a follow-up — for v1, "I just generated
-    /// this" is treated as a reasonable provenance for the manifest's
-    /// `capabilities`. See `changes/2026-06-13-m2-install-flow.md`
-    /// for the full rationale.
+    /// In M2's first cut this performed the install directly
+    /// (`PluginManager.shared.installGeneratedPlugin(plugin)` and
+    /// flipped `didRequestSave`). The M2-install-prompt
+    /// follow-up replaces that contract: the
+    /// `AIGeneratorInstallPromptSheet` (presented by the parent
+    /// `AIGeneratorSheet`) drives the flow, and on completion calls
+    /// `didCompleteInstall(at:)` / `didFailInstall(reason:)` to
+    /// update the published state. This method is now a deliberate
+    /// no-op kept for API stability so the older call site
+    /// (`AIGeneratorSheet` used to invoke it from the footer
+    /// button) compiles without modification.
     func requestSaveToPluginFolder() {
-        guard let plugin = latestPlugin else { return }
-        switch PluginManager.shared.installGeneratedPlugin(plugin) {
-        case .success(let url):
-            os_log("AIGenerator: installed plugin at %{public}@", log: Self.log, type: .info, url.path)
-            didRequestSave = true
-        case .failure(let error):
-            os_log("AIGenerator: install failed: %{public}@", log: Self.log, type: .error, String(describing: error))
-            didRequestSave = false
+        // No-op: the install-prompt sheet owns the flow. See
+        // `AIGeneratorInstallPromptSheet` / `didCompleteInstall(at:)`.
+    }
+
+    // MARK: - Install-prompt integration
+
+    /// Capabilities the current `latestPlugin.manifest` declares.
+    /// Empty when there is no `latestPlugin` — the parent sheet
+    /// reads this to decide whether to even open the install-prompt
+    /// sub-sheet.
+    var installPromptCapabilities: [PluginCapability] {
+        latestPlugin?.manifest.resolvedCapabilities ?? []
+    }
+
+    /// Pre-flight check: `true` when every declared capability is
+    /// already granted (no prompt needed), `false` when at least
+    /// one capability is ungranted. Used by the parent sheet to
+    /// skip the prompt when the user has already accepted
+    /// everything in a previous round-trip.
+    var installPromptIsPreApproved: Bool {
+        let pluginName = latestPlugin?.manifest.name ?? ""
+        let granted = pluginCapabilityGate.granted(for: pluginName)
+        return installPromptCapabilities.allSatisfy { capability in
+            granted.contains(capability)
         }
+    }
+
+    /// Called by `AIGeneratorInstallPromptSheet`'s completion
+    /// handler after a successful install. Stores the destination
+    /// URL and flips `didRequestSave` so the parent sheet shows
+    /// the success banner. v1 just sets the flag and stores the
+    /// URL; future versions can fire a system notification here.
+    func didCompleteInstall(at url: URL) {
+        installedPluginURL = url
+        didRequestSave = true
+        os_log("AIGenerator: installed plugin at %{public}@",
+               log: Self.log, type: .info, url.path)
+    }
+
+    /// Called by `AIGeneratorInstallPromptSheet`'s completion
+    /// handler after a failed install (or a Cancel). Resets the
+    /// published state so the parent sheet's banner goes back to
+    /// its idle state and `didRequestSave` does not show a
+    /// misleading "Saved" hint.
+    func didFailInstall(reason: String) {
+        installedPluginURL = nil
+        didRequestSave = false
+        os_log("AIGenerator: install did not complete: %{public}@",
+               log: Self.log, type: .info, reason)
     }
 
     /// Reset the sheet back to its initial state. Useful for the
@@ -179,6 +267,7 @@ final class AIGeneratorViewModel: ObservableObject {
         state = .idle
         latestPlugin = nil
         didRequestSave = false
+        installedPluginURL = nil
     }
 }
 

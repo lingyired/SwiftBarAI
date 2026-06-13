@@ -11,6 +11,13 @@
 //
 // Driven by `AIGeneratorViewModel`. The view never holds generator
 // state of its own — every state transition goes through the VM.
+//
+// M2 install-prompt: clicking "Save to Plugin Folder" now opens a
+// second modal sheet (`AIGeneratorInstallPromptSheet`) that lists
+// the plugin's declared capabilities, lets the user grant / deny
+// each, and on Install calls `PluginCapabilityGate.grant(_:for:)`
+// for every enabled capability before handing the plugin to
+// `PluginManager.installGeneratedPlugin(_:)`.
 
 import SwiftUI
 
@@ -27,6 +34,12 @@ import SwiftUI
 @MainActor
 struct AIGeneratorSheet: View {
     @StateObject private var viewModel: AIGeneratorViewModel
+
+    /// Backing state for the install-prompt sub-sheet. The
+    /// `AIGeneratorInstallPromptSheet` is presented as a SwiftUI
+    /// `.sheet(...)` modal so it stacks cleanly on top of this
+    /// sheet and dismisses independently.
+    @State private var showingInstallPrompt: Bool = false
 
     /// Designated initializer. Tests pass a hand-built view model
     /// that wraps a `MockAIPluginGenerator`; the production call
@@ -48,6 +61,7 @@ struct AIGeneratorSheet: View {
                 VStack(alignment: .leading, spacing: 16) {
                     requestEditor
                     errorBanner
+                    installSuccessBanner
                     if let plugin = viewModel.latestPlugin {
                         resultSection(for: plugin)
                     }
@@ -58,16 +72,26 @@ struct AIGeneratorSheet: View {
             footer
         }
         .frame(minWidth: 560, idealWidth: 640, minHeight: 480, idealHeight: 600)
-        .alert(
-            "Save to Plugin Folder",
-            isPresented: $viewModel.didRequestSave,
-            actions: {
-                Button("OK", role: .cancel) {}
-            },
-            message: {
-                Text("M3 will wire this to PluginManager.importPlugin. For now the generated manifest + script are visible in the preview above.")
+        .sheet(isPresented: $showingInstallPrompt) {
+            AIGeneratorInstallPromptSheet(viewModel: viewModel) { result in
+                // The sub-sheet's completion handler is the only
+                // path back into view-model state. We toggle the
+                // presentation binding first so the SwiftUI sheet
+                // dismisses, then update the view model.
+                showingInstallPrompt = false
+                switch result {
+                case .success(let url):
+                    viewModel.didCompleteInstall(at: url)
+                case .failure(let error):
+                    switch error {
+                    case .noLatestPlugin:
+                        viewModel.didFailInstall(reason: "cancelled")
+                    case .installFailed(let reason):
+                        viewModel.didFailInstall(reason: reason)
+                    }
+                }
             }
-        )
+        }
     }
 
     // MARK: - Sections
@@ -123,6 +147,28 @@ struct AIGeneratorSheet: View {
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.red.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+    }
+
+    @ViewBuilder
+    private var installSuccessBanner: some View {
+        if viewModel.didRequestSave, let url = viewModel.installedPluginURL {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Installed!")
+                        .font(.subheadline.weight(.semibold))
+                    Text(url.path)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.green.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 6))
         }
     }
@@ -232,7 +278,15 @@ struct AIGeneratorSheet: View {
                 }
                 .disabled(!viewModel.canGenerate)
                 Button("Save to Plugin Folder") {
-                    viewModel.requestSaveToPluginFolder()
+                    // M2 install-prompt: opening the prompt sheet
+                    // here, not in the view model. The sub-sheet
+                    // reads `viewModel.latestPlugin` /
+                    // `viewModel.installPromptCapabilities` and
+                    // calls back through the `.sheet` completion
+                    // handler with the result. The view model
+                    // itself is a no-op for the install — the
+                    // sheet is the active participant.
+                    showingInstallPrompt = true
                 }
                 .keyboardShortcut(.defaultAction)
             } else {

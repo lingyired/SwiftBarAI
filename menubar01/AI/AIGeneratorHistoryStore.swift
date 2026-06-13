@@ -27,6 +27,19 @@ public enum AIGeneratorHistoryError: Error, Equatable {
     /// `AIGeneratorHistoryEntry`. The reason is the underlying decode
     /// error's `localizedDescription`.
     case decodingFailed(reason: String)
+
+    /// Human-readable reason for the error. `AIGeneratorHistoryError`
+    /// does not conform to `LocalizedError` (the M5 store-test suite
+    /// does not need the localisation plumbing), so callers that
+    /// want to surface the error verbatim should read `reason`
+    /// rather than `error.localizedDescription` (which would
+    /// return the default NSError description).
+    public var reason: String {
+        switch self {
+        case .ioFailure(let reason), .decodingFailed(let reason):
+            return reason
+        }
+    }
 }
 
 // MARK: - Protocol

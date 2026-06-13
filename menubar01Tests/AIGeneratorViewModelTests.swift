@@ -139,22 +139,26 @@ struct AIGeneratorViewModelTests {
         let generator = CapturingMockAIPluginGenerator(response: plugin)
         let viewModel = AIGeneratorViewModel(generator: generator)
 
-        // Set the flag directly to simulate "user clicked Save" — the
-        // real `requestSaveToPluginFolder()` now performs disk I/O via
-        // `PluginManager.shared`, so we don't want the test to depend
-        // on whether the host test bundle has a plugin directory
-        // configured. The flag's flip-on-save behaviour is covered by
+        // Set the flag directly to simulate "the install-prompt
+        // sheet's completion handler called
+        // `viewModel.didCompleteInstall(at:)`" — the real
+        // completion path lives in the sheet, so we don't want
+        // the test to depend on whether the host test bundle
+        // has a plugin directory configured. The flag's
+        // flip-on-save behaviour is covered by
+        // `AIGeneratorInstallPromptTests` and by
         // `PluginManagerInstallGeneratedPluginTests`.
         viewModel.request = "first"
         await viewModel.generate()
-        viewModel.didRequestSave = true
+        viewModel.didCompleteInstall(at: URL(fileURLWithPath: "/tmp/anywhere"))
         #expect(viewModel.didRequestSave == true)
 
-        // Second round-trip should reset the flag so the user can
-        // save the new result.
+        // Second round-trip should reset the flag so the user
+        // can save the new result.
         viewModel.request = "second"
         await viewModel.generate()
         #expect(viewModel.didRequestSave == false)
+        #expect(viewModel.installedPluginURL == nil)
     }
 
     @Test func testGenerateSkipsEmptyRequests() async {
@@ -179,8 +183,14 @@ struct AIGeneratorViewModelTests {
         #expect(viewModel.didRequestSave == false)
         viewModel.requestSaveToPluginFolder()
         // No `latestPlugin` is set, so the save is a no-op and
-        // the flag stays false. The full install path is
-        // exercised by `PluginManagerInstallGeneratedPluginTests`.
+        // the flag stays false. The contract changed in the
+        // M2-install-prompt follow-up: the view model no longer
+        // performs the install itself — the
+        // `AIGeneratorInstallPromptSheet` is the active
+        // participant. The full install path is exercised by
+        // `PluginManagerInstallGeneratedPluginTests`, and the
+        // completion-driven state transitions are covered by
+        // `AIGeneratorInstallPromptTests`.
         #expect(viewModel.didRequestSave == false)
     }
 
@@ -191,12 +201,13 @@ struct AIGeneratorViewModelTests {
 
         viewModel.request = "first"
         await viewModel.generate()
-        viewModel.requestSaveToPluginFolder()
+        viewModel.didCompleteInstall(at: URL(fileURLWithPath: "/tmp/anywhere"))
 
         viewModel.reset()
         #expect(viewModel.state == .idle)
         #expect(viewModel.latestPlugin == nil)
         #expect(viewModel.didRequestSave == false)
+        #expect(viewModel.installedPluginURL == nil)
     }
 
     @Test func testManifestJSONRoundTripsGeneratorOutput() async {

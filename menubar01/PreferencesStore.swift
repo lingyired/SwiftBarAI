@@ -25,13 +25,21 @@ enum ShellOptions: String, CaseIterable {
     }
 }
 
-class PreferencesStore: ObservableObject {
+public class PreferencesStore: ObservableObject {
     static let shared = PreferencesStore()
 
     /// The `UserDefaults` instance this store reads from and writes to. Tests
     /// inject a per-suite instance (via `UserDefaults(suiteName:)`) so they do
     /// not contaminate `UserDefaults.standard` for other test cases.
-    private let defaults: UserDefaults
+    ///
+    /// Exposed as `internal` (not `private`) so test seams and feature
+    /// modules (`AIPluginGeneratorFactory`, future `Preferences → AI`
+    /// panes, etc.) can read the raw `UserDefaults` for keys that
+    /// don't yet warrant a dedicated `@Published` property on the
+    /// store. The access is read-only: callers must go through the
+    /// store's own setters for any value that needs to participate
+    /// in `didSet` / `@Published` change tracking.
+    let defaults: UserDefaults
     enum PreferencesKeys: String {
         case PluginDirectory
         case ShortcutsFolder

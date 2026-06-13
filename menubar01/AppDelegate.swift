@@ -77,6 +77,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUStandardUserDriverDelegat
     /// `MarketplaceBrowserMenuCommand.ensureWindowController(...)`.
     var marketplaceBrowserWindowController: NSWindowController?
 
+    /// Window that hosts the AI generator history sheet (M5 UI).
+    /// Held on the `AppDelegate` so the sheet can be reopened
+    /// without losing in-flight input. Lazily created by
+    /// `GeneratorHistoryMenuCommand.ensureWindowController(...)`.
+    var generatorHistoryWindowController: NSWindowController?
+
     lazy var preferencesWindowController = PreferencesWindowController(
         panes: preferencePanes,
         style: .toolbarItems,
