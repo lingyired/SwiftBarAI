@@ -459,6 +459,19 @@ final class MarketplaceBrowserViewModel: ObservableObject {
         /// as a "last updated" hint. `nil` when the
         /// attribute lookup fails.
         let lastUpdated: Date?
+        /// `true` when the corresponding folder plugin
+        /// is currently enabled in the user's
+        /// `PreferencesStore.disabledPlugins` set. The
+        /// Installed tab binds a SwiftUI `Toggle` to
+        /// this flag so the user can disable a
+        /// marketplace install without uninstalling
+        /// it. Defaults to `true` (enabled) when the
+        /// plugin has not yet been loaded into
+        /// `PluginManager.plugins` (e.g. immediately
+        /// after install before the next refresh) —
+        /// the toggle will re-sync on the next
+        /// `refreshInstalledPlugins()` pass.
+        let isEnabled: Bool
     }
 
     /// Latest snapshot of the marketplace installs. The
@@ -537,13 +550,27 @@ final class MarketplaceBrowserViewModel: ObservableObject {
             os_log("refreshInstalledPlugins: parsed manifestVersion=%{public}@ for %{public}@",
                    log: Log.plugin, type: .info,
                    parsedManifestVersion?.displayString ?? "nil", name)
+            // Look up the plugin's enabled state via the
+            // `PreferencesStore.disabledPlugins` set so the
+            // Installed tab can render a SwiftUI `Toggle` that
+            // reflects the current user preference. The folder
+            // plugin's `id` is the symlink-resolved manifest
+            // directory path — that is what `prefs.disablePlugin(_:)`
+            // / `prefs.enablePlugin(_:)` write to, so the
+            // membership check uses the same key. Falls back to
+            // `true` (enabled) when `pluginManager` is nil (e.g.
+            // tests that did not wire a manager) so the snapshot
+            // still has a sensible value.
+            let resolvedPath = entryURL.resolvingSymlinksInPath().path
+            let isEnabled = pluginManager?.prefs.disabledPlugins.contains(resolvedPath) == false
             snapshots.append(InstalledPluginSnapshot(
                 id: entryURL.standardizedFileURL.path,
                 url: entryURL.standardizedFileURL,
                 name: name,
                 version: manifest.version,
                 manifestVersion: parsedManifestVersion,
-                lastUpdated: modificationDate
+                lastUpdated: modificationDate,
+                isEnabled: isEnabled
             ))
         }
         // Sort alphabetically by name so the sidebar
@@ -637,6 +664,92 @@ final class MarketplaceBrowserViewModel: ObservableObject {
             return "\(entry.id).sh"
         }
         return "plugin.sh"
+    }
+
+    // MARK: - Enable / Disable
+
+    /// Toggle a marketplace plugin's enabled state
+    /// without uninstalling it. Looks the plugin up
+    /// in `pluginManager.plugins` by the symlink-
+    /// resolved folder path (the same key
+    /// `FolderPlugin.id` uses, and the same key
+    /// `PreferencesStore.disablePlugin(_:)` /
+    /// `enablePlugin(_:)` writes) and routes through
+    /// `manager.prefs.disablePlugin(_:)` /
+    /// `enablePlugin(_:)` directly — those mutate
+    /// the `disabledPlugins` set, fire the
+    /// `disabledPluginsPublisher`, and trigger
+    /// `pluginsDidChange()` on the next main-queue
+    /// pass so the `NSStatusItem` is created /
+    /// torn down without the view model having to
+    /// duplicate any of that logic.
+    ///
+    /// Why not `PluginManager.disablePlugin(plugin:)`
+    /// / `enablePlugin(plugin:)`? Those helpers
+    /// delegate to the plugin's own `disable()` /
+    /// `enable()`, which — for `FolderPlugin` —
+    /// call `prefs.disablePlugin(id)` on
+    /// `PreferencesStore.shared`, not the prefs the
+    /// manager was wired with. In production both
+    /// refs resolve to the same singleton, so the
+    /// outcome is identical; routing through
+    /// `pluginManager.prefs` instead keeps the
+    /// test seam (per-test `UserDefaults(suiteName:)`
+    /// backing the manager's `PreferencesStore`)
+    /// functional and removes the hidden global
+    /// state dependency. Behaviour-wise it is a no-
+    /// op: the pref set mutation that flips the
+    /// status item is the same call, just from a
+    /// different reference.
+    ///
+    /// No-op when:
+    /// - no `pluginManager` is wired (test seam);
+    /// - no loaded `Plugin` matches the snapshot's
+    ///   folder path (e.g. the user just installed
+    ///   the plugin and the loader has not yet
+    ///   picked it up; the next
+    ///   `refreshInstalledPlugins()` pass will
+    ///   surface the toggle in a disabled or
+    ///   enabled state per the new preference);
+    /// - the `pluginManager`'s `prefs` has been
+    ///   replaced since the snapshot was built
+    ///   (defensive — the helpers are idempotent,
+    ///   so calling them is always safe).
+    ///
+    /// The method does not change the
+    /// `MarketplaceBrowserState` machine — enable
+    /// / disable is a regular in-app action that
+    /// does not need a banner.
+    func toggleEnabled(for snapshot: InstalledPluginSnapshot) {
+        guard let manager = pluginManager else {
+            os_log("toggleEnabled: no plugin manager available, ignoring",
+                   log: Log.plugin, type: .info)
+            return
+        }
+        let targetPath = snapshot.url.resolvingSymlinksInPath().path
+        guard manager.plugins.contains(where: { $0.id == targetPath })
+        else {
+            os_log("toggleEnabled: no loaded plugin for %{public}@, ignoring",
+                   log: Log.plugin, type: .info, targetPath)
+            return
+        }
+        if snapshot.isEnabled {
+            os_log("toggleEnabled: disabling %{public}@",
+                   log: Log.plugin, type: .info, targetPath)
+            manager.prefs.disablePlugin(targetPath)
+        } else {
+            os_log("toggleEnabled: enabling %{public}@",
+                   log: Log.plugin, type: .info, targetPath)
+            manager.prefs.enablePlugin(targetPath)
+        }
+        // The `disabledPlugins` `didSet` calls
+        // `pluginsDidChange()` which creates /
+        // tears down the `NSStatusItem` on the
+        // next main-queue pass. Re-scan so the
+        // next render of the Installed tab
+        // reflects the new state. Cheap and
+        // idempotent.
+        refreshInstalledPlugins()
     }
 
     // MARK: - Update

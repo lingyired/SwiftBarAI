@@ -359,9 +359,65 @@ struct MarketplaceBrowserSheet: View {
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
+                Spacer(minLength: 0)
+                // Per-row enable / disable toggle. Bound
+                // to a Binding<Bool> that maps through
+                // `viewModel.toggleEnabled(for:)` so the
+                // SwiftUI `Toggle` can stay in lockstep
+                // with the `PreferencesStore.disabledPlugins`
+                // set without the parent sheet having to
+                // re-render every time. The toggle is
+                // placed on its own trailing line so a
+                // long folder name never pushes it off
+                // the right edge of the sidebar.
+                Toggle(
+                    isOn: installedRowEnabledBinding(for: snapshot)
+                ) {
+                    Text(snapshot.isEnabled ? "Enabled" : "Disabled")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
+                .help(snapshot.isEnabled
+                      ? "Disable \(snapshot.name) without uninstalling"
+                      : "Enable \(snapshot.name)")
             }
         }
         .padding(.vertical, 2)
+        // Dim the row when the plugin is disabled so
+        // the user can scan the Installed tab and
+        // tell at a glance which plugins are
+        // currently active. The toggle stays
+        // interactive even when dimmed (macOS
+        // toggles do not inherit the opacity
+        // modifier) so the user can re-enable
+        // without an extra click.
+        .opacity(snapshot.isEnabled ? 1.0 : 0.55)
+    }
+
+    /// `Binding<Bool>` for the Installed tab's per-row
+    /// `Toggle`. Reads the snapshot's current
+    /// `isEnabled` so SwiftUI's toggle stays
+    /// accurate on every render, and writes
+    /// route through `viewModel.toggleEnabled(for:)`
+    /// which delegates to the existing
+    /// `PluginManager.enablePlugin(plugin:)` /
+    /// `disablePlugin(plugin:)` helpers. The
+    /// `set:` side is intentionally not awaited —
+    /// `toggleEnabled` is synchronous and the next
+    /// `refreshInstalledPlugins()` re-populates the
+    /// list before SwiftUI re-renders.
+    private func installedRowEnabledBinding(
+        for snapshot: MarketplaceBrowserViewModel.InstalledPluginSnapshot
+    ) -> Binding<Bool> {
+        Binding(
+            get: { snapshot.isEnabled },
+            set: { _ in
+                viewModel.toggleEnabled(for: snapshot)
+            }
+        )
     }
 
     /// Render the "Update available" / "Local is newer" /
