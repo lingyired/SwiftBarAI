@@ -8,8 +8,8 @@
   `menubar01/UI/Plugin Generator/AIGeneratorViewModel.swift`,
   `menubar01Tests/AIGeneratorEndpointHostTests.swift`
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** 1bbba11
+- **Status:** done
 
 ## Summary
 
