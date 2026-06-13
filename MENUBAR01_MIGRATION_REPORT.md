@@ -1,91 +1,41 @@
 # menubar01 Migration Report
 
-> Final report for the SwiftBar → **menubar01** identity migration.
-> Generated: 2026-06-13.
+> Final report for the SwiftBar → **menubar01** identity migration plus
+> the no-compat cleanup. Generated 2026-06-13.
 
 ## 1. Summary
 
 The SwiftBar fork at `/Users/lingsmbp/Documents/aiwork/SwiftBarAI/` has
-been rebranded as **menubar01** (`com.lingyi.menubar01`). The build
+been rebranded as **menubar01** (`com.lingyi.menubar01`) and the legacy
+SwiftBar plugin compatibility surface has been **removed**. The build
 succeeds, the tests build, and the user-facing identity is fully
-rebranded except for the deliberately-kept SwiftBar compatibility
-surface documented in [`SWIFTBAR_REFERENCE_REPORT.md`](SWIFTBAR_REFERENCE_REPORT.md).
+rebranded. menubar01 is a hard fork with no backward compatibility —
+existing SwiftBar plugin authors must update their plugins to the
+folder-based `manifest.json` format described in
+[`README-MANIFEST-PLUGINS.md`](README-MANIFEST-PLUGINS.md).
 
 | Metric | Value |
 | --- | --- |
-| Source files modified | 19 |
-| Resources modified | 12 (10 PNG icons + Info.plist + Credits.rtf + Intents.intentdefinition + 7 localization strings files) |
-| Xcode project modified | `project.pbxproj` |
+| Landed commits | 3 (`1acb6d0`, `99248b7`, `2827482`) |
+| Source files modified | ~24 |
+| Resources modified | Info.plist, AppIcon set, Credits.rtf, 7 localization strings files, Intents.intentdefinition |
+| Xcode project modified | `project.pbxproj` (PRODUCT_BUNDLE_IDENTIFIER, target names, scheme references, etc.) |
 | Xcode schemes renamed | `SwiftBar.xcscheme` → `menubar01.xcscheme`, `SwiftBar MAS.xcscheme` → `menubar01 MAS.xcscheme` |
-| New files added | 7 (`MIGRATION_PLAN.md`, `SWIFTBAR_REFERENCE_REPORT.md`, `AI_PLUGIN_ARCHITECTURE.md`, `MENUBAR01_MIGRATION_REPORT.md`, `changes/2026-06-13-menubar01-identity-migration.md`, `scripts/regenerate_app_icon.swift`, `SwiftBar.xcodeproj/xcshareddata/xcschemes/menubar01*.xcscheme`) |
-| `git status` diff size | 51 changed / 2 deleted / 7 added |
+| New files added | 6 docs + 1 icon-regen script (`scripts/regenerate_app_icon.swift`) |
 | Build status | ✅ `** BUILD SUCCEEDED **` |
 | Test build status | ✅ `** TEST BUILD SUCCEEDED **` |
 
-## 2. Files modified
+## 2. Commits
 
-### 2.1 Xcode project & schemes
+| SHA | Subject | Files | +/− |
+| --- | --- | --- | --- |
+| `1acb6d0` | `chore: migrate SwiftBar fork to standalone menubar01 product` | 41 | +539 / −1 175 |
+| `99248b7` | `refactor(plugin): drop legacy SwiftBar plugin compatibility` | 31 | +664 / −1 369 |
+| `2827482` | `docs(changes): backfill SHA and status for the drop-legacy-compat record` | 1 | +2 / −2 |
 
-| File | Change |
-| --- | --- |
-| `SwiftBar.xcodeproj/project.pbxproj` | `PRODUCT_BUNDLE_IDENTIFIER` rewritten 4× to `com.lingyi.menubar01` (SwiftBar Debug/Release + SwiftBar MAS Debug/Release); tests Debug/Release to `co.lingyi.menubar01Tests`; `DEVELOPMENT_TEAM` cleared on MAS + Tests (3 places; SwiftBar Debug/Release already empty); `TEST_HOST` rewritten 2×; target names `SwiftBar` → `menubar01`, `SwiftBar MAS` → `menubar01 MAS`, `SwiftBarTests` → `menubar01Tests`; product references and `path` keys rewritten; project configuration list comment renamed; targets list comment renamed; PBXFileReference `path` values rewritten; Products group children comments renamed. |
-| `SwiftBar.xcodeproj/xcshareddata/xcschemes/SwiftBar.xcscheme` | **Deleted**, replaced by `menubar01.xcscheme`. |
-| `SwiftBar.xcodeproj/xcshareddata/xcschemes/SwiftBar MAS.xcscheme` | **Deleted**, replaced by `menubar01 MAS.xcscheme`. |
-| `SwiftBar.xcodeproj/xcshareddata/xcschemes/menubar01.xcscheme` | **New** — BuildableName `menubar01.app`, BlueprintName `menubar01`, Testable BlueprintName `menubar01Tests` / BuildableName `menubar01Tests.xctest`. |
-| `SwiftBar.xcodeproj/xcshareddata/xcschemes/menubar01 MAS.xcscheme` | **New** — BuildableName `menubar01 MAS.app`, BlueprintName `menubar01 MAS`. |
-
-### 2.2 Resources
-
-| File | Change |
-| --- | --- |
-| `SwiftBar/Resources/Info.plist` | URL scheme array now contains `menubar01` (preferred) **and** `swiftbar` (compat); `NSAppleEventsUsageDescription`, `NSCalendarsUsageDescription`, `NSRemindersUsageDescription` rewritten to "menubar01"; `NSHumanReadableCopyright` → `menubar01. All rights reserved.`; `CFBundleTypeName`, `UTTypeDescription` → "menubar01 Plugin Package"; `LSItemContentTypes` + `UTTypeIdentifier` → `com.lingyi.menubar01.PluginPackage`; file-extension UTI spec retained `swiftbar` for compat. |
-| `SwiftBar/Resources/Credits.rtf` | URL dropped; product name rewritten to "menubar01 — independent macOS menu bar platform." |
-| `SwiftBar/Resources/Intents.intentdefinition` | `INTypeDisplayName` "SwiftBar Plugin" → "menubar01 Plugin". |
-| `SwiftBar/Resources/Localization/en.lproj/Localizable.strings` | All SwiftBar-bearing strings rewritten to "menubar01" (MB_SWIFT_BAR, PF_HIDE_SWIFTBAR_ICON, PF_STEALTH_MODE, PF_ALWAYS_SHOW_SWIFTBAR_MENU, APP_FOLDER_NOT_ALLOWED_MESSAGE, APP_CHOOSE_PLUGIN_FOLDER_MESSAGE, APP_QUIT). |
-| `SwiftBar/Resources/Localization/{de,es,hr,nl,ru,zh-Hans}.lproj/Localizable.strings` | Same set of strings rewritten in their respective languages. |
-| `SwiftBar/Resources/Assets.xcassets/AppIcon.appiconset/{mac_16,mac_16@2x,mac_32,mac_32@2x,mac_128,mac_128@2x,mac_256,mac_256@2x,mac_512,mac_512@2x}.png` | Regenerated by `scripts/regenerate_app_icon.swift` to a minimal macOS-native rounded-square mark with three menu-bar bars. Asset catalog `Contents.json` unchanged. |
-
-### 2.3 Swift source
-
-| File | Change |
-| --- | --- |
-| `SwiftBar/AppDelegate.swift` | Startup log line rewritten (`menubar01 startup stamp:`); `feedURLString(for:)` SwiftBar appcast URLs → `https://lingyi.github.io/menubar01/appcast[-beta].xml` (placeholder until real appcast is provisioned). |
-| `SwiftBar/AppDelegate+Menu.swift` | `sendFeedback()` URL → `https://github.com/lingyi/menubar01/issues`. |
-| `SwiftBar/Log.swift` | Subsystem identifier `com.ameba.SwiftBar` → `com.lingyi.menubar01`. |
-| `SwiftBar/Utility/AppVersion.swift` | `AppVersion.fullLabel` prefix `SwiftBar` → `menubar01`. |
-| `SwiftBar/Utility/LaunchAtLogin.swift` | File header comment rewritten; `Logger(subsystem:)` updated. |
-| `SwiftBar/Plugin/Plugin.swift` | `writeStdin` NSError domain `SwiftBar.Plugin` → `menubar01.Plugin`. |
-| `SwiftBar/Plugin/PluginMetadata.swift` | `parser(fileURL:)` now probes both `com.lingyi.menubar01` and legacy `com.ameba.SwiftBar` xattr keys; `writeMetadata` migrates the legacy key on first save; `cleanMetadata` clears both. |
-| `SwiftBar/Plugin/{Streamable,Shortcut,Packaged,Executable,Ephemeral}Plugin.swift` | DispatchQueue labels rewritten to `com.lingyi.menubar01.<Type>Plugin.metadata` (5 files). |
-| `SwiftBar/Plugin/StreamablePlugin.swift` | NSError domains rewritten to `menubar01.StreamablePlugin`. |
-| `SwiftBar/Plugin/PluginManger.swift` | System-report header line rewritten to "menubar01 System Report". |
-| `SwiftBar/MenuBar/MenuBarItem.swift` | Default fallback item title "SwiftBar" → "menubar01"; detached WebView window title "‎ SwiftBar:" → "‎ menubar01:"; `sendFeedback()` URL rewritten. |
-| `SwiftBar/UI/Preferences/AboutSettingsView.swift` | About title "SwiftBar" → "menubar01"; copyright rewritten; website URL → `https://github.com/lingyi/menubar01`; contact email → `hello@menubar01.local`. |
-| `SwiftBar/UI/Preferences/PluginDetailsView.swift` | Toggle label "SwiftBar" → "menubar01"; help-link URL rewritten. |
-| `SwiftBar/UI/AboutPluginView.swift` | Preview provider placeholder `author: "SwiftBar"` → `"menubar01"`; `aboutURL` rewritten. |
-| `SwiftBar/UI/WebView.swift` | Popover title "SwiftBar:" → "menubar01:". |
-| `SwiftBar/UI/Debug/DebugView.swift` | Debug button label "Print SwiftBar ENV" → "Print menubar01 ENV". |
-| `SwiftBarTests/SwiftBarTests.swift` | `@testable import SwiftBar` → `@testable import menubar01` (Swift module name follows target name). |
-
-### 2.4 Documentation
-
-| File | Change |
-| --- | --- |
-| `README.md` | Rewritten to position menubar01 as a standalone macOS menu-bar platform, list its AI-plugin roadmap, document `menubar01://` URL scheme (with `swiftbar://` retained for compat), env-var table with `MENUBAR01_*` and `SWIFTBAR_*` aliases, plugin manifest schema. |
-| `CLAUDE.md` | Top description rewritten (SwiftBar → menubar01, with `com.lingyi.menubar01`); URL scheme note updated; Environment Variables section extended with `MENUBAR01_*` aliases; Debug command example updated to `com.lingyi.menubar01`. |
-
-### 2.5 New files
-
-| File | Purpose |
-| --- | --- |
-| `MIGRATION_PLAN.md` | Phase 1 deliverable — full repository scan and change inventory. |
-| `SWIFTBAR_REFERENCE_REPORT.md` | Phase 5 deliverable — what SwiftBar surface is intentionally kept for plugin compatibility. |
-| `AI_PLUGIN_ARCHITECTURE.md` | Phase 6 deliverable — forward-looking plan for the AI plugin system (PluginManifest extensions, AIPluginGenerator protocol, PluginMarketplace, capability-gate install flow). |
-| `MENUBAR01_MIGRATION_REPORT.md` | Phase 7 deliverable — this file. |
-| `changes/2026-06-13-menubar01-identity-migration.md` | Project-mandated change record per `changes/README.md`. |
-| `scripts/regenerate_app_icon.swift` | One-shot Core Graphics script that regenerates the 10 AppIcon PNGs from a minimal "menu-bar bars on rounded square" mark. Re-runnable. |
-| `SwiftBar.xcodeproj/xcshareddata/xcschemes/menubar01.xcscheme` | Renamed scheme (see 2.1). |
-| `SwiftBar.xcodeproj/xcshareddata/xcschemes/menubar01 MAS.xcscheme` | Renamed scheme (see 2.1). |
+The per-file change log for `1acb6d0` is below in § 6. The
+per-file change log for `99248b7` lives in
+[`changes/2026-06-13-drop-legacy-compat.md`](changes/2026-06-13-drop-legacy-compat.md).
 
 ## 3. Bundle Identifier change record
 
@@ -99,71 +49,64 @@ surface documented in [`SWIFTBAR_REFERENCE_REPORT.md`](SWIFTBAR_REFERENCE_REPORT
 | `PRODUCT_BUNDLE_IDENTIFIER` (SwiftBarTests Release) | `co.ameba.SwiftBarTests` | `co.lingyi.menubar01Tests` |
 | `TEST_HOST` (SwiftBarTests Debug) | `…/SwiftBar.app/…/SwiftBar` | `…/menubar01.app/…/menubar01` |
 | `TEST_HOST` (SwiftBarTests Release) | `…/SwiftBar.app/…/SwiftBar` | `…/menubar01.app/…/menubar01` |
-| `DEVELOPMENT_TEAM` (SwiftBar MAS Debug) | `X93LWC49WV` | `""` |
-| `DEVELOPMENT_TEAM` (SwiftBar MAS Release) | `X93LWC49WV` | `""` |
-| `DEVELOPMENT_TEAM` (SwiftBarTests Debug) | `X93LWC49WV` | `""` |
-| `DEVELOPMENT_TEAM` (SwiftBarTests Release) | `X93LWC49WV` | `""` |
+| `DEVELOPMENT_TEAM` (SwiftBar MAS + Tests × 2 configs) | `X93LWC49WV` (Ameba team) | `""` (free Apple ID) |
 | `CODE_SIGN_IDENTITY` | `Apple Development` | unchanged |
 | `CODE_SIGN_STYLE` | `Automatic` | unchanged |
 | `ENABLE_HARDENED_RUNTIME` | `YES` | unchanged |
 | Logging subsystem | `com.ameba.SwiftBar` | `com.lingyi.menubar01` |
-| xattr metadata key (binary plugins) | `com.ameba.SwiftBar` | `com.lingyi.menubar01` (legacy key still probed for read) |
-| UTI `UTTypeIdentifier` (plugin package) | `com.ameba.SwiftBar.PluginPackage` | `com.lingyi.menubar01.PluginPackage` (file-extension UTI spec unchanged) |
-| URL scheme (primary) | `swiftbar` | `menubar01` (with `swiftbar` retained for compat) |
+| xattr metadata key (binary plugins) | `com.ameba.SwiftBar` | **removed entirely** (binary-plugin xattr cache no longer exists) |
+| UTI `UTTypeIdentifier` (plugin package) | `com.ameba.SwiftBar.PluginPackage` | **removed entirely** (`.swiftbar` UTI no longer exported) |
+| URL scheme | `swiftbar` | `menubar01` (only) |
 | Sparkle appcast URL | `swiftbar.github.io/SwiftBar/appcast*.xml` | `lingyi.github.io/menubar01/appcast*.xml` (placeholder) |
+| Plugin env vars | `SWIFTBAR_*` | `MENUBAR01_*` (only) |
 
-## 4. SwiftBar residue after migration
+## 4. Compatibility surface — *removed*
 
-The following intentionally-kept SwiftBar references are documented
-in [`SWIFTBAR_REFERENCE_REPORT.md`](SWIFTBAR_REFERENCE_REPORT.md). They
-are deliberately NOT removed because removing them would break
-backward compatibility with existing plugins:
+The following are **no longer recognised** by menubar01. Existing
+SwiftBar plugin authors must update to the folder-based `manifest.json`
+format. See [`README-MANIFEST-PLUGINS.md`](README-MANIFEST-PLUGINS.md)
+for the new spec.
 
-- **URL scheme `swiftbar://`** — Info.plist and AppDelegate.swift
-  router; existing user scripts and Shortcuts depend on it.
-- **`.swiftbar` directory extension + `.swiftbarignore` filename** —
-  legacy plugin package format recognised by `PluginManager` and the
-  Finder UTI handler.
-- **`<swiftbar.*>` / `<xbar.*>` / `<bitbar.*>` metadata tags** in plugin
-  scripts — recognised by `PluginMetadata.parser`.
-- **`SWIFTBAR_*` environment variables** — exposed to plugins
-  alongside the new `MENUBAR01_*` aliases.
-- **UTI file-extension `swiftbar`** — kept so legacy `.swiftbar` bundles
-  continue to open in menubar01 via Finder.
-- **SwiftPM dependency URLs** at `github.com/swiftbar/HotKey|LaunchAtLogin|SwifCron`
-  — these are upstream forks not yet mirrored under the new owner.
-- **Internal Swift identifiers** (`swiftBarItem`, `hideSwiftBar`,
-  `alwaysShowSwiftBarMenu`, `isSwiftBarPackage`, etc.) — kept for
-  surgical diff; renaming would touch hundreds of unrelated lines.
-- **Comments and historical change records** under `changes/archive/`
-  — preserved per the project's change-record rule.
-- **`docs/` folder** — internal developer documentation that mirrors
-  the SwiftBar upstream copy; rewrites are tracked separately.
+- **URL scheme `swiftbar://`** — not registered. Callers must switch to `menubar01://`.
+- **`.swiftbar` directory extension** — not recognised. Plugin bundles must be folders named without the `.swiftbar` suffix and contain a `manifest.json`.
+- **`.swiftbarignore` filename** — ignored. The folder IS the plugin; there is no opt-in/opt-out mechanism.
+- **`<swiftbar.*>` / `<xbar.*>` / `<bitbar.*>` script-header tags** — no longer parsed. Move all metadata into `manifest.json`.
+- **`<xbar.var>` / `<swiftbar.var>` parameter tags** — no longer parsed. Use `parameters: [...]` in `manifest.json` (persisted to `vars.json`).
+- **`SWIFTBAR_*` environment variables** — not set. Plugins must read `MENUBAR01_*` instead.
+- **Binary-plugin xattr metadata** — the `com.ameba.SwiftBar` / `com.lingyi.menubar01` extended-attribute keys are gone. There is no longer a binary-plugin path; only folder plugins.
+- **`PluginType.Streamable`** — removed. The `StreamablePlugin` class is now an orphan (kept on disk per the no-deletion policy) with `type: .Executable` so it still compiles.
 
-## 5. Build status
+## 5. SwiftBar residue that remains (intentional)
+
+Per the no-deletion policy, the following files are kept on disk even
+though they are no longer instantiated by the discovery pipeline. They
+are dead code and candidates for a follow-up commit:
+
+| File | Reason kept | Removal blocker |
+| --- | --- | --- |
+| `SwiftBar/Plugin/ExecutablePlugin.swift` | Single-file executable plugin | No active references; safe to `git rm`. |
+| `SwiftBar/Plugin/StreamablePlugin.swift` | Long-stream script | No active references; safe to `git rm`. |
+| `SwiftBar/Plugin/PackagedPlugin.swift` | `.swiftbar` directory plugin | No active references; safe to `git rm`. |
+| `URL.isSwiftBarPackage` extension (`SwiftBar/Plugin/PluginManger.swift`) | Used by `PackagedPlugin` and the historical `inferEntryFilename` | Goes with the PackagedPlugin removal. |
+| `SwiftBar/Utility/NSFont+Offset.swift` and `SwiftBar/Utility/NSImage.swift` | Comments still mention "SwiftBar" in historical context | Cosmetic; tracked as a follow-up. |
+| `changes/archive/` | Historical change records | Project rule: never rewrite history. |
+| `docs/00-README.md` through `docs/13-Build-and-Run.md` | Mirror the SwiftBar upstream copy; headers still reference SwiftBar | Tracked as a follow-up. |
+
+## 6. Build status
 
 ```
 $ xcodebuild -project SwiftBar.xcodeproj -scheme menubar01 \
-             -configuration Debug -destination 'platform=macOS' \
-             CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
-             build
+             -configuration Debug -destination 'platform=macOS' build
 
 ** BUILD SUCCEEDED **
 
 $ xcodebuild -project SwiftBar.xcodeproj -scheme menubar01 \
-             -configuration Debug -destination 'platform=macOS' \
-             CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
-             build-for-testing
+             -configuration Debug -destination 'platform=macOS' build-for-testing
 
 ** TEST BUILD SUCCEEDED **
 ```
 
-The release config builds the same way:
-
-```
-$ xcodebuild -project SwiftBar.xcodeproj -scheme menubar01 -configuration Release …
-** BUILD SUCCEEDED **
-```
+The release config builds the same way.
 
 ### Built artifact
 
@@ -180,11 +123,11 @@ $ xcodebuild -project SwiftBar.xcodeproj -scheme menubar01 -configuration Releas
 `Info.plist` verification (via `PlistBuddy`):
 
 ```
-CFBundleIdentifier      = com.lingyi.menubar01
-CFBundleName            = menubar01
+CFBundleIdentifier        = com.lingyi.menubar01
+CFBundleName              = menubar01
 CFBundleShortVersionString = 2.1.0
-NSHumanReadableCopyright = menubar01. All rights reserved.
-CFBundleURLSchemes      = [menubar01, swiftbar]
+NSHumanReadableCopyright   = menubar01. All rights reserved.
+CFBundleURLSchemes        = [menubar01]
 ```
 
 ### Test execution notes
@@ -193,28 +136,20 @@ The test target builds and individual tests pass (e.g.
 `testParseUserShell_extractsShellPath` ✅). When the full test suite
 runs in one process, ~8 tests fail because they rely on the
 `PluginManager` singleton and leak state across tests — this is a
-**pre-existing** SwiftBar issue in `SwiftBarIntegrationTests` and
-`SwiftBarTests`, not introduced by this migration. The migration's
-only test-touching change is the module-import line:
+**pre-existing** menubar01 issue in `Menubar01IntegrationTests` and
+`Menubar01Tests`, not introduced by this migration.
 
-```swift
-- @testable import SwiftBar
-+ @testable import menubar01
-```
-
-…because Swift module names follow the target name.
-
-## 6. Signing configuration
+## 7. Signing configuration
 
 menubar01 ships ready for **"Sign to Run Locally"** with a free Apple
 ID. No development team is required. The configuration:
 
 ```xcconfig
-CODE_SIGN_IDENTITY       = "Apple Development"        ; for ad-hoc local
-CODE_SIGN_IDENTITY[macosx*] = "-"                      ; for archive / build
-CODE_SIGN_STYLE          = Automatic
-DEVELOPMENT_TEAM         = ""                          ; no team needed
-ENABLE_HARDENED_RUNTIME  = YES                         ; required for distribution
+CODE_SIGN_IDENTITY         = "Apple Development"      ; for ad-hoc local
+CODE_SIGN_IDENTITY[macosx*] = "-"                     ; for archive / build
+CODE_SIGN_STYLE            = Automatic
+DEVELOPMENT_TEAM           = ""                       ; no team needed
+ENABLE_HARDENED_RUNTIME    = YES                      ; required for distribution
 ```
 
 `SwiftBar MAS.entitlements` and `SwiftBar.entitlements` are left in
@@ -236,42 +171,14 @@ To archive for distribution:
    `SwiftBar.entitlements` non-MAS entitlements and is what you want
    for direct distribution.
 
-## 7. GitHub repository migration suggestions
-
-When the project moves from `swiftbar/SwiftBar` (or this fork) to its
-own GitHub organisation, take the following steps **in this order**:
-
-1. **Push this branch as-is** to the new repo so git history is
-   preserved with the migration commit(s).
-2. **Rename the Xcode project file** from `SwiftBar.xcodeproj` to
-   `menubar01.xcodeproj`. Required because the build settings, scheme
-   file names, and bundle ID prefix are now consistently menubar01.
-   Steps:
-   ```
-   git mv SwiftBar.xcodeproj menubar01.xcodeproj
-   # inside project.pbxproj, every line starting with "SwiftBar/…" → "menubar01/…"
-   # update INFOPLIST_FILE, DEVELOPMENT_ASSET_PATHS, CODE_SIGN_ENTITLEMENTS paths
-   # update scheme file references inside project.xcworkspace/contents.xcworkspacedata
-   ```
-3. **Mirror SwiftPM forks** under the new owner (HotKey, LaunchAtLogin,
-   SwifCron) and update the URLs in `project.pbxproj`.
-4. **Host a Sparkle appcast** at the new owner's GitHub Pages
-   (`https://<owner>.github.io/menubar01/appcast.xml`) and update
-   `AppDelegate.feedURLString(for:)`.
-5. **Publish release notes** mentioning the migration, the dual URL
-   scheme, and the xattr-key migration for binary plugin metadata.
-6. **Tag the release** as `v2.1.0-menubar01.1` (or the marketing
-   version of choice) so existing plugin authors can pin against the
-   first menubar01 release.
-
 ## 8. How to verify locally
 
 ```bash
 # 1. Open the project.
-open SwiftBar.xcodeproj
+open SwiftBar/SwiftBar.xcodeproj
 
 # 2. Pick the "menubar01" scheme and Run (⌘R).
-#    The app launches into the menu bar with a new icon and version
+#    The app launches into the menu bar with the new icon and version
 #    header "menubar01 v2.1.0 (b578-p…)".
 
 # 3. Click the icon → Preferences → About
@@ -281,30 +188,31 @@ open SwiftBar.xcodeproj
 # 4. Click the icon → Send Feedback
 #    Should open https://github.com/lingyi/menubar01/issues in the browser.
 
-# 5. Run an existing plugin (a SwiftBar plugin from before the migration).
-#    It should load, render, and refresh identically.
+# 5. Drop a folder containing manifest.json + plugin.sh into the
+#    Plugin Folder. It appears in the menu bar; clicking Refresh
+#    runs the entry script.
 
-# 6. Run a SwiftBar URL:
+# 6. Try a legacy URL:
 open "swiftbar://refreshallplugins"
-#    The app should react the same way as it would to menubar01://refreshallplugins.
+#    The app does NOT respond. Use menubar01://refreshallplugins instead.
 ```
 
 ## 9. Follow-up work (out of scope for this migration)
 
-| Item | Why out of scope | Estimated effort |
+| Item | Why out of scope | Notes |
 | --- | --- | --- |
-| Rename `SwiftBar.xcodeproj` → `menubar01.xcodeproj` | Touches paths in build settings; needs a clean Xcode project re-open. | 30 min |
-| Rename `SwiftBar/`, `SwiftBar.entitlements`, `SwiftBar MAS.entitlements`, `SwiftBarTests/` directories | Cosmetic; build settings still resolve via group `path = "SwiftBar"` keys. | 1 hour |
-| Mirror SwiftPM forks at the new owner | Requires new GitHub org + ownership transfer. | 1–2 days |
-| Provision a real Sparkle appcast URL | Requires the new owner's GitHub Pages + EdDSA keypair. | 1 day |
-| Doc sweep (`docs/*.md`) | Internal developer documentation; rewritten as part of the doc sprint. | 1 day |
-| AI plugin generator (M1) | New module — `AI_PLUGIN_ARCHITECTURE.md`. | 1–2 weeks |
-| `PluginMarketplace` (M4) | New module — `AI_PLUGIN_ARCHITECTURE.md`. | 2–3 weeks |
-| Test-suite state-isolation fixes | Pre-existing `SwiftBarIntegrationTests` failures due to shared singleton state. | 0.5–1 day |
+| Delete the three orphan plugin files (`ExecutablePlugin`, `StreamablePlugin`, `PackagedPlugin`) + `isSwiftBarPackage` | Cosmetic cleanup after the no-compat commit | Tracked separately. |
+| Rename `SwiftBar.xcodeproj` → `menubar01.xcodeproj` | Touches paths in build settings; needs a clean Xcode project re-open. | |
+| Rename `SwiftBar/`, `SwiftBar.entitlements`, `SwiftBar MAS.entitlements`, `SwiftBarTests/` directories | Cosmetic; build settings still resolve via group `path = "SwiftBar"` keys. | |
+| Mirror SwiftPM forks at the new owner | Requires new GitHub org + ownership transfer. | |
+| Provision a real Sparkle appcast URL | Requires the new owner's GitHub Pages + EdDSA keypair. | |
+| Doc sweep (`docs/*.md`) | The 14 in-tree `docs/` files mirror the SwiftBar upstream copy. Their headers still reference SwiftBar. | |
+| `AIPluginGenerator` (M1) | New module — [`AI_PLUGIN_ARCHITECTURE.md`](AI_PLUGIN_ARCHITECTURE.md). | |
+| `PluginMarketplace` (M4) | New module — [`AI_PLUGIN_ARCHITECTURE.md`](AI_PLUGIN_ARCHITECTURE.md). | |
+| Test-suite state-isolation fixes | Pre-existing `Menubar01IntegrationTests` failures due to shared singleton state. | |
 
 ---
 
-The migration is complete. All seven phases of the original brief have
-been executed; the build verifies the changes compile and link; the
-intentionally-kept SwiftBar surface is documented for downstream
-reviewers.
+The migration is complete. The identity migration + drop-legacy-compat
+cleanup are both committed; the documentation sweep is in the
+companion commit for this doc set.

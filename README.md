@@ -1,8 +1,9 @@
 # menubar01
 
-menubar01 is an independent macOS menu-bar platform. It lets you turn any
-executable script (bash, python, node, swift, …) into a menu-bar app and
-keep the macOS menu bar fully under your control.
+menubar01 is an independent macOS menu-bar platform. It lets you turn
+any folder containing a `manifest.json` + an executable script (bash,
+python, node, swift, …) into a menu-bar app and keep the macOS menu
+bar fully under your control.
 
 This project is a fork of [SwiftBar](https://github.com/swiftbar/SwiftBar),
 rebranded and re-platformed for new product directions:
@@ -16,16 +17,23 @@ rebranded and re-platformed for new product directions:
 
 - **Folder-based plugins** — drop a folder containing a `manifest.json`
   plus an entry script and menubar01 picks it up. See
-  [Plugin Manifest Schema](#plugin-manifest-schema) below.
-- **Five plugin types** — `Executable`, `Streamable`, `Shortcut` (Apple
-  Shortcuts), `Ephemeral`, and `Packaged` (`.swiftbar` bundle).
+  [Plugin Manifest Schema](#plugin-manifest-schema) below and the full
+  spec in [`README-MANIFEST-PLUGINS.md`](README-MANIFEST-PLUGINS.md).
+- **Three plugin types** — `Executable` (default), `Shortcut` (Apple
+  Shortcuts), and `Ephemeral` (URL-driven). All three are loaded via
+  `FolderPlugin`, which is the only active plugin class in the
+  discovery pipeline.
 - **Rich menu parameters** — `href=`, `bash=`, `terminal=`, `color=`,
   `font=`, `size=`, `refresh=`, `dropdown=`, `notify=`, `webview=`, …
-- **Plugin metadata** — inline `<swiftbar.*>` / `<xbar.*>` comments or
-  `manifest.json` fields.
+- **Manifest-only metadata** — plugin metadata lives entirely in
+  `manifest.json`. menubar01 does **not** parse inline `<swiftbar.*>` /
+  `<xbar.*>` / `<bitbar.*>` comments from script bodies.
+- **Declarative parameters** — strings, numbers, booleans, and
+  enums declared in `manifest.json` are surfaced to the entry script
+  as `MENUBAR01_PARAM_<NAME>` env vars and persisted to
+  `<plugin-folder>/vars.json`.
 - **Terminal integration** — Terminal.app, iTerm2, Ghostty, Kitty.
-- **Notifications, Shortcuts intents, URL scheme** — `menubar01://`
-  plus the legacy `swiftbar://` is preserved for compatibility.
+- **Notifications, Shortcuts intents, URL scheme** — `menubar01://`.
 
 ## Build & run
 
@@ -36,7 +44,7 @@ open SwiftBar/SwiftBar.xcodeproj
 
 > The Xcode project file is still named `SwiftBar.xcodeproj` for git
 > history continuity. Renaming it is a follow-up step tracked in
-> `MENUBAR01_MIGRATION_REPORT.md`.
+> [`MIGRATION_PLAN.md`](MIGRATION_PLAN.md) § 4.
 
 ## Plugin Manifest Schema
 
@@ -50,6 +58,7 @@ my-plugin/
 {
   "name": "Battery",
   "version": "1.0.0",
+  "author": "Alice",
   "entry": "plugin.sh",
   "refreshInterval": 30,
   "environment": { "API_KEY": "" },
@@ -59,6 +68,9 @@ my-plugin/
 }
 ```
 
+See [`README-MANIFEST-PLUGINS.md`](README-MANIFEST-PLUGINS.md) for the
+full schema, every field, and a worked example.
+
 ## Environment variables exposed to plugins
 
 | Variable | Value |
@@ -66,16 +78,19 @@ my-plugin/
 | `MENUBAR01_VERSION` | menubar01 version (`x.y.z`) |
 | `MENUBAR01_BUILD` | build number (`CFBundleVersion`) |
 | `MENUBAR01_PLUGINS_PATH` | path to the Plugin Folder |
-| `MENUBAR01_PLUGIN_PATH` | path to the running plugin |
+| `MENUBAR01_PLUGIN_PATH` | path to the running entry script |
+| `MENUBAR01_PLUGIN_PACKAGE_PATH` | path to the plugin's directory |
 | `MENUBAR01_PLUGIN_CACHE_PATH` | per-plugin cache directory |
 | `MENUBAR01_PLUGIN_DATA_PATH` | per-plugin data directory |
 | `MENUBAR01_PLUGIN_REFRESH_REASON` | refresh trigger name |
 | `MENUBAR01_LAUNCH_TIME` | menubar01 launch time (ISO8601) |
-| `SWIFTBAR_*` | legacy aliases — old plugins continue to read these |
+| `MENUBAR01_PARAM_<NAME>` | value of a parameter declared in `manifest.json` |
+
+> The historical `SWIFTBAR_*` env vars are **not** exposed. SwiftBar
+> plugins that read them will see nothing and must be ported to
+> `manifest.json`.
 
 ## URL scheme
-
-`menubar01://` and `swiftbar://` both resolve to the same handlers.
 
 | Endpoint | Description | Example |
 | --- | --- | --- |
@@ -87,11 +102,15 @@ my-plugin/
 | `notify` | Post a notification | `menubar01://notify?plugin=…&title=…` |
 | `copysystemreport` | Copy the system report to the clipboard | `menubar01://copysystemreport` |
 
+> The previous `swiftbar://` URL scheme is **not** recognised. menubar01
+> is a hard fork with no backward compatibility; existing
+> `swiftbar://` callers must be updated to `menubar01://`.
+
 ## Acknowledgements
 
-menubar01 is built on top of the SwiftBar code base. The bundled SwiftBar
+menubar01 is built on top of the SwiftBar code base. The bundled
 dependencies (`HotKey`, `LaunchAtLogin`, `Preferences`, `Sparkle`,
-`SwiftCron`) are reused unmodified.
+`SwifCron`) are reused unmodified.
 
 ## License
 

@@ -1,30 +1,43 @@
 # menubar01 AI Plugin Architecture
 
-> Forward-looking architecture notes for the AI-assisted plugin system that
-> will ship on top of the migrated menubar01 core. This document does
-> **not** rewrite the plugin system — it plans future modules on top of
-> the existing scaffolding (`Plugin` protocol, `PluginManager` singleton,
-> `PluginManifest` Codable model, `PluginRepository` API client).
+> Forward-looking architecture notes for the AI-assisted plugin system
+> that will ship on top of the migrated menubar01 core. This document
+> does **not** rewrite the plugin system — it plans future modules on
+> top of the existing `FolderPlugin` / `PluginManager` /
+> `PluginManifest` scaffolding.
 
 ## 0. Current plugin system recap
 
-menubar01 inherits a complete plugin runtime from the SwiftBar fork:
+menubar01's plugin runtime is a folder-based, manifest-driven model:
 
-- **Plugin discovery** — `PluginManager.getPluginList()` walks the
-  configured Plugin Folder and recognises folder plugins
-  (`manifest.json` + entry script) and legacy `.swiftbar` bundles.
-- **Plugin lifecycle** — `PluginManager.loadPlugins()` → `enable()`,
-  `start()`, `refresh()`, `terminate()`, `unloadPlugins()`. Five plugin
-  types: `Executable`, `Streamable`, `Shortcut`, `Ephemeral`, `Packaged`.
+- **Single plugin shape** — every active plugin is a directory
+  containing a `manifest.json` (the source of truth for all metadata)
+  and an entry-point script. The discovery pipeline in
+  `PluginManager.getPluginList()` matches folders that contain a
+  `manifest.json`; single-file scripts and `.swiftbar` directory
+  bundles are no longer recognised.
+- **Plugin loading** — `FolderPlugin.init(manifestDirectory:manifest:)`
+  parses the manifest, infers the entry script, and hands the
+  resulting `FolderPlugin` instance to the existing
+  `PluginManager.loadPlugins()` pipeline (`enable()` → `start()` →
+  `refresh()` → `terminate()`).
+- **Plugin types** — `PluginType` enum has three cases:
+  `Executable` (default; one-shot script), `Shortcut` (Apple
+  Shortcuts wrapper), `Ephemeral` (URL-driven menu item). The
+  historical `Streamable` and `Packaged` cases are gone (see
+  [`changes/2026-06-13-drop-legacy-compat.md`](changes/2026-06-13-drop-legacy-compat.md)).
 - **Output rendering** — `MenubarItem` parses the plugin's stdout
   into a `MenuItemNode` tree, diffs against the previous tree, and
   patches the live `NSMenu` in place.
-- **Plugin metadata** — `PluginMetadata` parses inline comments
-  (`<xbar.*>`, `<swiftbar.*>`, `<bitbar.*>`) and exposes
-  `PluginVariable` definitions for the Preferences UI.
+- **Plugin metadata** — `PluginMetadata` is a plain data class
+  populated entirely from `manifest.json` by
+  `FolderPlugin.buildMetadata(from:)`. There is no script-header
+  parser and no extended-attribute cache.
 - **Plugin repository** — `PluginRepository.shared.refreshRepositoryData()`
-  fetches a remote catalogue (today: GitHub `swiftbar/swiftbar-plugins`)
-  and lets the user install/uninstall plugins in-app.
+  fetches a remote catalogue (today: the upstream SwiftBar
+  `swiftbar/swiftbar-plugins` repo — re-mirroring under a new owner
+  is a follow-up) and lets the user install/uninstall plugins
+  in-app.
 
 The runtime is **plugin-agnostic**: it does not care whether the entry
 script was hand-written, generated, or served from a marketplace. That
@@ -47,7 +60,7 @@ is the leverage we will build on.
         └──────────────┬──────┘    └───────┬────────────┘
                        │                   │
             ┌──────────┴──────────┐  ┌─────┴──────────┐
-            │  PluginRuntime      │  │  PluginSandbox │
+            │  FolderPlugin       │  │  PluginSandbox │
             │  (existing loader)  │  │  (new)         │
             └──────────┬──────────┘  └─────────────────┘
                        │
@@ -70,20 +83,20 @@ Already covers the public schema. Future extension points:
 | `intent: "weather" \| "timer" \| "..."` | **new** | typed intent vocabulary the generator uses to seed the model |
 | `capabilities: ["network", "clipboard", "notifications"]` | **new** | explicit capability declaration for the permission UI |
 
-### 1.2 `PluginRuntime` (existing — `SwiftBar/Plugin/PluginManger.swift`)
+### 1.2 `FolderPlugin` (existing — `SwiftBar/Plugin/FolderPlugin.swift`)
 
 No rewrite. Future enhancement is a **declared-capability gate**: the
-runtime refuses to spawn a plugin whose `manifest.json` requests
+loader refuses to spawn a plugin whose `manifest.json` requests
 `network` access without the user granting it once at install time.
 
-### 1.3 `PluginRenderer` (existing — `SwiftBar/MenuBar/MenuBarItem.swift`)
+### 1.3 `MenubarItem` renderer (existing — `SwiftBar/MenuBar/MenuBarItem.swift`)
 
 The renderer is already a tree-diff engine. AI plugins benefit from the
 fact that they can output any well-formed menu text — the renderer
 doesn't care whether the script was AI-written or hand-written. The
 only planned addition is **live preview**: when the AI generator runs
-the script in a sandbox, the resulting menu tree is shown inline in the
-generator UI before the user accepts the plugin.
+the script in a sandbox, the resulting menu tree is shown inline in
+the generator UI before the user accepts the plugin.
 
 ### 1.4 `PluginManager` (existing singleton)
 
@@ -100,7 +113,8 @@ The headline module. Design principles:
 2. **Deterministic prompts.** Each generator run is keyed by a stable
    `promptId` so the user can reproduce, audit, or downgrade a plugin.
 3. **Sandboxed execution.** Generated scripts run inside the existing
-   `PluginRuntime` with the manifest's declared capabilities only.
+   `FolderPlugin` runtime with the manifest's declared capabilities
+   only.
 
 Sketch:
 
@@ -244,7 +258,7 @@ clear "missing permission" error in the status bar fallback.
 
 | Milestone | Scope | Existing dependency |
 | --- | --- | --- |
-| **M1** | `AIPluginGenerator` skeleton + sandboxed dry-run against `PluginRuntime`. | `PluginManifest`, `Environment.swift` |
+| **M1** | `AIPluginGenerator` skeleton + sandboxed dry-run against `FolderPlugin`. | `PluginManifest`, `Environment.swift` |
 | **M2** | Live preview UI in the Plugin Repository window. | `PluginRepositoryView`, `PluginEntryView` |
 | **M3** | Capability-gate install flow. | `PluginManager.importPlugin` |
 | **M4** | `PluginMarketplace` catalogue + install flow. | `PluginRepositoryAPI` |
@@ -300,8 +314,8 @@ The existing plugin system is already:
 - **Observable** — `PluginDebugInfo` + system report give us a hook
   to surface generator failures back to the model in a future version.
 - **Multi-runtime** — the same protocol is used for shell, Python,
-  Streamable, and Shortcut plugins. The AI generator returns the same
-  manifest regardless of language.
+  and Shortcut plugins. The AI generator returns the same
+  `manifest.json` regardless of the entry-script language.
 
 The right move is to **layer** the AI features on top of the existing
 protocol, not replace it.
