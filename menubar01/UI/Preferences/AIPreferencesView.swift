@@ -35,6 +35,7 @@ final class AIPreferencesViewModel: ObservableObject {
     @Published var localModelPath: String
     @Published var remoteEndpoint: String
     @Published var remoteAPIKey: String
+    @Published var remoteModel: String
 
     /// The underlying prefs store. Tests inject a
     /// suite-backed `PreferencesStore(defaults:)` so the read /
@@ -51,11 +52,17 @@ final class AIPreferencesViewModel: ObservableObject {
         self.localModelPath = prefs.defaults.string(forKey: AIPluginGeneratorFactory.localModelPathKey) ?? ""
         self.remoteEndpoint = prefs.defaults.string(forKey: AIPluginGeneratorFactory.remoteEndpointKey) ?? ""
         self.remoteAPIKey = prefs.defaults.string(forKey: AIPluginGeneratorFactory.remoteAPIKeyKey) ?? ""
+        // The model defaults to the factory's fallback when the
+        // prefs key is missing; users see the default value
+        // pre-populated in the text field so a fresh-install
+        // user can tell at a glance what the factory will pick.
+        self.remoteModel = prefs.defaults.string(forKey: AIPluginGeneratorFactory.remoteModelKey)
+            ?? AIPluginGeneratorFactory.defaultRemoteModel
     }
 
     // MARK: Persistence
 
-    /// Persist the four `AIPluginGenerator.*` keys. Empty
+    /// Persist the `AIPluginGenerator.*` keys. Empty
     /// strings are removed (not written) so the factory's
     /// "missing key" check fires on the next call and the user
     /// gets the expected "fall back to mock" behaviour.
@@ -76,22 +83,35 @@ final class AIPreferencesViewModel: ObservableObject {
         } else {
             prefs.defaults.set(remoteAPIKey, forKey: AIPluginGeneratorFactory.remoteAPIKeyKey)
         }
+        // Trim the model before writing so a user-typed trailing
+        // space doesn't slip past the factory's read-side
+        // trim-empty-fallback. Empty / whitespace-only is
+        // removed (not written) so the factory's
+        // defaultRemoteModel fallback fires on the next call.
+        let trimmedModel = remoteModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedModel.isEmpty {
+            prefs.defaults.removeObject(forKey: AIPluginGeneratorFactory.remoteModelKey)
+        } else {
+            prefs.defaults.set(trimmedModel, forKey: AIPluginGeneratorFactory.remoteModelKey)
+        }
         prefs.defaults.synchronize()
     }
 
-    /// Clear all four keys and re-read the (now-empty) state
+    /// Clear all five keys and re-read the (now-empty) state
     /// into the published properties so the UI snaps back to
-    /// the factory's default of `.mock`.
+    /// the factory's defaults.
     func reset() {
         prefs.defaults.removeObject(forKey: AIPluginGeneratorFactory.providerKey)
         prefs.defaults.removeObject(forKey: AIPluginGeneratorFactory.localModelPathKey)
         prefs.defaults.removeObject(forKey: AIPluginGeneratorFactory.remoteEndpointKey)
         prefs.defaults.removeObject(forKey: AIPluginGeneratorFactory.remoteAPIKeyKey)
+        prefs.defaults.removeObject(forKey: AIPluginGeneratorFactory.remoteModelKey)
         prefs.defaults.synchronize()
         provider = .mock
         localModelPath = ""
         remoteEndpoint = ""
         remoteAPIKey = ""
+        remoteModel = AIPluginGeneratorFactory.defaultRemoteModel
     }
 }
 
@@ -256,6 +276,16 @@ struct AIPreferencesView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                }
+            }
+            SettingsPaneRow(title: "Model") {
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("gpt-4o-mini", text: $viewModel.remoteModel)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
+                    Text("The model identifier sent in the chat-completions request body. Defaults to “gpt-4o-mini”.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             SettingsPaneRow(title: "API key") {

@@ -198,6 +198,123 @@ struct AIPluginGeneratorFactoryRemoteTests {
         )
         #expect(generator is MockAIPluginGenerator)
     }
+
+    @Test func testMakeRemote_usesPrefsModel() {
+        // The user-configured model in the AI Preferences pane
+        // is persisted as `AIPluginGenerator.model`. The factory
+        // must read it and pass it to `RemoteAIPluginGenerator`
+        // so the request body carries the right identifier.
+        let prefs = makeIsolatedPreferencesStore()
+        prefs.defaults.set("gpt-4o", forKey: AIPluginGeneratorFactory.remoteModelKey)
+        let endpoint = URL(string: "https://api.example.com/v1/chat")!
+        let apiKey = "sk-test-abcdef"
+
+        let generator = AIPluginGeneratorFactory.makeRemote(
+            endpoint: endpoint,
+            apiKey: apiKey,
+            prefs: prefs
+        )
+        #expect(generator is RemoteAIPluginGenerator)
+        if let remote = generator as? RemoteAIPluginGenerator {
+            #expect(remote.model == "gpt-4o")
+        } else {
+            Issue.record("expected RemoteAIPluginGenerator, got \(type(of: generator))")
+        }
+    }
+
+    @Test func testMakeRemote_fallsBackToDefaultWhenModelMissing() {
+        // No `AIPluginGenerator.model` key in prefs → factory
+        // must hand the generator the `defaultRemoteModel`
+        // constant (`"gpt-4o-mini"`) so a fresh-install user
+        // gets the documented default without having to open
+        // the Preferences pane.
+        let prefs = makeIsolatedPreferencesStore()
+        let endpoint = URL(string: "https://api.example.com/v1/chat")!
+        let apiKey = "sk-test-abcdef"
+
+        let generator = AIPluginGeneratorFactory.makeRemote(
+            endpoint: endpoint,
+            apiKey: apiKey,
+            prefs: prefs
+        )
+        #expect(generator is RemoteAIPluginGenerator)
+        if let remote = generator as? RemoteAIPluginGenerator {
+            #expect(remote.model == AIPluginGeneratorFactory.defaultRemoteModel)
+            #expect(remote.model == "gpt-4o-mini")
+        } else {
+            Issue.record("expected RemoteAIPluginGenerator, got \(type(of: generator))")
+        }
+    }
+
+    @Test func testMakeRemote_fallsBackToDefaultWhenModelEmpty() {
+        // An empty string is treated the same as a missing key:
+        // the view model's `save()` removes empty values, so an
+        // empty `AIPluginGenerator.model` should only appear in
+        // hand-edited prefs files — but the factory must
+        // tolerate it.
+        let prefs = makeIsolatedPreferencesStore()
+        prefs.defaults.set("", forKey: AIPluginGeneratorFactory.remoteModelKey)
+        let endpoint = URL(string: "https://api.example.com/v1/chat")!
+        let apiKey = "sk-test-abcdef"
+
+        let generator = AIPluginGeneratorFactory.makeRemote(
+            endpoint: endpoint,
+            apiKey: apiKey,
+            prefs: prefs
+        )
+        #expect(generator is RemoteAIPluginGenerator)
+        if let remote = generator as? RemoteAIPluginGenerator {
+            #expect(remote.model == "gpt-4o-mini")
+        } else {
+            Issue.record("expected RemoteAIPluginGenerator, got \(type(of: generator))")
+        }
+    }
+
+    @Test func testMakeRemote_fallsBackToDefaultWhenModelWhitespace() {
+        // A user who pastes `   ` (or `"\n"`) into the model
+        // field must not end up sending a request with an
+        // empty / whitespace model identifier.
+        let prefs = makeIsolatedPreferencesStore()
+        prefs.defaults.set("   ", forKey: AIPluginGeneratorFactory.remoteModelKey)
+        let endpoint = URL(string: "https://api.example.com/v1/chat")!
+        let apiKey = "sk-test-abcdef"
+
+        let generator = AIPluginGeneratorFactory.makeRemote(
+            endpoint: endpoint,
+            apiKey: apiKey,
+            prefs: prefs
+        )
+        #expect(generator is RemoteAIPluginGenerator)
+        if let remote = generator as? RemoteAIPluginGenerator {
+            #expect(remote.model == "gpt-4o-mini")
+        } else {
+            Issue.record("expected RemoteAIPluginGenerator, got \(type(of: generator))")
+        }
+    }
+
+    @Test func testMakeRemote_trimsWhitespaceAroundModel() {
+        // Belt-and-braces: a user who pastes `  gpt-4o  `
+        // should not have the surrounding whitespace end up in
+        // the request body. The factory's read helper trims;
+        // the view model's `save()` also trims, so the prefs
+        // value is normally already trimmed — but the factory
+        // must still tolerate a hand-edited prefs file.
+        let prefs = makeIsolatedPreferencesStore()
+        prefs.defaults.set("  gpt-4o  ", forKey: AIPluginGeneratorFactory.remoteModelKey)
+        let endpoint = URL(string: "https://api.example.com/v1/chat")!
+        let apiKey = "sk-test-abcdef"
+
+        let generator = AIPluginGeneratorFactory.makeRemote(
+            endpoint: endpoint,
+            apiKey: apiKey,
+            prefs: prefs
+        )
+        if let remote = generator as? RemoteAIPluginGenerator {
+            #expect(remote.model == "gpt-4o")
+        } else {
+            Issue.record("expected RemoteAIPluginGenerator, got \(type(of: generator))")
+        }
+    }
 }
 
 // MARK: - Placeholder contract

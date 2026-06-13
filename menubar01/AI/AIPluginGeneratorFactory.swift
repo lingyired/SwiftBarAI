@@ -112,6 +112,18 @@ public enum AIPluginGeneratorFactory {
     /// returns it from a public accessor, and the diagnostic log
     /// line always shows a redacted form.
     public static let remoteAPIKeyKey = "AIPluginGenerator.remoteAPIKey"
+    /// Prefs key for the remote model identifier used by the
+    /// `remote` provider (e.g. `gpt-4o-mini`, `claude-3-5-sonnet`,
+    /// `ollama:llama3`). String form. Falls back to
+    /// `defaultRemoteModel` when missing or empty.
+    public static let remoteModelKey = "AIPluginGenerator.model"
+
+    /// Default model identifier used when the `remoteModelKey`
+    /// prefs value is missing, empty, or whitespace-only. Matches
+    /// the OpenAI example used throughout
+    /// `AI_PLUGIN_ARCHITECTURE.md` §7 and the default on
+    /// `RemoteAIPluginGenerator.init(model:)`.
+    public static let defaultRemoteModel = "gpt-4o-mini"
 
     private static let log = OSLog(subsystem: "com.lingyi.menubar01", category: "AIGenerator")
 
@@ -204,11 +216,13 @@ public enum AIPluginGeneratorFactory {
         prefs: PreferencesStore? = nil
     ) -> AIPluginGenerator {
         if let endpoint, let apiKey {
+            let resolvedPrefs = prefs ?? .shared
+            let model = readRemoteModel(from: resolvedPrefs)
             os_log(
-                "AIPluginGenerator: makeRemote → RemoteAIPluginGenerator(endpoint host=%{public}@)",
-                log: log, type: .info, endpoint.host ?? "<no-host>"
+                "AIPluginGenerator: makeRemote → RemoteAIPluginGenerator(endpoint host=%{public}@, model=%{public}@)",
+                log: log, type: .info, endpoint.host ?? "<no-host>", model
             )
-            return RemoteAIPluginGenerator(endpoint: endpoint, apiKey: apiKey)
+            return RemoteAIPluginGenerator(endpoint: endpoint, apiKey: apiKey, model: model)
         }
         os_log(
             "AIPluginGenerator: makeRemote falling back to MockAIPluginGenerator — endpoint=%{public}@ apiKeySet=%{public}@",
@@ -268,5 +282,19 @@ public enum AIPluginGeneratorFactory {
               !key.isEmpty
         else { return nil }
         return key
+    }
+
+    /// Reads the remote model identifier. Falls back to
+    /// `defaultRemoteModel` (`"gpt-4o-mini"`) when the key is
+    /// missing or holds an empty / whitespace-only string. The
+    /// view model writes the trimmed value on save (and removes
+    /// the key when empty), so the missing-key fallback should
+    /// fire only on first run or after a Reset.
+    private static func readRemoteModel(from prefs: PreferencesStore) -> String {
+        guard let raw = prefs.defaults.string(forKey: remoteModelKey) else {
+            return defaultRemoteModel
+        }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? defaultRemoteModel : trimmed
     }
 }
