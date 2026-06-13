@@ -59,6 +59,7 @@ struct AIGeneratorSheet: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    templateGallery
                     requestEditor
                     errorBanner
                     installSuccessBanner
@@ -111,6 +112,87 @@ struct AIGeneratorSheet: View {
             Spacer()
         }
         .padding(20)
+    }
+
+    /// M2+ template gallery: a horizontal-scrolling row of pre-made
+    /// prompts the user can one-click load into the request field.
+    /// Sits **above** the request `TextEditor` so it is visible
+    /// from the empty state (before the user has typed anything)
+    /// and remains tappable when the field is already populated
+    /// — tapping a template REPLACES the current text (v1
+    /// contract; the user can undo with the standard Cmd-Z).
+    private var templateGallery: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Start from a template")
+                    .font(.headline)
+                Spacer()
+                Text("\(AIGeneratorTemplateGallery.templates.count) ready to try")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 12) {
+                    ForEach(AIGeneratorTemplateGallery.templates) { template in
+                        templateCard(for: template)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    /// One card in the template gallery. Tapping the card fills
+    /// `viewModel.request` with the template's prompt. The
+    /// `withAnimation` block gives a brief scale + haptic so the
+    /// user gets confirmation the tap registered without the
+    /// sheet auto-generating.
+    private func templateCard(for template: AIGeneratorTemplate) -> some View {
+        Button {
+            // Fill, then animate. We do NOT call
+            // `viewModel.generate()` / `generateStreaming()`
+            // here — the user is expected to review and tweak
+            // the prompt before clicking "Generate". This is
+            // the v1 contract documented in
+            // `AIGeneratorTemplate`.
+            withAnimation(.easeInOut(duration: 0.15)) {
+                viewModel.request = template.prompt
+            }
+            // Light haptic to confirm the tap. We use the
+            // generic `.alignment` style so we do not assume
+            // the user's accessibility / Reduce Motion
+            // preferences; NSHapticFeedbackManager handles
+            // the "respect system settings" part for us.
+            NSHapticFeedbackManager.defaultPerformer.perform(
+                .alignment,
+                performanceTime: .now
+            )
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                Image(systemName: template.systemImageName)
+                    .font(.system(size: 24, weight: .regular))
+                    .foregroundStyle(.tint)
+                Spacer(minLength: 0)
+                Text(template.title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Text(template.description)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(10)
+            .frame(width: 200, height: 120, alignment: .leading)
+            .background(Color.secondary.opacity(0.10))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
     }
 
     private var requestEditor: some View {
