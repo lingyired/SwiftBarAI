@@ -1,7 +1,7 @@
 # M5 update-detection follow-up: marketplace browser surfaces available plugin updates from the catalogue
 
 Status: in-progress
-Commit: TBD
+Commit: d831163e0ca2636306b87f91130cef92251ddfc4
 
 ## Why
 
