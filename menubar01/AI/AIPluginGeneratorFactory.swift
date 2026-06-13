@@ -8,16 +8,17 @@
 // M2 sheet's call site stable.
 //
 // M2+ lifts the stub without breaking the M2 view-model contract:
-// `makeDefault()` is now config-driven — it consults a
+// `makeDefault()` is config-driven — it consults a
 // `PreferencesStore` key and returns the right `AIPluginGenerator`
-// for the user-selected provider — and `makeLocal(...)` /
-// `makeRemote(...)` are non-throwing, both returning either a
-// real `LocalEchoAIPluginGenerator` / `RemoteEchoAIPluginGenerator`
-// (placeholder types that record the inputs and return a
+// for the user-selected provider — and `makeLocal(...)` is
+// non-throwing, returning a `LocalEchoAIPluginGenerator`
+// (placeholder type that records the inputs and returns a
 // deterministic `GeneratedPlugin`) or a `MockAIPluginGenerator`
-// when the user has not yet configured the inputs. The real
-// on-device inference and the URLSession-backed HTTP client
-// land as file-for-file replacements of the two placeholders.
+// when the user has not yet configured the inputs. `makeRemote(...)`
+// returns the real URLSession-backed `RemoteAIPluginGenerator` that
+// POSTs to the OpenAI-compatible `/v1/chat/completions` endpoint,
+// falling back to the mock when the user has not yet configured
+// the endpoint and API key.
 
 import Foundation
 import os
@@ -185,13 +186,13 @@ public enum AIPluginGeneratorFactory {
 
     /// Build a generator that calls a remote model provider.
     ///
-    /// When both `endpoint` and `apiKey` are non-nil, returns a
-    /// `RemoteEchoAIPluginGenerator` (the M2+ placeholder that
-    /// records the inputs and returns a deterministic
-    /// `GeneratedPlugin`). When either argument is nil, logs a
-    /// warning and falls back to `MockAIPluginGenerator()` so the
-    /// view model's "click Generate" path still produces a
-    /// usable result.
+    /// When both `endpoint` and `apiKey` are non-nil, returns the
+    /// real URLSession-backed `RemoteAIPluginGenerator` that
+    /// POSTs to the OpenAI-compatible `/v1/chat/completions`
+    /// endpoint and decodes the response into a `GeneratedPlugin`.
+    /// When either argument is nil, logs a warning and falls back
+    /// to `MockAIPluginGenerator()` so the view model's "click
+    /// Generate" path still produces a usable result.
     static func makeRemote(
         endpoint: URL?,
         apiKey: String?,
@@ -199,10 +200,10 @@ public enum AIPluginGeneratorFactory {
     ) -> AIPluginGenerator {
         if let endpoint, let apiKey {
             os_log(
-                "AIPluginGenerator: makeRemote → RemoteEchoAIPluginGenerator(endpoint host=%{public}@)",
+                "AIPluginGenerator: makeRemote → RemoteAIPluginGenerator(endpoint host=%{public}@)",
                 log: log, type: .info, endpoint.host ?? "<no-host>"
             )
-            return RemoteEchoAIPluginGenerator(endpoint: endpoint, apiKey: apiKey)
+            return RemoteAIPluginGenerator(endpoint: endpoint, apiKey: apiKey)
         }
         os_log(
             "AIPluginGenerator: makeRemote falling back to MockAIPluginGenerator — endpoint=%{public}@ apiKeySet=%{public}@",

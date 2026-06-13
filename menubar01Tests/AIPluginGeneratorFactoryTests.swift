@@ -82,19 +82,23 @@ struct AIPluginGeneratorFactoryDefaultTests {
         #expect(generator is MockAIPluginGenerator)
     }
 
-    @Test func testMakeDefault_withRemoteProviderKey_andEndpointAndKeySet_returnsRemoteEchoGenerator() {
+    @Test func testMakeDefault_withRemoteProviderKey_andEndpointAndKeySet_returnsRemoteAIGenerator() {
         let prefs = makeIsolatedPreferencesStore()
         prefs.defaults.set(AIPluginGeneratorProvider.remote.rawValue, forKey: AIPluginGeneratorFactory.providerKey)
         prefs.defaults.set("https://api.example.com/v1/chat", forKey: AIPluginGeneratorFactory.remoteEndpointKey)
         prefs.defaults.set("sk-test-1234567890", forKey: AIPluginGeneratorFactory.remoteAPIKeyKey)
 
         let generator = AIPluginGeneratorFactory.makeDefault(prefs: prefs)
-        #expect(generator is RemoteEchoAIPluginGenerator)
-        if let remote = generator as? RemoteEchoAIPluginGenerator {
+        // The factory now returns the real URLSession-backed
+        // `RemoteAIPluginGenerator` when both inputs are
+        // configured. The fallback to the mock for missing
+        // inputs is covered separately below.
+        #expect(generator is RemoteAIPluginGenerator)
+        if let remote = generator as? RemoteAIPluginGenerator {
             #expect(remote.endpoint.absoluteString == "https://api.example.com/v1/chat")
             #expect(remote.apiKey == "sk-test-1234567890")
         } else {
-            Issue.record("expected RemoteEchoAIPluginGenerator, got \(type(of: generator))")
+            Issue.record("expected RemoteAIPluginGenerator, got \(type(of: generator))")
         }
     }
 
@@ -149,7 +153,7 @@ struct AIPluginGeneratorFactoryLocalTests {
 
 struct AIPluginGeneratorFactoryRemoteTests {
 
-    @Test func testMakeRemote_withBothArgs_returnsRemoteEchoGenerator() {
+    @Test func testMakeRemote_withBothArgs_returnsRemoteAIGenerator() {
         let prefs = makeIsolatedPreferencesStore()
         let endpoint = URL(string: "https://api.example.com/v1/chat")!
         let apiKey = "sk-test-abcdef"
@@ -159,8 +163,13 @@ struct AIPluginGeneratorFactoryRemoteTests {
             apiKey: apiKey,
             prefs: prefs
         )
-        #expect(generator is RemoteEchoAIPluginGenerator)
-        if let remote = generator as? RemoteEchoAIPluginGenerator {
+        // The real URLSession-backed generator is now the
+        // happy-path return value. The apiKey / endpoint are
+        // stored verbatim on the instance so a future real
+        // session can adopt the same `init` and start sending
+        // requests to the same URL with no factory change.
+        #expect(generator is RemoteAIPluginGenerator)
+        if let remote = generator as? RemoteAIPluginGenerator {
             #expect(remote.endpoint == endpoint)
             #expect(remote.apiKey == apiKey)
         }

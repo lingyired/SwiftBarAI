@@ -179,6 +179,20 @@ public enum AIGeneratorError: Error, Equatable, LocalizedError {
     /// The provider returned an error that we should surface to the
     /// user verbatim.
     case providerFailure(reason: String)
+    /// The remote provider returned a 401 / 403 — the user's API
+    /// key is missing, wrong, or no longer valid. Surfaced as a
+    /// distinct case so the Preferences → AI pane can prompt the
+    /// user to re-enter the key without conflating the failure
+    /// with a generic provider error.
+    case unauthorized
+    /// The HTTP layer could not complete the request (DNS, TLS,
+    /// connection reset, timeout, …). The `reason` is the
+    /// `URLError` / `Error.localizedDescription` string.
+    case transportError(reason: String)
+    /// The provider returned a 200 with a body the generator
+    /// could not parse as the expected JSON shape. The `reason`
+    /// is the underlying `DecodingError` description.
+    case malformedResponse(reason: String)
 
     public var errorDescription: String? {
         switch self {
@@ -190,6 +204,12 @@ public enum AIGeneratorError: Error, Equatable, LocalizedError {
             return "The provider rate-limited the request. Please wait a moment and try again."
         case .providerFailure(let reason):
             return "Provider error: \(reason)"
+        case .unauthorized:
+            return "The remote provider rejected the API key. Open Preferences → AI and verify the key is still valid."
+        case .transportError(let reason):
+            return "Could not reach the remote provider: \(reason)"
+        case .malformedResponse(let reason):
+            return "The remote provider returned an unparseable response: \(reason)"
         }
     }
 }
