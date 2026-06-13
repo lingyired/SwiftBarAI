@@ -18,6 +18,17 @@
 // each, and on Install calls `PluginCapabilityGate.grant(_:for:)`
 // for every enabled capability before handing the plugin to
 // `PluginManager.installGeneratedPlugin(_:)`.
+//
+// M2+ "Save as Template": clicking the new "Save as Template"
+// button in the footer opens `AIGeneratorSaveTemplateSheet`, which
+// captures a title, an SF Symbol, and a read-only preview of the
+// current request. On Save the parent sheet writes the new
+// `AIGeneratorTemplate` to disk through
+// `AIGeneratorTemplateStore.shared.addTemplate(_:)` and reloads
+// the gallery so the new card appears immediately. The 6 built-in
+// templates stay read-only; user-saved templates get a small
+// `person.crop.circle` badge and a long-press / context menu
+// "Delete template" action.
 
 import SwiftUI
 
@@ -31,6 +42,11 @@ import SwiftUI
 ///   to Plugin Folder" / "Cancel" trio.
 /// - When `.failure(reason)`: a red error banner with a
 ///   "Re-generate" retry button.
+///
+/// v2 (M2+): adds a horizontal "Start from a template" gallery
+/// (built-in + user-saved) and a "Save as Template" footer
+/// button so the user can persist the current request as a
+/// reusable template card.
 @MainActor
 struct AIGeneratorSheet: View {
     @StateObject private var viewModel: AIGeneratorViewModel
@@ -40,6 +56,28 @@ struct AIGeneratorSheet: View {
     /// `.sheet(...)` modal so it stacks cleanly on top of this
     /// sheet and dismisses independently.
     @State private var showingInstallPrompt: Bool = false
+
+    /// Backing state for the "Save as Template" sub-sheet.
+    /// Presented from the footer's "Save as Template" button;
+    /// dismissed from the sub-sheet's completion handler. The
+    /// `AIGeneratorSaveTemplateSheet` is read-only on the
+    /// request text and writes the assembled
+    /// `AIGeneratorTemplate` back through `onComplete` so the
+    /// parent sheet owns the disk write and the gallery
+    /// refresh.
+    @State private var showingSaveTemplateSheet: Bool = false
+
+    /// User-saved templates loaded from
+    /// `AIGeneratorTemplateStore.shared` at sheet-open time
+    /// and refreshed after every save / delete. Merged with
+    /// the 6 built-ins by
+    /// `AIGeneratorTemplateGallery.allTemplates(including:)`
+    /// to produce the gallery's renderable array. Stored
+    /// here (instead of computed on demand) so the SwiftUI
+    /// `ForEach` sees a stable `id` set across re-renders
+    /// and a delete can animate the card out without a
+    /// full gallery rebuild.
+    @State private var userTemplates: [AIGeneratorTemplate] = []
 
     /// Designated initializer. Tests pass a hand-built view model
     /// that wraps a `MockAIPluginGenerator`; the production call
@@ -76,6 +114,7 @@ struct AIGeneratorSheet: View {
         .frame(minWidth: 560, idealWidth: 640, minHeight: 480, idealHeight: 600)
         .animation(.easeInOut(duration: 0.2), value: viewModel.isStreaming)
         .animation(.easeInOut(duration: 0.2), value: viewModel.streamingPreview)
+        .onAppear(perform: reloadUserTemplates)
         .sheet(isPresented: $showingInstallPrompt) {
             AIGeneratorInstallPromptSheet(viewModel: viewModel) { result in
                 // The sub-sheet's completion handler is the only
@@ -95,6 +134,71 @@ struct AIGeneratorSheet: View {
                     }
                 }
             }
+        }
+        .sheet(isPresented: $showingSaveTemplateSheet) {
+            AIGeneratorSaveTemplateSheet(currentRequest: viewModel.request) { result in
+                // Toggle the binding first so SwiftUI dismisses
+                // the sub-sheet, then either persist the new
+                // template (which triggers a gallery reload) or
+                // no-op on Cancel. The sheet owns the
+                // `currentRequest` snapshot — by the time the
+                // completion fires the parent may have continued
+                // typing, but the saved copy stays faithful to
+                // what the user actually saw in the sub-sheet.
+                showingSaveTemplateSheet = false
+                switch result {
+                case .success(let template):
+                    saveUserTemplate(template)
+                case .failure:
+                    // Cancel is a no-op; .emptyTitle and
+                    // .emptyRequest are guarded by the sheet's
+                    // disabled state and never reach here.
+                    break
+                }
+            }
+        }
+    }
+
+    // MARK: - User-template helpers
+
+    /// Reload the user-saved templates from
+    /// `AIGeneratorTemplateStore.shared`. Called from
+    /// `.onAppear` so a sheet opened in a long-lived app
+    /// session picks up templates the user saved in a prior
+    /// sheet instance, and after every save / delete so the
+    /// gallery stays in sync with disk.
+    private func reloadUserTemplates() {
+        userTemplates = AIGeneratorTemplateStore.shared.loadUserTemplates()
+    }
+
+    /// Persist `template` through the shared store and refresh
+    /// the in-memory gallery. Errors are swallowed (logged
+    /// inside the store) so a write failure does not crash
+    /// the sheet — the user can retry by clicking "Save as
+    /// Template" again.
+    private func saveUserTemplate(_ template: AIGeneratorTemplate) {
+        do {
+            try AIGeneratorTemplateStore.shared.addTemplate(template)
+            reloadUserTemplates()
+        } catch {
+            // The store's `addTemplate(_:)` already logs the
+            // underlying error; we keep the gallery as-is so
+            // the user is not surprised by a partial state.
+        }
+    }
+
+    /// Delete a user-saved template by `id` and refresh the
+    /// in-memory gallery. Built-in templates have ids that
+    /// do **not** start with `user-`; the gallery's
+    /// `templateCard(for:)` only surfaces the context menu
+    /// for user templates, so we do not need a second
+    /// guard here.
+    private func deleteUserTemplate(id: String) {
+        do {
+            try AIGeneratorTemplateStore.shared.removeTemplate(id: id)
+            reloadUserTemplates()
+        } catch {
+            // See `saveUserTemplate(_:)` for the rationale.
         }
     }
 
@@ -121,19 +225,29 @@ struct AIGeneratorSheet: View {
     /// and remains tappable when the field is already populated
     /// — tapping a template REPLACES the current text (v1
     /// contract; the user can undo with the standard Cmd-Z).
+    ///
+    /// M2+ extension: the rendered list is
+    /// `AIGeneratorTemplateGallery.allTemplates(including: userTemplates)`,
+    /// so user-saved templates appear next to the 6 built-ins.
+    /// User templates get a small `person.crop.circle` badge and
+    /// a long-press / right-click "Delete template" context menu;
+    /// built-in templates stay read-only.
     private var templateGallery: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let allTemplates = AIGeneratorTemplateGallery.allTemplates(
+            including: userTemplates
+        )
+        return VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text("Start from a template")
                     .font(.headline)
                 Spacer()
-                Text("\(AIGeneratorTemplateGallery.templates.count) ready to try")
+                Text("\(allTemplates.count) ready to try")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 12) {
-                    ForEach(AIGeneratorTemplateGallery.templates) { template in
+                    ForEach(allTemplates) { template in
                         templateCard(for: template)
                     }
                 }
@@ -147,8 +261,19 @@ struct AIGeneratorSheet: View {
     /// `withAnimation` block gives a brief scale + haptic so the
     /// user gets confirmation the tap registered without the
     /// sheet auto-generating.
+    ///
+    /// M2+ extension: user-saved templates (id starts with
+    /// `user-`) get a small `person.crop.circle` SF Symbol in the
+    /// top-right corner so the user can tell them apart from the
+    /// built-ins at a glance, and a long-press / right-click
+    /// context menu offering "Delete template". Built-in templates
+    /// get neither — the v1 contract says the catalogue is
+    /// read-only.
     private func templateCard(for template: AIGeneratorTemplate) -> some View {
-        Button {
+        let isUser = template.id.hasPrefix(
+            AIGeneratorSaveTemplateSheet.userIDPrefixSafe
+        )
+        return Button {
             // Fill, then animate. We do NOT call
             // `viewModel.generate()` / `generateStreaming()`
             // here — the user is expected to review and tweak
@@ -169,9 +294,23 @@ struct AIGeneratorSheet: View {
             )
         } label: {
             VStack(alignment: .leading, spacing: 6) {
-                Image(systemName: template.systemImageName)
-                    .font(.system(size: 24, weight: .regular))
-                    .foregroundStyle(.tint)
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: template.systemImageName)
+                        .font(.system(size: 24, weight: .regular))
+                        .foregroundStyle(.tint)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if isUser {
+                        // Small badge in the top-right corner.
+                        // Uses `caption2` so it does not visually
+                        // compete with the template's primary
+                        // SF Symbol; tinted with the secondary
+                        // colour so it reads as metadata, not
+                        // a primary affordance.
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Spacer(minLength: 0)
                 Text(template.title)
                     .font(.subheadline.weight(.semibold))
@@ -193,6 +332,18 @@ struct AIGeneratorSheet: View {
             .contentShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            // Context menu is empty for built-in templates —
+            // SwiftUI still renders an empty `contextMenu` for
+            // them, so the right-click affordance stays
+            // consistent, but the v1 contract for built-ins
+            // (read-only, append-only) is preserved.
+            if isUser {
+                Button("Delete template", role: .destructive) {
+                    deleteUserTemplate(id: template.id)
+                }
+            }
+        }
     }
 
     private var requestEditor: some View {
@@ -385,6 +536,21 @@ struct AIGeneratorSheet: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
+            // M2+ "Save as Template" affordance. Lives in the
+            // footer (next to the primary Generate / Re-generate
+            // / Save-to-Plugin-Folder buttons) so it is visible
+            // regardless of which view-mode the sheet is in.
+            // Disabled when the request field is empty (we never
+            // want to save a blank prompt) and during a
+            // generator round-trip (so the user does not save
+            // an in-flight partial prompt).
+            Button("Save as Template") {
+                // The sub-sheet snapshots `viewModel.request`
+                // at construction time; opening it does not
+                // freeze the parent's text editor.
+                showingSaveTemplateSheet = true
+            }
+            .disabled(!canSaveAsTemplate)
             Spacer()
             Button("Cancel", role: .cancel) {
                 // M2's sheet is hosted in a standalone `NSWindow`
@@ -433,5 +599,16 @@ struct AIGeneratorSheet: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
+    }
+
+    /// `true` when the "Save as Template" button should be
+    /// enabled. Mirrors the `canGenerate` rule (non-empty
+    /// request, not currently loading) so the user sees the
+    /// same affordance state for both "save" and "generate".
+    /// Centralised here so the SwiftUI `.disabled` modifier
+    /// does not have to repeat the rule.
+    private var canSaveAsTemplate: Bool {
+        !viewModel.request.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !viewModel.isLoading
     }
 }

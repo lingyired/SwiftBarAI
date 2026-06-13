@@ -31,7 +31,7 @@ import Foundation
 /// `systemImageName` is a SF Symbol (macOS 12+) so the gallery UI
 /// can render a large icon next to the title without bundling
 /// per-template image assets.
-public struct AIGeneratorTemplate: Identifiable, Hashable, Sendable {
+public struct AIGeneratorTemplate: Identifiable, Hashable, Sendable, Codable {
     /// Stable identifier. Used as the `id` for SwiftUI
     /// `List` / `ForEach` and as the bookmark key. **Never
     /// reuse an `id`** — append-only is the v1 contract (see
@@ -82,11 +82,23 @@ public struct AIGeneratorTemplate: Identifiable, Hashable, Sendable {
 /// (1–2 sentences) so the user can read them at a glance and
 /// decide whether to ship as-is or tweak before clicking
 /// "Generate".
+///
+/// The v2 extension: a user can also save their own prompts as
+/// user templates (see `AIGeneratorTemplateStore`). The 6
+/// built-ins remain hard-coded and read-only; user-saved
+/// templates are merged in via `allTemplates(including:)`. The
+/// `templates` static is kept for back-compat (existing call
+/// sites that only want the built-in catalogue) — new code
+/// should call `allTemplates(including:)` so it picks up any
+/// user-saved templates loaded from disk.
 public enum AIGeneratorTemplateGallery {
-    /// The full v1 gallery. Order matters: the SwiftUI
-    /// `LazyHStack` renders left-to-right, so the most
-    /// generally-useful templates come first.
-    public static let templates: [AIGeneratorTemplate] = [
+    /// The full v1 gallery of built-in templates. Order
+    /// matters: the SwiftUI `LazyHStack` renders
+    /// left-to-right, so the most generally-useful templates
+    /// come first. **Append-only** — renaming or removing a
+    /// template is a breaking change for anyone who has
+    /// bookmarked one.
+    public static let builtInTemplates: [AIGeneratorTemplate] = [
         .init(
             id: "weather",
             title: "Weather",
@@ -130,4 +142,41 @@ public enum AIGeneratorTemplateGallery {
             systemImageName: "shippingbox"
         ),
     ]
+
+    /// Back-compat alias for the v1 catalogue. New code
+    /// should call `allTemplates(including:)` so user-saved
+    /// templates are merged in. Kept as a non-`deprecated`
+    /// alias because it is still the right call when the
+    /// caller explicitly wants the built-ins only (e.g. a
+    /// test that asserts the v1 catalogue size).
+    public static var templates: [AIGeneratorTemplate] {
+        builtInTemplates
+    }
+
+    /// Merge built-in + user-saved templates into a single
+    /// renderable array.
+    ///
+    /// User templates with the same `id` as a built-in shadow
+    /// the built-in (so a power user can override a default
+    /// without forking the catalogue). User templates with a
+    /// fresh `id` are appended in their `userSaved` order so
+    /// the gallery stays stable across calls.
+    ///
+    /// - Parameter userSaved: Templates loaded from
+    ///   `AIGeneratorTemplateStore`. Defaults to an empty
+    ///   array so the v1 call sites that did not pass
+    ///   anything keep working unchanged.
+    public static func allTemplates(
+        including userSaved: [AIGeneratorTemplate] = []
+    ) -> [AIGeneratorTemplate] {
+        var result = builtInTemplates
+        for userTemplate in userSaved {
+            if let idx = result.firstIndex(where: { $0.id == userTemplate.id }) {
+                result[idx] = userTemplate
+            } else {
+                result.append(userTemplate)
+            }
+        }
+        return result
+    }
 }

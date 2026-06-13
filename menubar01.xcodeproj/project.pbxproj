@@ -129,6 +129,8 @@
 		BFC5B4F25B063E247047BE6C /* RemoteAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 070775436F2E9DC682BE1BFE /* RemoteAIPluginGenerator.swift */; };
 		7F1C3D1C5A1F4F9BA2D1061B /* LocalAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1C3D1C5A1F4F9BA2D1061A /* LocalAIPluginGenerator.swift */; };
 		A0A0A0A0A0A0A0A0A0A0A001 /* AIGeneratorTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A0A0A0A0A0A0A0A0A0A002 /* AIGeneratorTemplate.swift */; };
+		B0B0B0B0B0B0B0B0B0B0B001 /* AIGeneratorTemplateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0B0B0B0B0B0B0B0B0B0B002 /* AIGeneratorTemplateStore.swift */; };
+		C0C0C0C0C0C0C0C0C0C0C001 /* AIGeneratorSaveTemplateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0C0C0C0C0C0C0C0C0C002 /* AIGeneratorSaveTemplateSheet.swift */; };
 		CAAD40FB94DA1FB971138A81 /* GeneratorHistoryMenuCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95EF42CEA9A275A956AD7AFE /* GeneratorHistoryMenuCommand.swift */; };
 		CAF84AAFB13C69B0A06DD47C /* MarketplaceInstallPromptSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 164E4786B534082283153A07 /* MarketplaceInstallPromptSheet.swift */; };
 		CC468011000000000000C011 /* MarketplaceCapabilityPromptSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468010000000000000C010 /* MarketplaceCapabilityPromptSheet.swift */; };
@@ -148,6 +150,8 @@
 		1D1C38D68269CD69350E609D /* RemoteAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 070775436F2E9DC682BE1BFE /* RemoteAIPluginGenerator.swift */; };
 		7F1C3D1C5A1F4F9BA2D1061C /* LocalAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1C3D1C5A1F4F9BA2D1061A /* LocalAIPluginGenerator.swift */; };
 		A0A0A0A0A0A0A0A0A0A0A003 /* AIGeneratorTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A0A0A0A0A0A0A0A0A0A002 /* AIGeneratorTemplate.swift */; };
+		B0B0B0B0B0B0B0B0B0B0B003 /* AIGeneratorTemplateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0B0B0B0B0B0B0B0B0B0B002 /* AIGeneratorTemplateStore.swift */; };
+		C0C0C0C0C0C0C0C0C0C0C003 /* AIGeneratorSaveTemplateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0C0C0C0C0C0C0C0C0C002 /* AIGeneratorSaveTemplateSheet.swift */; };
 		DB7749C98F0850F5B994DDDE /* MarketplaceBrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64DE4D39B0E6E12F920F4DBE /* MarketplaceBrowserViewModel.swift */; };
 		DBEA403DAF5D4C3226EA7FDA /* AIPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEE243E5A225D2B187D1F4C9 /* AIPreferencesView.swift */; };
 		E49E4B0A9F6784825DE62979 /* AIPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEE243E5A225D2B187D1F4C9 /* AIPreferencesView.swift */; };
@@ -281,6 +285,8 @@
 		6B6D4C6E86A4F030A93DD9DB /* AIGeneratorHistoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorHistoryEntry.swift; path = menubar01/AI/AIGeneratorHistoryEntry.swift; sourceTree = SOURCE_ROOT; };
 		6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGenerator.swift; sourceTree = "<group>"; };
 		A0A0A0A0A0A0A0A0A0A0A002 /* AIGeneratorTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorTemplate.swift; path = menubar01/AI/AIGeneratorTemplate.swift; sourceTree = SOURCE_ROOT; };
+		B0B0B0B0B0B0B0B0B0B0B002 /* AIGeneratorTemplateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorTemplateStore.swift; path = menubar01/AI/AIGeneratorTemplateStore.swift; sourceTree = SOURCE_ROOT; };
+		C0C0C0C0C0C0C0C0C0C0C002 /* AIGeneratorSaveTemplateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorSaveTemplateSheet.swift; path = "menubar01/UI/Plugin Generator/AIGeneratorSaveTemplateSheet.swift"; sourceTree = SOURCE_ROOT; };
 		070775436F2E9DC682BE1BFE /* RemoteAIPluginGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAIPluginGenerator.swift; sourceTree = "<group>"; };
 		7F1C3D1C5A1F4F9BA2D1061A /* LocalAIPluginGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAIPluginGenerator.swift; sourceTree = "<group>"; };
 		705AC70319E448669E96803B /* MarketplaceEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceEntry.swift; sourceTree = "<group>"; };
@@ -388,6 +394,7 @@
 				6B6D4C6E86A4F030A93DD9DB /* AIGeneratorHistoryEntry.swift */,
 				DE9D408C85249D9BB0AF1DD4 /* AIGeneratorHistoryStore.swift */,
 				A0A0A0A0A0A0A0A0A0A0A002 /* AIGeneratorTemplate.swift */,
+				B0B0B0B0B0B0B0B0B0B0B002 /* AIGeneratorTemplateStore.swift */,
 			);
 			path = AI;
 			sourceTree = "<group>";
@@ -416,6 +423,7 @@
 				0336457FBF84783754FE4BFD /* GeneratorHistoryExporter.swift */,
 				164E4786B534082283153A07 /* MarketplaceInstallPromptSheet.swift */,
 				CC468010000000000000C010 /* MarketplaceCapabilityPromptSheet.swift */,
+				C0C0C0C0C0C0C0C0C0C0C002 /* AIGeneratorSaveTemplateSheet.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1006,6 +1014,7 @@
 				BFC5B4F25B063E247047BE6C /* RemoteAIPluginGenerator.swift in Sources */,
 				7F1C3D1C5A1F4F9BA2D1061B /* LocalAIPluginGenerator.swift in Sources */,
 				A0A0A0A0A0A0A0A0A0A0A001 /* AIGeneratorTemplate.swift in Sources */,
+				B0B0B0B0B0B0B0B0B0B0B001 /* AIGeneratorTemplateStore.swift in Sources */,
 				A9D77907F8FD45B1BCF9FCDF /* MarketplaceClient.swift in Sources */,
 				3338B9EDEEB106D21BF110F5 /* RemoteMarketplaceClient.swift in Sources */,
 				F096B206BDC343C8848D75A6 /* MarketplaceEntry.swift in Sources */,
@@ -1031,6 +1040,7 @@
 				D05742D9A8603D6408F8AC76 /* GeneratorHistoryExporter.swift in Sources */,
 				CAF84AAFB13C69B0A06DD47C /* MarketplaceInstallPromptSheet.swift in Sources */,
 				CC468011000000000000C011 /* MarketplaceCapabilityPromptSheet.swift in Sources */,
+				C0C0C0C0C0C0C0C0C0C0C001 /* AIGeneratorSaveTemplateSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1098,6 +1108,7 @@
 				1D1C38D68269CD69350E609D /* RemoteAIPluginGenerator.swift in Sources */,
 				7F1C3D1C5A1F4F9BA2D1061C /* LocalAIPluginGenerator.swift in Sources */,
 				A0A0A0A0A0A0A0A0A0A0A003 /* AIGeneratorTemplate.swift in Sources */,
+				B0B0B0B0B0B0B0B0B0B0B003 /* AIGeneratorTemplateStore.swift in Sources */,
 				8BF42C414E384000A69A88B2 /* MarketplaceClient.swift in Sources */,
 				1C8F703DC269A2679990AB57 /* RemoteMarketplaceClient.swift in Sources */,
 				721EF289AC9C4FB2B33B670E /* MarketplaceEntry.swift in Sources */,
@@ -1105,6 +1116,7 @@
 				E49E4B0A9F6784825DE62979 /* AIPreferencesView.swift in Sources */,
 				23B944FBACF883E78157EB7C /* AIGeneratorMenuNode.swift in Sources */,
 				04F94D3391B2D6626313AF79 /* GeneratorHistoryExporter.swift in Sources */,
+				C0C0C0C0C0C0C0C0C0C0C003 /* AIGeneratorSaveTemplateSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
