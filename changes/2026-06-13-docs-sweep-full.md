@@ -3,8 +3,8 @@
 - **Type:** docs
 - **Scope:** `docs/00-README.md` through `docs/13-Build-and-Run.md` (14 files)
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** _pending_
-- **Status:** in-progress
+- **Commit(s):** 44d9fd7
+- **Status:** done
 
 ## Summary
 
