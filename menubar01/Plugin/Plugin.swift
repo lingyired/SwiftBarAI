@@ -197,4 +197,17 @@ extension Plugin {
     func writeStdin(_ input: String) throws {
         throw NSError(domain: "menubar01.Plugin", code: 1, userInfo: [NSLocalizedDescriptionKey: "Plugin type \(type.rawValue) does not support stdin input"])
     }
+
+    /// Capabilities declared in the plugin's `manifest.json`,
+    /// resolved into typed `PluginCapability` values via
+    /// `PluginManifest.resolvedCapabilities`. Returns `[]` for
+    /// plugin types that do not carry a manifest (e.g.
+    /// `ShortcutPlugin`, `EphemeralPlugin`) — only `FolderPlugin`
+    /// can declare capabilities today. The capability-gate About
+    /// UI uses this accessor to render the Permissions section
+    /// without having to downcast the plugin to a concrete type.
+    var resolvedCapabilities: [PluginCapability] {
+        guard let folderPlugin = self as? FolderPlugin else { return [] }
+        return folderPlugin.manifest?.resolvedCapabilities ?? []
+    }
 }

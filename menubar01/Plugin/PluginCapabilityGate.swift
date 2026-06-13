@@ -4,13 +4,19 @@
 // The `PluginCapabilityGate` is the runtime guard that refuses to
 // load a plugin whose `manifest.json` declares a capability the user
 // has not yet granted. It owns a `UserDefaults`-backed store of
-// `(pluginID, grantedCapabilities)` pairs and exposes the three
-// operations the install flow needs:
+// `(pluginID, grantedCapabilities)` pairs and exposes the four
+// operations the install flow + About UI need:
 //
 //  - `grant(_:for:)` — the user has accepted the install-prompt
 //    sheet and the gate records the grant. Idempotent: re-granting
 //    the same set is a no-op so the install flow can call it
 //    defensively on every load.
+//  - `revoke(_:for:)` — the user pulled a capability back from the
+//    About view's Permissions section. Idempotent: revoking a
+//    capability the plugin never had (or already revoked) is a
+//    no-op. The plugin keeps running with its *currently loaded*
+//    capability set until the next refresh, at which point
+//    `verify(...)` will throw.
 //  - `granted(for:)` — read the current grant set for a plugin.
 //    Used by the About / Permissions sheet to render which
 //    capabilities a given plugin has access to.
@@ -60,9 +66,8 @@ public struct PluginCapabilityGate {
 
     /// Record that `pluginID` has been granted `caps`. Idempotent:
     /// granting the same set twice is a no-op. Subsequent calls
-    /// with a strict subset do **not** revoke — there is no
-    /// `revoke(_:for:)` in v1 because the install flow is the only
-    /// writer and it never needs to downgrade.
+    /// with a strict subset do **not** revoke — callers that want
+    /// to pull a capability back must use `revoke(_:for:)`.
     ///
     /// `pluginID` is typed as `String` (rather than the internal
     /// `PluginID` typealias) so the public method does not leak an
@@ -78,6 +83,38 @@ public struct PluginCapabilityGate {
         os_log("Granted capabilities for plugin %{public}@: %{public}@",
                log: Log.plugin, type: .info,
                pluginID, caps.map(\.displayName).sorted().joined(separator: ","))
+    }
+
+    /// Pull `capability` back from `pluginID`'s grant set.
+    /// Idempotent: revoking a capability the plugin does not
+    /// currently hold is a no-op. When the revoke empties the
+    /// plugin's grant set, the plugin's entry in the store is
+    /// removed entirely so `granted(for:)` continues to return
+    /// `[]` (matches the "never granted" path).
+    ///
+    /// Revoke is "soft" — the plugin keeps running with its
+    /// currently loaded capability set until the next refresh,
+    /// at which point `verify(...)` will throw. The user can
+    /// re-grant the same capability from the install-prompt
+    /// sheet (or by re-issuing `grant(_:for:)` from tests).
+    ///
+    /// `pluginID` is typed as `String` (rather than the internal
+    /// `PluginID` typealias) so the public method does not leak an
+    /// internal type.
+    public func revoke(_ capability: PluginCapability, for pluginID: String) {
+        var current = readStore()
+        guard var existing = current[pluginID] else { return }
+        guard existing.contains(capability) else { return }
+        existing.remove(capability)
+        if existing.isEmpty {
+            current.removeValue(forKey: pluginID)
+        } else {
+            current[pluginID] = existing
+        }
+        writeStore(current)
+        os_log("Revoked capability for plugin %{public}@: %{public}@",
+               log: Log.plugin, type: .info,
+               pluginID, capability.displayName)
     }
 
     /// Returns the set of capabilities the user has granted to

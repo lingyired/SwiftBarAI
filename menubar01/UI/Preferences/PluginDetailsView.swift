@@ -4,9 +4,26 @@ import SwiftUI
 struct PluginDetailsView: View {
     @ObservedObject var md: PluginMetadata
     let plugin: Plugin
+    /// The capability gate that decides whether the user has
+    /// granted each declared capability. Defaults to the shared
+    /// `PluginManager.shared.pluginCapabilityGate`; tests can
+    /// pass a gate backed by an isolated `UserDefaults` suite to
+    /// assert the Permissions section's behavior without touching
+    /// the real store. See
+    /// `menubar01/Plugin/PluginCapabilityGate.swift` for the
+    /// authoritative `grant` / `revoke` / `verify` surface.
+    let pluginCapabilityGate: PluginCapabilityGate = PluginManager.shared.pluginCapabilityGate
     @State var isEditing: Bool = false
     @State var dependencies: String = ""
     @State var userVariableValues: [String: String] = [:]
+    /// Bumped after every revoke so the section re-renders. The
+    /// gate is a value type and `UserDefaults` writes are not
+    /// observed automatically, so we need a manual trigger.
+    @State private var capabilitiesRevision: Int = 0
+    /// Capability the user has clicked "Revoke" on and is
+    /// currently confirming in the alert. `nil` means no
+    /// confirmation is in flight.
+    @State private var pendingRevoke: PluginCapability?
     let screenProportion: CGFloat = 0.3
     let width: CGFloat = 400
     var body: some View {
@@ -64,6 +81,7 @@ struct PluginDetailsView: View {
                                                   width: width * 0.2)
                         }
                     }, content: {})
+                    permissionsSection
                     Preferences.Section(label: {
                         HStack {
                             Text("Hide Menu Items:")
@@ -144,6 +162,38 @@ struct PluginDetailsView: View {
             loadUserVariableValues()
         }
         .id(plugin.id)
+        .alert(
+            "Revoke \(pendingRevoke?.displayName ?? "") for \(pluginID)?",
+            isPresented: Binding(
+                get: { pendingRevoke != nil },
+                set: { if !$0 { pendingRevoke = nil } }
+            )
+        ) {
+            Button("Revoke", role: .destructive) {
+                if let capability = pendingRevoke {
+                    pluginCapabilityGate.revoke(capability, for: pluginID)
+                    capabilitiesRevision += 1
+                }
+                pendingRevoke = nil
+            }
+            Button("Cancel", role: .cancel) {
+                pendingRevoke = nil
+            }
+        } message: {
+            Text("Revoking this capability will cause the plugin to fail on the next refresh. You can re-grant it from the install prompt.")
+        }
+    }
+
+    /// The pluginID the capability gate stores grants under. Matches
+    /// the convention in `PluginCapabilityGate.verify(manifest:)` —
+    /// `manifest.name ?? "<unnamed>"`. `Plugin.metadata?.name` is
+    /// derived from the manifest by `FolderPlugin.buildMetadata`,
+    /// so the metadata accessor is the closest public-equivalent
+    /// surface. `plugin.name` (the `Plugin` protocol property) is
+    /// the directory-name fallback used by `FolderPlugin.init`.
+    private var pluginID: String {
+        let name = plugin.metadata?.name ?? ""
+        return name.isEmpty ? plugin.name : name
     }
 
     private func loadUserVariableValues() {
@@ -152,6 +202,62 @@ struct PluginDetailsView: View {
         for variable in md.variables where userVariableValues[variable.name] == nil {
             userVariableValues[variable.name] = variable.defaultValue
         }
+    }
+
+    /// The "Permissions" `Preferences.Section` rendered inside
+    /// the `Preferences.Container`. Lists every capability the
+    /// plugin declares in its `manifest.json`
+    /// (`plugin.resolvedCapabilities`), shows a Granted / Not
+    /// granted badge for each (driven by
+    /// `gate.isGranted(_:for:)`), and offers a per-row Revoke
+    /// button for the granted rows. Reading
+    /// `capabilitiesRevision` inside the body invalidates the
+    /// gate lookups on the next render — the gate is a value
+    /// type stored in `UserDefaults`, so SwiftUI cannot observe
+    /// its underlying mutations on its own.
+    private var permissionsSection: Preferences.Section {
+        // Touch `capabilitiesRevision` once at the top of the
+        // body so a revoke invalidates the gate lookups on the
+        // next render. The gate is a value type stored in
+        // `UserDefaults`, so SwiftUI cannot observe its
+        // underlying mutations on its own.
+        let _ = capabilitiesRevision
+        let capabilities = declaredCapabilities
+        return Preferences.Section(label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Permissions")
+                        .font(.headline)
+                    Spacer()
+                }
+                if capabilities.isEmpty {
+                    Text("This plugin does not request any special capabilities.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(capabilities, id: \.self) { capability in
+                            PluginCapabilityRowView(
+                                capability: capability,
+                                isGranted: pluginCapabilityGate.isGranted(
+                                    capability, for: pluginID
+                                ),
+                                onRequestRevoke: { pendingRevoke = capability }
+                            )
+                        }
+                    }
+                }
+            }
+        }, content: {})
+    }
+
+    /// Capabilities declared by the plugin's `manifest.json`.
+    /// Touching `capabilitiesRevision` here forces a fresh
+    /// `plugin.resolvedCapabilities` lookup after every revoke.
+    private var declaredCapabilities: [PluginCapability] {
+        _ = capabilitiesRevision
+        return plugin.resolvedCapabilities
     }
 
     private func bindingForVariable(_ variable: PluginVariable) -> Binding<String> {
@@ -286,6 +392,45 @@ struct PluginDetailsToggleView: View {
                 Text("\(label):")
             }.frame(width: width)
             Toggle("", isOn: $state)
+        }
+    }
+}
+
+/// Single row in the Permissions section: capability name,
+/// one-line description, Granted / Not granted badge, and an
+/// inline Revoke button for granted rows. Extracted from
+/// `PluginDetailsView` so the row is a reusable building block
+/// — the existing marketplace install-prompt sheet uses a
+/// similar row layout (`MarketplaceInstallPromptSheet`).
+struct PluginCapabilityRowView: View {
+    let capability: PluginCapability
+    let isGranted: Bool
+    let onRequestRevoke: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(capability.displayName)
+                    .font(.system(.body, design: .default).weight(.semibold))
+                Text(capability.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(isGranted ? "Granted" : "Not granted")
+                    .font(.caption)
+                    .foregroundColor(isGranted ? .green : .red)
+                if isGranted {
+                    Button(action: onRequestRevoke) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Revoke this capability. The plugin will fail to load on its next refresh.")
+                }
+            }
         }
     }
 }

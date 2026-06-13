@@ -409,6 +409,88 @@ struct PluginCapabilityGateIdempotencyTests {
     }
 }
 
+// MARK: - Gate: revoke (M3 About-UI addition)
+
+struct PluginCapabilityGateRevokeTests {
+    @Test func testRevoke_removesCapabilityFromGrantSet() {
+        // The canonical happy path: a plugin has a capability
+        // granted, the user clicks Revoke, the capability is
+        // gone from the grant set. The other granted
+        // capabilities survive.
+        let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
+        gate.grant([.network(hosts: []), .clipboard, .calendar], for: "P")
+        #expect(gate.isGranted(.clipboard, for: "P"))
+
+        gate.revoke(.clipboard, for: "P")
+
+        #expect(gate.isGranted(.clipboard, for: "P") == false)
+        // Other grants survive the revoke.
+        #expect(gate.isGranted(.network(hosts: []), for: "P"))
+        #expect(gate.isGranted(.calendar, for: "P"))
+    }
+
+    @Test func testRevoke_ungrantedCapabilityIsNoOp() {
+        // Pulling a capability the plugin never had must be
+        // idempotent — it must not throw, must not add the
+        // capability to the set, and must not evict the
+        // existing grants.
+        let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
+        gate.grant([.calendar], for: "P")
+
+        gate.revoke(.clipboard, for: "P")
+
+        #expect(gate.isGranted(.calendar, for: "P"))
+        #expect(gate.granted(for: "P") == Set([.calendar]))
+    }
+
+    @Test func testRevoke_lastCapabilityRemovesPluginKey() {
+        // When the revoke empties the plugin's grant set, the
+        // plugin's entry in the store is removed entirely so
+        // `granted(for:)` returns `[]` (matches the "never
+        // granted" path). The plugin can later be re-granted
+        // from scratch — the entry is fresh, not a stale empty
+        // set.
+        let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
+        gate.grant([.notifications], for: "P")
+        #expect(gate.granted(for: "P") == Set([.notifications]))
+
+        gate.revoke(.notifications, for: "P")
+
+        #expect(gate.granted(for: "P").isEmpty)
+
+        // Re-grant works after a full revoke.
+        gate.grant([.calendar], for: "P")
+        #expect(gate.granted(for: "P") == Set([.calendar]))
+    }
+
+    @Test func testRevoke_unknownPluginIsNoOp() {
+        // Pulling a capability for a pluginID that has no
+        // entry in the store must be a no-op — no allocation,
+        // no error, no spurious empty entry.
+        let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
+        gate.revoke(.clipboard, for: "Never Granted")
+        #expect(gate.granted(for: "Never Granted").isEmpty)
+    }
+
+    @Test func testRevoke_idempotent() {
+        // Calling revoke twice with the same argument is a
+        // no-op the second time — matches `grant`'s
+        // idempotency contract. The About UI does not need to
+        // guard against double-clicks; the gate is robust to
+        // repeated invocations.
+        let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
+        gate.grant([.clipboard, .calendar], for: "P")
+
+        gate.revoke(.clipboard, for: "P")
+        gate.revoke(.clipboard, for: "P") // a second time
+        gate.revoke(.clipboard, for: "P") // a third time
+
+        // `.clipboard` is gone, `.calendar` survives.
+        #expect(gate.isGranted(.clipboard, for: "P") == false)
+        #expect(gate.isGranted(.calendar, for: "P"))
+    }
+}
+
 // MARK: - New (2026-06-13) capabilities
 
 struct PluginCapabilityNetworkTests {
