@@ -71,6 +71,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUStandardUserDriverDelegat
     /// `PluginGeneratorMenuCommand.ensureWindowController(...)`.
     var aiGeneratorWindowController: NSWindowController?
 
+    /// Window that hosts the marketplace browser sheet (M5).
+    /// Held on the `AppDelegate` so the sheet can be reopened
+    /// without losing in-flight input. Lazily created by
+    /// `MarketplaceBrowserMenuCommand.ensureWindowController(...)`.
+    var marketplaceBrowserWindowController: NSWindowController?
+
     lazy var preferencesWindowController = PreferencesWindowController(
         panes: preferencePanes,
         style: .toolbarItems,

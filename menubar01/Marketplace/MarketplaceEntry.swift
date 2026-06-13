@@ -13,7 +13,7 @@ import os
 /// `id` is the stable slug used as the lookup key for
 /// `MarketplaceClient.fetchPackage(id:)` and as the on-disk folder
 /// name when the package is later installed.
-public struct MarketplaceEntry: Codable, Identifiable, Equatable {
+public struct MarketplaceEntry: Codable, Identifiable, Equatable, Hashable {
     /// Stable, human-readable slug that uniquely identifies the entry.
     /// Used as the on-disk subfolder name under `_marketplace/`.
     public let id: String
@@ -133,8 +133,12 @@ public struct MarketplacePackage: Codable {
 /// The cases are intentionally narrow — transport and decoding
 /// failures are wrapped generically because the v1 client is
 /// in-memory and the v2 remote client will surface its own HTTP /
-/// TLS errors through the `transport` case.
-public enum MarketplaceError: Error, Equatable {
+/// TLS errors through the `transport` case. Conforms to
+/// `LocalizedError` so `error.localizedDescription` returns the
+/// underlying `reason` string verbatim (instead of the default
+/// "The operation couldn't be completed" that AppKit surfaces
+/// for unannotated `Error` values).
+public enum MarketplaceError: Error, Equatable, LocalizedError {
     /// The requested id was not present in the catalogue.
     case notFound(id: String)
     /// A payload that should have been valid JSON (manifest, etc.)
@@ -143,4 +147,15 @@ public enum MarketplaceError: Error, Equatable {
     /// Generic transport-layer failure. Not used by the M4 stub;
     /// reserved for the future `RemoteMarketplaceClient`.
     case transport(reason: String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .notFound(let id):
+            return "Plugin not found in catalogue: \(id)"
+        case .decodingFailed(let reason):
+            return "Could not decode marketplace payload: \(reason)"
+        case .transport(let reason):
+            return reason
+        }
+    }
 }

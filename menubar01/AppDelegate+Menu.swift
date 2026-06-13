@@ -17,6 +17,7 @@ class AppMenu: NSMenu {
         }
         items = [menuItemOne]
         PluginGeneratorMenuCommand.install(into: self)
+        MarketplaceBrowserMenuCommand.install(into: self)
     }
 
     required init(coder: NSCoder) {
@@ -29,6 +30,11 @@ class AppMenu: NSMenu {
 
     @objc func openAIGenerator() {
         PluginGeneratorMenuCommand.presentSheet()
+    }
+
+    @objc func openMarketplaceBrowser() {
+        guard let appDelegate = NSApp.delegate as? AppDelegate else { return }
+        MarketplaceBrowserMenuCommand.presentSheet(appDelegate: appDelegate)
     }
 
     @objc func sendFeedback() {
