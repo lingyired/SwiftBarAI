@@ -88,7 +88,7 @@ menubar01 is structured around **three coordinated layers**: the **App layer** (
 | --- | --- | --- |
 | `Plugin.content` setter | `PassthroughSubject<String?, Never>` | `MenubarItem` (subscribed on `menuUpdateQueue`) |
 | `PreferencesStore.disabledPlugins` | `PassthroughSubject<Any, Never>` | `PluginManager` → `pluginsDidChange()` |
-| `PreferencesStore.swiftBarIconIsHidden` | `@Published` | `AppShared.rebuildAllMenus()` via `didSet` |
+| `PreferencesStore.menubar01IconIsHidden` | `@Published` | `AppShared.rebuildAllMenus()` via `didSet` |
 | `NSWorkspace` sleep/wake | `NotificationCenter` (main queue) | `AppDelegate` → `Environment` & `PluginManager` |
 | `DirectoryObserver` | Dispatch source event | `PluginManager.directoryChanged` → debounced `loadPlugins` |
 | `menubar01://…` URL | `application(_:open:)` | `AppDelegate` switch by host |

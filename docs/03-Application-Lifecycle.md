@@ -30,7 +30,7 @@ The delegate conforms to `NSApplicationDelegate`, `SPUStandardUserDriverDelegate
 | `repositoryToolbarSearchItem` | `NSToolbarItem?` | Search field for the repository window. |
 | `pluginManager` | `PluginManager!` | Force-unwrapped; constructed in `applicationDidFinishLaunching` after the plugin folder is known. |
 | `prefs` | `PreferencesStore` | Shared `UserDefaults`-backed store. |
-| `sharedEnv` | `Environment` | Singleton providing `SWIFTBAR_*` env vars. |
+| `sharedEnv` | `Environment` | Singleton providing `MENUBAR01_*` env vars. |
 | `softwareUpdater` | `SPUUpdater!` | Non-MAS only. |
 
 ### `applicationDidFinishLaunching(_:)`
