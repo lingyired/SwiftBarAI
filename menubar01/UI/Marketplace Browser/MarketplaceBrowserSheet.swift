@@ -213,6 +213,27 @@ struct MarketplaceBrowserSheet: View {
                 }
             }
         )
+        // "Run diagnostics" sub-sheet. Presented when
+        // `viewModel.pendingDiagnostics` is non-`nil`
+        // (the VM assigns to it from the
+        // `runDiagnostics(snapshot:)` round-trip).
+        // The sheet renders stdout, stderr, exit
+        // code, and timing for the entry script the
+        // user just launched, and dismisses back to
+        // the browser sheet on Close. The `.sheet`
+        // binding is computed from
+        // `pendingDiagnostics != nil` (not stored
+        // on the VM) so a programmatic
+        // `dismissPendingDiagnostics()` call from a
+        // test does not need to round-trip through
+        // the SwiftUI sheet machinery.
+        .sheet(isPresented: diagnosticsSheetBinding) {
+            if let pending = viewModel.pendingDiagnostics {
+                MarketplaceDiagnosticsSheet(pending: pending) {
+                    viewModel.dismissPendingDiagnostics()
+                }
+            }
+        }
     }
 
     // MARK: - Sections
@@ -403,6 +424,41 @@ struct MarketplaceBrowserSheet: View {
                 .buttonStyle(.borderless)
                 .controlSize(.mini)
                 .help("Open data folder for \(snapshot.name)")
+                // Per-row "Run diagnostics" button.
+                // Triggers
+                // `viewModel.runDiagnostics(snapshot:)`,
+                // which launches the entry script via
+                // `PluginManager.runPluginDiagnostics(at:timeoutSeconds:)`
+                // and surfaces stdout / stderr / exit
+                // code / timing in a separate modal
+                // sheet. The icon is a SF Symbols
+                // `stethoscope` so the user can tell it
+                // apart from the sibling "View source"
+                // and "Open data folder" actions at a
+                // glance. The button is disabled while
+                // a diagnostics round-trip is in flight
+                // (mirroring the "Uninstall" /
+                // "Update" disable pattern) so the user
+                // cannot double-click while a slow
+                // entry script is still running. Same
+                // `.mini` / `.borderless` shape as the
+                // sibling buttons to keep the row
+                // compact and the toggle on the right
+                // edge.
+                Button {
+                    viewModel.runDiagnostics(snapshot: snapshot)
+                } label: {
+                    if viewModel.isRunningDiagnostics {
+                        ProgressView()
+                            .controlSize(.mini)
+                    } else {
+                        Image(systemName: "stethoscope")
+                    }
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.mini)
+                .disabled(viewModel.isRunningDiagnostics)
+                .help("Run diagnostics for \(snapshot.name)")
                 // Per-row enable / disable toggle. Bound
                 // to a Binding<Bool> that maps through
                 // `viewModel.toggleEnabled(for:)` so the
@@ -1025,6 +1081,26 @@ struct MarketplaceBrowserSheet: View {
             set: { presented in
                 if !presented {
                     pendingUninstallSnapshot = nil
+                }
+            }
+        )
+    }
+
+    /// `Sheet(isPresented:)` binding for the "Run
+    /// diagnostics" sub-sheet. The sheet is presented
+    /// when `viewModel.pendingDiagnostics` is non-`nil`
+    /// and dismissed via the sheet's Close button (which
+    /// calls `viewModel.dismissPendingDiagnostics()`).
+    /// The binding's `set: { false }` path is a
+    /// no-op — the dismiss is driven by the VM so a
+    /// programmatic test can clear the state without
+    /// racing the SwiftUI sheet machinery.
+    private var diagnosticsSheetBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.pendingDiagnostics != nil },
+            set: { presented in
+                if !presented {
+                    viewModel.dismissPendingDiagnostics()
                 }
             }
         )

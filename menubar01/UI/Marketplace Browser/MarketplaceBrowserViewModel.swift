@@ -125,6 +125,26 @@ final class MarketplaceBrowserViewModel: ObservableObject {
         NSWorkspace.shared.activateFileViewerSelecting(urls)
     }
 
+    /// Underlying runner for `runDiagnostics(snapshot:)`.
+    /// The default delegates to
+    /// `PluginManager.runPluginDiagnostics(at:timeoutSeconds:)`
+    /// so the production call site is a one-liner; tests
+    /// inject a recording closure that returns a
+    /// pre-canned `RunPluginDiagnosticsResult` so the
+    /// xctest host does not actually launch a child
+    /// process. The closure is `(URL, TimeInterval) ->
+    /// RunPluginDiagnosticsResult` so the timeout
+    /// argument is part of the test surface — a test
+    /// that wants to assert the 10s default is honoured
+    /// can call the production runner with the same
+    /// value the VM would pass. The `var` (not `let`)
+    /// follows the same injection pattern as
+    /// `viewSourceOpener` / `openDataFolderRevealer`
+    /// above.
+    var runDiagnosticsRunner: (URL, TimeInterval) -> RunPluginDiagnosticsResult = { url, timeout in
+        PluginManager.shared.runPluginDiagnostics(at: url, timeoutSeconds: timeout)
+    }
+
     // MARK: - Init
 
     /// Designated init. `client` defaults to
@@ -901,6 +921,167 @@ final class MarketplaceBrowserViewModel: ObservableObject {
         guard let base = AppShared.dataDirectory else { return nil }
         let resolvedPath = snapshot.url.resolvingSymlinksInPath().path
         return base.appendingPathComponent(resolvedPath, isDirectory: true)
+    }
+
+    // MARK: - Run diagnostics
+
+    /// Backing state for the diagnostics sheet. The
+    /// marketplace browser shows the result of
+    /// `runDiagnostics(snapshot:)` in a separate
+    /// modal sheet; the parent sheet reads
+    /// `pendingDiagnosticsResult` on every render and
+    /// presents the sheet when it is non-`nil`. The
+    /// snapshot is paired with the result so the sheet
+    /// can render the plugin name in its title and the
+    /// view model can clear the binding on dismiss
+    /// without losing the on-disk URL the runner was
+    /// pointed at.
+    struct PendingDiagnostics: Equatable {
+        let snapshot: InstalledPluginSnapshot
+        let result: RunPluginDiagnosticsResult
+    }
+
+    /// Backing state for the "Run diagnostics" sub-sheet
+    /// presented from the Installed sidebar. The sheet
+    /// is presented by
+    /// `MarketplaceBrowserSheet` from a `.sheet(...)`
+    /// modal so it stacks cleanly on top of the
+    /// browser sheet and dismisses independently.
+    /// Mirrors the `pendingUninstallSnapshot` /
+    /// `pendingUpdateMessage` pattern used by the
+    /// uninstall / update flows. `nil` until the first
+    /// diagnostics run completes; the parent rebuilds
+    /// the value on every presentation via
+    /// `runDiagnostics(snapshot:)` so a stale result
+    /// from a previous run cannot linger after the user
+    /// has switched the selected row.
+    @Published private(set) var pendingDiagnostics: PendingDiagnostics?
+
+    /// `true` while a diagnostics round-trip is in
+    /// flight (the entry script is being launched and
+    /// the VM is waiting on the child to exit). The
+    /// sheet reads this to disable the "Run
+    /// diagnostics" button and show a `ProgressView`
+    /// in the row so the user cannot double-click
+    /// while a slow entry script is still running.
+    @Published private(set) var isRunningDiagnostics: Bool = false
+
+    /// Run the entry script of the given installed
+    /// marketplace plugin for diagnostic purposes and
+    /// surface the result in a separate sheet.
+    ///
+    /// Delegates the actual subprocess to the injected
+    /// `runDiagnosticsRunner` closure (default
+    /// `PluginManager.runPluginDiagnostics(at:timeoutSeconds:)`)
+    /// and the timeout to
+    /// `PluginManager.runPluginDiagnosticsDefaultTimeout`
+    /// (10 seconds) so the production call site uses
+    /// the same constants the diagnostics sheet's
+    /// "timed out" hint quotes. The 10s budget matches
+    /// the order-of-magnitude the regular
+    /// `FolderPlugin.invoke()` path implicitly relies
+    /// on (the menu bar would render stale content if
+    /// a plugin took longer than its `refreshInterval`,
+    /// and the loader does not spawn plugins that
+    /// cannot return within that budget).
+    ///
+    /// Concurrency: the runner is invoked inside a
+    /// detached `Task` so the main actor is not blocked
+    /// by the child's `waitUntilExit()`. The `result`
+    /// is assigned back to `pendingDiagnostics` on
+    /// `@MainActor` so SwiftUI's bindings stay in
+    /// lockstep with the underlying state without an
+    /// explicit `DispatchQueue.main` hop. The
+    /// `isRunningDiagnostics` flag is also toggled on
+    /// `@MainActor` so the Installed tab's "Run
+    /// diagnostics" button can disable itself for the
+    /// duration of the run.
+    ///
+    /// The method does not touch the
+    /// `MarketplaceBrowserState` machine — running
+    /// diagnostics is a regular in-app action that does
+    /// not need a banner (mirroring the design of
+    /// `viewSource(snapshot:)` /
+    /// `openDataFolder(snapshot:)` /
+    /// `toggleEnabled(for:)`). The error path is
+    /// captured into `pendingDiagnostics.result`
+    /// instead so the user sees the failure inside the
+    /// diagnostics sheet rather than as a separate
+    /// banner.
+    ///
+    /// No-op shape: the snapshot's `url` does not
+    /// point at a directory containing a `manifest.json`
+    /// — the runner returns
+    /// `RunPluginDiagnosticsResult(success: false, ...)`
+    /// with `errorDescription` populated, and the
+    /// diagnostics sheet renders the same shape it
+    /// would render for a normal run. The VM does not
+    /// pre-check the file's existence: the file is
+    /// expected to exist for every marketplace install,
+    /// and a missing manifest is a real failure the
+    /// user should see (not silently swallow).
+    func runDiagnostics(snapshot: InstalledPluginSnapshot) {
+        isRunningDiagnostics = true
+        let assign: (RunPluginDiagnosticsResult) -> Void = { [weak self] result in
+            guard let self else { return }
+            self.pendingDiagnostics = PendingDiagnostics(
+                snapshot: snapshot,
+                result: result
+            )
+            self.isRunningDiagnostics = false
+        }
+        Task { [weak self] in
+            let result = await self?.runDiagnosticsResult(
+                snapshot: snapshot,
+                timeout: PluginManager.runPluginDiagnosticsDefaultTimeout
+            )
+            guard let result else { return }
+            await MainActor.run { assign(result) }
+        }
+    }
+
+    /// Async variant of `runDiagnostics(snapshot:)`
+    /// that returns the result directly. Used by the
+    /// Swift Testing test suite — the test can
+    /// `await` the result instead of polling
+    /// `pendingDiagnostics` with a `RunLoop` timer.
+    /// The fire-and-forget `runDiagnostics(snapshot:)`
+    /// above is a thin wrapper that spawns a `Task`
+    /// to call this method and assign the result to
+    /// the published `pendingDiagnostics` value, so
+    /// the test path and the UI path share the same
+    /// `runDiagnosticsRunner` / timeout
+    /// configuration.
+    func runDiagnosticsResult(
+        snapshot: InstalledPluginSnapshot,
+        timeout: TimeInterval
+    ) async -> RunPluginDiagnosticsResult {
+        let runner = runDiagnosticsRunner
+        let url = snapshot.url
+        // Run the (potentially-blocking) diagnostics
+        // call on a background thread so the main
+        // actor is not stalled by the child's
+        // `waitUntilExit()`. `Task.detached` is
+        // intentional — a `Task { ... }` inherited
+        // from `@MainActor` would re-enter the main
+        // actor for the synchronous body of
+        // `runner(url, timeout)` and block the UI
+        // for the entire 10s timeout budget.
+        return await Task.detached(priority: .userInitiated) {
+            runner(url, timeout)
+        }.value
+    }
+
+    /// Dismiss the diagnostics sub-sheet. Called by
+    /// the parent sheet's `.sheet(...)` completion
+    /// handler so the SwiftUI sheet dismisses before
+    /// the cached `pendingDiagnostics` is dropped. The
+    /// method is `internal` so a test can drive the
+    /// dismiss without going through the SwiftUI sheet
+    /// machinery.
+    func dismissPendingDiagnostics() {
+        pendingDiagnostics = nil
+        isRunningDiagnostics = false
     }
 
     // MARK: - Update
