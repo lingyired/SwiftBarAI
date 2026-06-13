@@ -3,7 +3,7 @@
 - **Type:** docs
 - **Scope:** `docs/02-Architecture.md`, `docs/03-Application-Lifecycle.md`, `docs/05-MenuBar-System.md`
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** 4244ffe
+- **Commit(s):** 35697f1
 - **Status:** done
 
 ## Summary
