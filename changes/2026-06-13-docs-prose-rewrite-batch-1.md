@@ -3,8 +3,8 @@
 - **Type:** docs
 - **Scope:** `docs/00-README.md`, `docs/01-Project-Overview.md`, `docs/04-Plugin-System.md`
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** <to be backfilled>
-- **Status:** in-progress
+- **Commit(s):** bfd0d80
+- **Status:** done
 
 ## Summary
 
