@@ -72,6 +72,24 @@ final class AIGeneratorViewModel: ObservableObject {
     /// `AIGeneratorSheet` to render the success banner.
     @Published var installedPluginURL: URL?
 
+    /// Accumulated text from `generator.stream(...)` deltas while
+    /// the generator is running. Reset to `""` on every new
+    /// `generate()` / `generateStreaming()` call so the streaming
+    /// preview never carries over text from a previous prompt.
+    /// Bound to a monospaced scrollable view in the M2 sheet —
+    /// `AIGeneratorSheet` shows it only while `isStreaming` is
+    /// `true` and the overall `state` is `.loading`.
+    @Published private(set) var streamingPreview: String = ""
+
+    /// `true` while the streaming generator is mid-flight (i.e.
+    /// between the moment `generateStreaming()` flipped the state
+    /// to `.loading` and the `.finished(_)` / error event that
+    /// transitions out of `.loading`). Used by `AIGeneratorSheet`
+    /// to decide whether to show the streaming preview area.
+    /// Always `false` when the state is `.idle`, `.success(_)`,
+    /// or `.failure(_)`.
+    @Published private(set) var isStreaming: Bool = false
+
     // MARK: - Dependencies
 
     /// The generator used by `generate()`. Default factory comes
@@ -204,6 +222,162 @@ final class AIGeneratorViewModel: ObservableObject {
         }
     }
 
+    /// Streaming counterpart of `generate()`. Marks the state
+    /// `.loading`, flips `isStreaming` to `true`, then iterates
+    /// `generator.stream(request:context:)` and appends each
+    /// `textDelta` to `streamingPreview` on the main actor. On
+    /// `.finished(_)` the assembled text is converted into a
+    /// `GeneratedPlugin` via the same shared helper the
+    /// non-streaming `generate()` path uses (`RemoteAIPluginGenerator`
+    /// exposes `makeGeneratedPlugin(...)` for exactly this
+    /// purpose; the Mock / Echo generators fall back to
+    /// `generate()` — see below), and the state transitions to
+    /// `.success(plugin)`. On any thrown error the state
+    /// transitions to `.failure(reason)`.
+    ///
+    /// Streaming-unsupported fallback: if the active generator
+    /// inherits the default `stream(...)` implementation and
+    /// throws `AIGeneratorError.streamingUnsupported` on the
+    /// first iteration, the method delegates to `generate()` so
+    /// the UX is identical to today. The fallback is
+    /// auto-detected — the M2 sheet's "Generate" button always
+    /// calls `generateStreaming()`, never `generate()` directly.
+    func generateStreaming() async {
+        let trimmed = request.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        state = .loading
+        didRequestSave = false
+        installedPluginURL = nil
+        streamingPreview = ""
+        isStreaming = true
+        defer {
+            isStreaming = false
+        }
+        // Probe whether the active generator supports streaming
+        // by inspecting a one-shot async sequence. The probe
+        // runs the same code path the streaming run would, but
+        // on the first iteration we check whether the first
+        // emitted value is an error and, if so, fall back to
+        // `generate()`. We achieve this with a small wrapper
+        // `for try await ... break` loop instead of a separate
+        // protocol check: simpler, and it exercises the actual
+        // code path the UI relies on.
+        var didFallBack = false
+        do {
+            for try await event in generator.stream(request: trimmed, context: context) {
+                switch event {
+                case .textDelta(let delta):
+                    // Append on the main actor — `generateStreaming`
+                    // is `@MainActor` on the enclosing class, so the
+                    // mutation is already on the main thread.
+                    streamingPreview.append(delta)
+                case .finished(let assembled):
+                    // Build a `GeneratedPlugin` from the assembled
+                    // text using the same contract the non-streaming
+                    // path uses. The Mock / Echo / Local generators
+                    // do not override `stream(...)`, so this branch
+                    // is reachable only for the
+                    // `RemoteAIPluginGenerator`. For other
+                    // generators the default `stream(...)` throws
+                    // `streamingUnsupported` before yielding any
+                    // events, so we never get here.
+                    let plugin = try buildPluginFromAssembledText(
+                        assembled,
+                        request: trimmed
+                    )
+                    latestPlugin = plugin
+                    state = .success(plugin)
+                    recordHistory(
+                        plugin: plugin,
+                        request: trimmed
+                    )
+                    // Stop iterating the stream. The M2 sheet
+                    // hides the streaming preview as soon as
+                    // `state` leaves `.loading`.
+                    return
+                }
+            }
+            // Stream ended without a `.finished(_)` — treat as
+            // a malformed response.
+            state = .failure(AIGeneratorError.malformedResponse(
+                reason: "stream ended without a finish event"
+            ).localizedDescription)
+        } catch let AIGeneratorError.streamingUnsupported {
+            // Auto-detect: the active generator does not support
+            // streaming. Fall back to the non-streaming path so
+            // the UX is unchanged for Mock / Echo / Local stub.
+            didFallBack = true
+        } catch {
+            state = .failure(error.localizedDescription)
+        }
+        if didFallBack {
+            await generate()
+        }
+    }
+
+    /// Helper used by `generateStreaming()` to convert the
+    /// assembled streaming text into a `GeneratedPlugin`. The
+    /// M2+ `RemoteAIPluginGenerator` exposes
+    /// `makeGeneratedPlugin(fromContent:request:context:promptId:)`
+    /// for exactly this purpose. For generators that do not
+    /// support streaming (Mock / Echo / Local stub), the
+    /// streaming path falls back to `generate()` and this
+    /// helper is never reached.
+    private func buildPluginFromAssembledText(
+        _ text: String,
+        request: String
+    ) throws -> GeneratedPlugin {
+        if let remote = generator as? RemoteAIPluginGenerator {
+            return try remote.makeGeneratedPlugin(
+                fromContent: text,
+                request: request,
+                context: context,
+                promptId: MockAIPluginGenerator.promptId(
+                    for: request, model: context.model
+                )
+            )
+        }
+        // The default `stream(...)` throws
+        // `streamingUnsupported` for any non-`Remote` generator,
+        // so the caller has already fallen back to `generate()`
+        // before reaching this point. Throwing here is a
+        // defensive guard against a future generator that
+        // streams but does not implement
+        // `makeGeneratedPlugin(fromContent:...)`.
+        throw AIGeneratorError.malformedResponse(
+            reason: "active generator does not expose makeGeneratedPlugin"
+        )
+    }
+
+    /// Helper that records an `AIGeneratorHistoryEntry` to the
+    /// injected `historyStore`. Mirrors the trailing block in
+    /// `generate()` so the streaming and non-streaming paths
+    /// produce identical history rows.
+    private func recordHistory(
+        plugin: GeneratedPlugin,
+        request: String
+    ) {
+        let menuTreeJSON = AIGeneratorViewModel.encodeMenuTree(
+            from: plugin.entryScript
+        )
+        do {
+            try historyStore.record(AIGeneratorHistoryEntry(
+                promptId: plugin.promptId,
+                createdAt: Date(),
+                request: request,
+                model: context.model,
+                plugin: plugin,
+                menuTreeJSON: menuTreeJSON,
+                endpointHost: generator.endpointHost,
+                providerName: generator.providerName
+            ))
+        } catch {
+            os_log("AIGenerator: failed to record history entry: %{public}@",
+                   log: Self.log, type: .error, error.localizedDescription)
+            // Non-fatal: the user still sees the generated plugin.
+        }
+    }
+
     /// Trigger the install flow.
     ///
     /// In M2's first cut this performed the install directly
@@ -278,6 +452,8 @@ final class AIGeneratorViewModel: ObservableObject {
         latestPlugin = nil
         didRequestSave = false
         installedPluginURL = nil
+        streamingPreview = ""
+        isStreaming = false
     }
 }
 

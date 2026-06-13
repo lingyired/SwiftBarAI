@@ -62,6 +62,7 @@ struct AIGeneratorSheet: View {
                     requestEditor
                     errorBanner
                     installSuccessBanner
+                    streamingPreviewSection
                     if let plugin = viewModel.latestPlugin {
                         resultSection(for: plugin)
                     }
@@ -72,6 +73,8 @@ struct AIGeneratorSheet: View {
             footer
         }
         .frame(minWidth: 560, idealWidth: 640, minHeight: 480, idealHeight: 600)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.isStreaming)
+        .animation(.easeInOut(duration: 0.2), value: viewModel.streamingPreview)
         .sheet(isPresented: $showingInstallPrompt) {
             AIGeneratorInstallPromptSheet(viewModel: viewModel) { result in
                 // The sub-sheet's completion handler is the only
@@ -170,6 +173,45 @@ struct AIGeneratorSheet: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.green.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+    }
+
+    /// Live "model is thinking" preview shown only while
+    /// `viewModel.isStreaming` is `true` and the overall state
+    /// is `.loading`. Renders the accumulated
+    /// `streamingPreview` in a monospaced, scrollable view so
+    /// the user can watch the response arrive token-by-token
+    /// from the M2+ `RemoteAIPluginGenerator`. Falls through
+    /// to nothing on `.idle`, `.success(_)`, `.failure(_)`,
+    /// and during the non-streaming fallback path (the M2+
+    /// view model still flips `isStreaming` to `true` while
+    /// the fallback `generate()` runs, but `streamingPreview`
+    /// stays `""` so the section is empty — no visual
+    /// regression vs. today).
+    @ViewBuilder
+    private var streamingPreviewSection: some View {
+        if viewModel.isStreaming {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Streaming response…")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                }
+                ScrollView(.vertical, showsIndicators: true) {
+                    Text(viewModel.streamingPreview.isEmpty ? " " : viewModel.streamingPreview)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.primary)
+                        .textSelection(.enabled)
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 160)
+                .background(Color.secondary.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
     }
 
@@ -274,7 +316,13 @@ struct AIGeneratorSheet: View {
             .keyboardShortcut(.cancelAction)
             if viewModel.latestPlugin != nil {
                 Button("Re-generate") {
-                    Task { await viewModel.generate() }
+                    // Always go through `generateStreaming()` —
+                    // the view model auto-detects whether the
+                    // active generator supports streaming and
+                    // falls back to `generate()` for the
+                    // Mock / Echo / Local stub generators. See
+                    // `AIGeneratorViewModel.generateStreaming()`.
+                    Task { await viewModel.generateStreaming() }
                 }
                 .disabled(!viewModel.canGenerate)
                 Button("Save to Plugin Folder") {
@@ -291,7 +339,11 @@ struct AIGeneratorSheet: View {
                 .keyboardShortcut(.defaultAction)
             } else {
                 Button("Generate") {
-                    Task { await viewModel.generate() }
+                    // Always go through `generateStreaming()` —
+                    // see the matching comment on the
+                    // "Re-generate" branch above for the
+                    // auto-detect rationale.
+                    Task { await viewModel.generateStreaming() }
                 }
                 .disabled(!viewModel.canGenerate)
                 .keyboardShortcut(.defaultAction)

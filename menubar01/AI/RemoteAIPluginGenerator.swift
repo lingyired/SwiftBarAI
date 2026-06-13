@@ -52,6 +52,54 @@ import os
 /// protocol sidesteps both issues.
 public protocol RemoteTransport: Sendable {
     func send(_ request: URLRequest) async throws -> (Data, URLResponse)
+
+    /// Streaming counterpart of `send(_:)`. Yields the response
+    /// body as one or more `Data` chunks, then a final empty
+    /// `Data` sentinel followed by the `URLResponse`. The
+    /// implementation is expected to honour
+    /// `AsyncThrowingStream.onTermination` so a cancelled
+    /// consumer (the M2 sheet's `for await ... break` path)
+    /// tears down the in-flight `URLSession` data task and
+    /// releases the underlying socket.
+    ///
+    /// The split into (chunks…, sentinel) + response mirrors
+    /// the `URLSession.AsyncBytes` semantics so the production
+    /// `URLSessionRemoteTransport` can wrap
+    /// `URLSession.bytes(for:)` without buffering the whole
+    /// body in memory.
+    ///
+    /// The default implementation throws
+    /// `AIGeneratorError.streamingUnsupported` so the existing
+    /// test stubs (which only implement `send(_:)`) keep
+    /// working; the M2+ `RemoteAIPluginGenerator` falls back to
+    /// a non-streaming `generate(...)` round-trip when the
+    /// transport cannot stream.
+    func streamData(
+        for request: URLRequest
+    ) -> AsyncThrowingStream<RemoteTransportStreamChunk, Error>
+}
+
+/// A single chunk produced by `RemoteTransport.streamData(for:)`.
+///
+/// The pair is `(Data?, URLResponse?)` rather than a tagged
+/// enum so the `URLSession`-backed production implementation
+/// can deliver the final `(Data?, URLResponse?)` atomically
+/// when the response fits in a single chunk (small bodies,
+/// 4xx error responses) without a separate "I'm done" signal.
+public struct RemoteTransportStreamChunk: Sendable, Equatable {
+    /// The next body chunk. `nil` when this is the terminal
+    /// "no more body data" marker.
+    public let data: Data?
+    /// The HTTP response. Non-nil exactly once per stream —
+    /// on the chunk that carries the first body bytes (or the
+    /// terminal chunk for empty bodies). Subsequent chunks
+    /// carry `response == nil` and just deliver more `data`.
+    public let response: URLResponse?
+
+    public init(data: Data?, response: URLResponse? = nil) {
+        self.data = data
+        self.response = response
+    }
 }
 
 /// Production `RemoteTransport` that wraps `URLSession`.
@@ -62,6 +110,81 @@ public final class URLSessionRemoteTransport: RemoteTransport, @unchecked Sendab
     }
     public func send(_ request: URLRequest) async throws -> (Data, URLResponse) {
         try await urlSession.data(for: request)
+    }
+
+    public func streamData(
+        for request: URLRequest
+    ) -> AsyncThrowingStream<RemoteTransportStreamChunk, Error> {
+        let session = urlSession
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let (bytes, response) = try await session.bytes(for: request)
+                    // First chunk carries the response so the
+                    // consumer can read the HTTP status before
+                    // any body bytes arrive.
+                    continuation.yield(
+                        RemoteTransportStreamChunk(data: nil, response: response)
+                    )
+                    // `URLSession.AsyncBytes` is a sequence of
+                    // `UInt8` on macOS 12+. We batch the bytes
+                    // into `Data` slices cut on the SSE line
+                    // delimiter (`\n`) so the consumer sees
+                    // line-aligned chunks the way OpenAI's
+                    // wire format actually delivers them.
+                    // The trailing partial line (no `\n` yet)
+                    // is yielded on stream termination so no
+                    // bytes are dropped.
+                    var buffer = Data()
+                    buffer.reserveCapacity(4096)
+                    for try await byte in bytes {
+                        buffer.append(byte)
+                        if byte == 0x0A { // '\n'
+                            let chunk = buffer
+                            buffer.removeAll(keepingCapacity: true)
+                            continuation.yield(
+                                RemoteTransportStreamChunk(
+                                    data: chunk,
+                                    response: nil
+                                )
+                            )
+                        }
+                    }
+                    if !buffer.isEmpty {
+                        continuation.yield(
+                            RemoteTransportStreamChunk(
+                                data: buffer,
+                                response: nil
+                            )
+                        )
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { @Sendable _ in
+                task.cancel()
+            }
+        }
+    }
+}
+
+public extension RemoteTransport {
+    /// Default `streamData(for:)` that throws
+    /// `AIGeneratorError.streamingUnsupported` on the first
+    /// iteration. Mirrors the default `stream(...)` on
+    /// `AIPluginGenerator` so the existing test stubs (which
+    /// only implement `send(_:)`) keep compiling and the M2
+    /// sheet can fall back to a non-streaming `generate(...)`
+    /// round-trip on transports that do not implement
+    /// streaming.
+    func streamData(
+        for request: URLRequest
+    ) -> AsyncThrowingStream<RemoteTransportStreamChunk, Error> {
+        AsyncThrowingStream { continuation in
+            continuation.finish(throwing: AIGeneratorError.streamingUnsupported)
+        }
     }
 }
 
@@ -281,7 +404,151 @@ public final class RemoteAIPluginGenerator: AIPluginGenerator {
             )
         }
 
-        // Decode the content as the LLM's three-field payload.
+        return try makeGeneratedPlugin(
+            fromContent: content,
+            request: request,
+            context: context,
+            promptId: promptId
+        )
+    }
+
+    public func stream(
+        request: String,
+        context: AIGeneratorContext
+    ) -> AsyncThrowingStream<AIPluginGeneratorStreamEvent, Error> {
+        AsyncThrowingStream { continuation in
+            // Compute the same deterministic promptId the
+            // non-streaming `generate(...)` would, so the M5
+            // history store treats streamed and non-streamed
+            // runs as the same logical event.
+            let promptId = MockAIPluginGenerator.promptId(
+                for: request, model: context.model
+            )
+
+            // Encode the request body once, here, so the
+            // stream can re-issue it after a 429 / 5xx retry
+            // without rebuilding the JSONEncoder from scratch.
+            let bodyData: Data
+            do {
+                bodyData = try JSONEncoder().encode(
+                    RemoteChatCompletionsRequest(
+                        model: context.model,
+                        systemPrompt: Self.systemPrompt,
+                        userPrompt: request,
+                        stream: true
+                    )
+                )
+            } catch {
+                continuation.finish(throwing: AIGeneratorError.malformedResponse(
+                    reason: "could not encode request: \(error.localizedDescription)"
+                ))
+                return
+            }
+
+            // Build the URLRequest with `stream: true` in the
+            // body so the OpenAI-compatible provider emits
+            // SSE chunks instead of one big JSON envelope.
+            var urlRequest = URLRequest(url: Self.requestURL(for: endpoint))
+            urlRequest.httpMethod = "POST"
+            urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+            urlRequest.httpBody = bodyData
+
+            // Mutable state threaded through the SSE parser.
+            // The parser reassembles partial JSON objects
+            // across chunk boundaries; the buffer holds the
+            // unconsumed tail of the body stream.
+            var buffer = ""
+            // `sawFinish` flips to `true` when an SSE chunk
+            // carries `choices[0].finish_reason`; the next
+            // `[DONE]` sentinel terminates the stream.
+            var sawFinish = false
+            // Total assembled text the consumer will see in
+            // the `.finished(_)` payload.
+            var assembled = ""
+
+            let task = Task { [weak self] in
+                guard let self else {
+                    continuation.finish()
+                    return
+                }
+                do {
+                    // Walk the per-attempt stream. Each
+                    // attempt re-runs the SSE parser; on a
+                    // 429 / 5xx we re-issue the request after
+                    // a backoff sleep, identical to
+                    // `performWithRetry`.
+                    try await self.runStreamingAttempts(
+                        urlRequest: urlRequest,
+                        remaining: self.maxRetries,
+                        buffer: &buffer,
+                        sawFinish: &sawFinish,
+                        assembled: &assembled,
+                        continuation: continuation
+                    )
+                    // If the stream ended without a
+                    // `.finished(_)` event (provider closed
+                    // the connection early, or the response
+                    // had no `choices[].finish_reason`), fall
+                    // back to a synthetic `.finished(_)` from
+                    // whatever was assembled. An empty
+                    // assembled text is treated as a
+                    // malformed response.
+                    if !sawFinish {
+                        if assembled.isEmpty {
+                            continuation.finish(throwing: AIGeneratorError.malformedResponse(
+                                reason: "stream ended without a finish event"
+                            ))
+                        } else {
+                            continuation.yield(.finished(assembled))
+                            continuation.finish()
+                        }
+                    } else {
+                        continuation.finish()
+                    }
+                    // `promptId` is unused at the
+                    // stream level — the `.finished(_)`
+                    // payload is the assembled text, and the
+                    // consumer (M2 sheet / view model) runs
+                    // `makeGeneratedPlugin` on the main
+                    // actor to derive the final
+                    // `GeneratedPlugin` with the same
+                    // `promptId` and `promptVersion` the
+                    // non-streaming `generate(...)` would
+                    // have produced. Reference `promptId`
+                    // here to silence the "unused" warning
+                    // and make the contract explicit.
+                    _ = promptId
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+
+            continuation.onTermination = { @Sendable _ in
+                task.cancel()
+            }
+        }
+    }
+
+    // MARK: - Helpers (shared with stream)
+
+    /// Builds a `GeneratedPlugin` from the model's assembled
+    /// content string. Shared between the non-streaming
+    /// `generate(...)` (which calls it with the full envelope's
+    /// `choices[0].message.content`) and the streaming
+    /// `stream(...)` (which calls it on the consumer side from
+    /// the M2 sheet's `generateStreaming()` view-model method
+    /// with the assembled text from `.finished(_)`). Keeping
+    /// the two paths routed through the same helper guarantees
+    /// the same `explanation`, `promptId`, and `promptVersion`
+    /// for any given `(request, context)` pair.
+    func makeGeneratedPlugin(
+        fromContent content: String,
+        request: String,
+        context: AIGeneratorContext,
+        promptId: String
+    ) throws -> GeneratedPlugin {
         let contentData = Data(content.utf8)
         let parsed: RemoteAIGeneratorPayload
         do {
@@ -294,11 +561,6 @@ public final class RemoteAIPluginGenerator: AIPluginGenerator {
                 reason: error.localizedDescription
             )
         }
-
-        // Build a user-visible explanation that records the
-        // endpoint host and the model, but never the apiKey. The
-        // host is informational only; the model is the same value
-        // already in `context.model`.
         let host = endpoint.host ?? "<no-host>"
         let explanation = """
         \(parsed.explanation)
@@ -306,7 +568,6 @@ public final class RemoteAIPluginGenerator: AIPluginGenerator {
         Generated by the remote model at \(host) using \(context.model) \
         (promptVersion=\(Self.remotePromptVersion)).
         """
-
         return GeneratedPlugin(
             manifest: parsed.manifest,
             entryScript: parsed.entryScript,
@@ -315,8 +576,6 @@ public final class RemoteAIPluginGenerator: AIPluginGenerator {
             promptVersion: Self.remotePromptVersion
         )
     }
-
-    // MARK: - Helpers
 
     /// The system prompt sent as the first message in the
     /// `messages` array. Asks the model for a three-field JSON
@@ -494,7 +753,248 @@ public final class RemoteAIPluginGenerator: AIPluginGenerator {
         formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
         return formatter
     }()
+
+    // MARK: - Streaming
+
+    /// Drives the SSE stream from the remote provider, with the
+    /// same exponential-backoff retry policy as
+    /// `performWithRetry`. On a 429 / 5xx the entire body is
+    /// discarded (the provider's stream is half-formed) and a
+    /// fresh request is issued. The `buffer`, `sawFinish`, and
+    /// `assembled` parameters are inout so the parser's
+    /// reassembly state survives across attempts.
+    ///
+    /// On a 2xx the chunks are fed through `parseStreamingChunk(...)`
+    /// which calls `continuation.yield(.textDelta(...))` for
+    /// each new text fragment and yields `.finished(assembled)`
+    /// on the `[DONE]` sentinel. The method returns when the
+    /// stream ends naturally or after the retry budget is
+    /// exhausted.
+    private func runStreamingAttempts(
+        urlRequest: URLRequest,
+        remaining: Int,
+        buffer: inout String,
+        sawFinish: inout Bool,
+        assembled: inout String,
+        continuation: AsyncThrowingStream<AIPluginGeneratorStreamEvent, Error>.Continuation
+    ) async throws {
+        // The first attempt re-uses the same mutable parser
+        // state; retries re-initialise the buffer so a
+        // half-formed previous attempt cannot leak into the
+        // fresh response.
+        var attemptBuffer = ""
+        var attemptAssembled = ""
+        var attemptSawFinish = false
+        var responseHeaders: HTTPURLResponse?
+        var attemptStatusCode: Int = 0
+        var attemptRetryAfter: String?
+        do {
+            for try await chunk in transport.streamData(for: urlRequest) {
+                if Task.isCancelled { break }
+                // First chunk carries the HTTP response.
+                if let response = chunk.response {
+                    guard let http = response as? HTTPURLResponse else {
+                        throw AIGeneratorError.transportError(
+                            reason: "non-HTTP response"
+                        )
+                    }
+                    responseHeaders = http
+                    attemptStatusCode = http.statusCode
+                    attemptRetryAfter = http.value(forHTTPHeaderField: "Retry-After")
+                    if !(200...299).contains(http.statusCode) {
+                        // Stop reading the body; the caller
+                        // will decide whether to retry.
+                        break
+                    }
+                    continue
+                }
+                guard let data = chunk.data, !data.isEmpty else { continue }
+                guard let text = String(data: data, encoding: .utf8) else { continue }
+                Self.parseStreamingChunk(
+                    incomingText: text,
+                    buffer: &attemptBuffer,
+                    sawFinish: &attemptSawFinish,
+                    assembled: &attemptAssembled,
+                    continuation: continuation
+                )
+                if attemptSawFinish {
+                    break
+                }
+            }
+        } catch let error as AIGeneratorError {
+            throw error
+        } catch {
+            // Treat `URLError` and other transport-level
+            // throws identically to the non-streaming path:
+            // not retried, mapped to `.transportError`.
+            throw AIGeneratorError.transportError(
+                reason: error.localizedDescription
+            )
+        }
+
+        // A successful attempt ends the method. A failed
+        // attempt falls into the retry path.
+        if (200...299).contains(attemptStatusCode) {
+            buffer = attemptBuffer
+            sawFinish = attemptSawFinish
+            assembled = attemptAssembled
+            return
+        }
+        guard remaining > 0 else {
+            // Out of retries — surface the same error a
+            // non-retrying client would have.
+            if attemptStatusCode == 429 {
+                throw AIGeneratorError.rateLimited
+            }
+            if attemptStatusCode == 401 || attemptStatusCode == 403 {
+                throw AIGeneratorError.unauthorized
+            }
+            if (500...599).contains(attemptStatusCode) {
+                throw AIGeneratorError.transportError(
+                    reason: "\(attemptStatusCode)"
+                )
+            }
+            throw AIGeneratorError.providerFailure(
+                reason: "\(attemptStatusCode)"
+            )
+        }
+        let attempt = maxRetries - remaining
+        let delay: TimeInterval
+        if let retryAfter = attemptRetryAfter,
+           let seconds = TimeInterval(retryAfter)
+        {
+            delay = min(seconds, 60.0)
+        } else if let retryAfter = attemptRetryAfter,
+                  let date = Self.httpDateFormatter.date(from: retryAfter)
+        {
+            delay = min(max(date.timeIntervalSinceNow, 0), 60.0)
+        } else {
+            delay = pow(2.0, Double(attempt))
+        }
+        try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+        _ = responseHeaders
+        return try await runStreamingAttempts(
+            urlRequest: urlRequest,
+            remaining: remaining - 1,
+            buffer: &buffer,
+            sawFinish: &sawFinish,
+            assembled: &assembled,
+            continuation: continuation
+        )
+    }
+
+    /// Parses one (or more) SSE lines from `incomingText`,
+    /// updates the buffer / assembled-text state, and yields
+    /// `AIPluginGeneratorStreamEvent` values on `continuation`.
+    ///
+    /// The OpenAI-compatible SSE wire format is:
+    ///
+    ///     data: {"id":"chatcmpl-…","choices":[{"delta":{"content":"Hello"}}]}
+    ///
+    ///     data: {"id":"chatcmpl-…","choices":[{"delta":{"content":" world"}}]}
+    ///
+    ///     data: {"id":"chatcmpl-…","choices":[{"delta":{},"finish_reason":"stop"}]}
+    ///
+    ///     data: [DONE]
+    ///
+    /// Lines that are empty, that start with `:` (SSE
+    /// comments — used by some providers as keep-alives), or
+    /// that don't start with `data: ` are skipped. Malformed
+    /// JSON inside a `data:` payload is also skipped (logged
+    /// via `os_log` at `.error` level) so a single bad chunk
+    /// cannot terminate the stream.
+    static func parseStreamingChunk(
+        incomingText: String,
+        buffer: inout String,
+        sawFinish: inout Bool,
+        assembled: inout String,
+        continuation: AsyncThrowingStream<AIPluginGeneratorStreamEvent, Error>.Continuation
+    ) {
+        buffer.append(incomingText)
+        // SSE events are separated by a blank line. A
+        // single chunk can carry many events; a chunk can
+        // also end mid-line, so we work on the buffer up to
+        // the last newline and keep the tail for the next
+        // call.
+        let lines = buffer.components(separatedBy: "\n")
+        // `components(separatedBy:)` always returns at least
+        // one element. The last element is the partial line
+        // (possibly empty) that has not yet been terminated
+        // by a newline; keep it in the buffer.
+        buffer = lines.last ?? ""
+        for line in lines.dropLast() {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty { continue }
+            if trimmed.hasPrefix(":") { continue }
+            guard trimmed.hasPrefix("data:") else { continue }
+            // Strip the `data:` prefix. Tolerate one or
+            // more spaces, per the SSE spec.
+            var payload = trimmed
+            payload.removeFirst("data:".count)
+            if payload.first == " " { payload.removeFirst() }
+            if payload == "[DONE]" {
+                // Emit `.finished(_)` with whatever has
+                // been assembled so far. Even on a stream
+                // with no `choices[].finish_reason` the
+                // `[DONE]` sentinel is the canonical end
+                // marker.
+                continuation.yield(.finished(assembled))
+                sawFinish = true
+                continue
+            }
+            guard let data = payload.data(using: .utf8) else { continue }
+            guard let envelope = try? JSONDecoder().decode(
+                StreamChunkEnvelope.self, from: data
+            ) else {
+                os_log(
+                    "RemoteAIPluginGenerator: skipping malformed SSE chunk: %{public}@",
+                    log: Self.log,
+                    type: .error,
+                    String(data: data, encoding: .utf8) ?? "<undecodable>"
+                )
+                continue
+            }
+            for choice in envelope.choices {
+                if let delta = choice.delta?.content {
+                    assembled.append(delta)
+                    continuation.yield(.textDelta(delta))
+                }
+                if choice.finishReason != nil {
+                    sawFinish = true
+                }
+            }
+        }
+    }
 }
+
+/// Mirrors one Server-Sent Event's JSON body for the
+/// OpenAI-compatible streaming `/v1/chat/completions`
+/// endpoint. Only the `choices[].delta.content` and
+/// `choices[].finish_reason` fields are read; everything
+/// else (`id`, `model`, `usage`, …) is ignored so the
+/// parser keeps working as the API grows new fields.
+private struct StreamChunkEnvelope: Decodable {
+    let choices: [Choice]
+
+    struct Choice: Decodable {
+        let delta: Delta?
+        let finishReason: String?
+
+        enum CodingKeys: String, CodingKey {
+            case delta
+            case finishReason = "finish_reason"
+        }
+    }
+
+    struct Delta: Decodable {
+        let content: String?
+    }
+}
+
+// `RemoteAIPluginGenerator.log` is `private static let` on the
+// class itself (see line ~267), so the static `parseStreamingChunk`
+// method declared inside the class body can reach it as
+// `Self.log` without an extra accessor.
 
 // MARK: - Request body
 
@@ -507,6 +1007,12 @@ private struct RemoteChatCompletionsRequest: Encodable {
     let messages: [Message]
     let temperature: Double
     let response_format: ResponseFormat
+    /// `true` to ask the OpenAI-compatible provider to stream
+    /// the response as SSE chunks (`data: {…}\n\n`) instead of
+    /// a single JSON envelope. Always encoded so the wire
+    /// format is stable across the streaming and non-streaming
+    /// paths.
+    let stream: Bool
 
     struct Message: Encodable {
         let role: String
@@ -517,7 +1023,7 @@ private struct RemoteChatCompletionsRequest: Encodable {
         let type: String
     }
 
-    init(model: String, systemPrompt: String, userPrompt: String) {
+    init(model: String, systemPrompt: String, userPrompt: String, stream: Bool = false) {
         self.model = model
         self.messages = [
             Message(role: "system", content: systemPrompt),
@@ -525,6 +1031,7 @@ private struct RemoteChatCompletionsRequest: Encodable {
         ]
         self.temperature = 0.2
         self.response_format = ResponseFormat(type: "json_object")
+        self.stream = stream
     }
 }
 

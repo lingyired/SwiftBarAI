@@ -193,6 +193,14 @@ public enum AIGeneratorError: Error, Equatable, LocalizedError {
     /// could not parse as the expected JSON shape. The `reason`
     /// is the underlying `DecodingError` description.
     case malformedResponse(reason: String)
+    /// The generator does not support streaming. Thrown by the
+    /// default `stream(request:context:)` implementation so the
+    /// M2 sheet can detect non-streaming providers and fall back
+    /// to the existing `generate(request:context:)` round-trip.
+    /// The M2+ `RemoteAIPluginGenerator` overrides the default
+    /// with a real OpenAI-compatible SSE parser; the Mock /
+    /// Local stub generators inherit the default.
+    case streamingUnsupported
 
     public var errorDescription: String? {
         switch self {
@@ -210,6 +218,8 @@ public enum AIGeneratorError: Error, Equatable, LocalizedError {
             return "Could not reach the remote provider: \(reason)"
         case .malformedResponse(let reason):
             return "The remote provider returned an unparseable response: \(reason)"
+        case .streamingUnsupported:
+            return "This generator does not support streaming responses."
         }
     }
 }
@@ -252,6 +262,67 @@ public protocol AIPluginGenerator {
         request: String,
         context: AIGeneratorContext
     ) async throws -> GeneratedPlugin
+
+    /// Streaming variant of `generate(request:context:)`. Yields
+    /// `AIPluginGeneratorStreamEvent` chunks as the model produces
+    /// them; the consumer (the M2 sheet) appends each `textDelta`
+    /// to a streaming preview and finalises on `.finished(...)`.
+    ///
+    /// The default implementation throws
+    /// `AIGeneratorError.streamingUnsupported` so the existing
+    /// implementations (Mock, Echo, Local stub) keep working
+    /// unchanged. The M2+ `RemoteAIPluginGenerator` overrides
+    /// the default with a real OpenAI-compatible SSE parser.
+    ///
+    /// Contract:
+    ///   * Implementations must emit at least one event before
+    ///     terminating; a stream that completes without a
+    ///     `.finished(...)` is treated as a malformed response
+    ///     by the consumer.
+    ///   * The full text of `.finished(_)` is the same value the
+    ///     non-streaming `generate(...)` would have returned
+    ///     after assembling the model's content — the consumer
+    ///     does not need to re-assemble from the deltas.
+    ///   * The stream's `promptId` and `promptVersion` are
+    ///     identical to the non-streaming counterpart for the
+    ///     same `(request, context)` pair, so the M5 history
+    ///     store treats streamed and non-streamed runs as the
+    ///     same logical event.
+    ///   * If the consumer cancels the `AsyncThrowingStream`
+    ///     (by returning from its `for await` loop), the
+    ///     implementation must cancel its in-flight network
+    ///     call (URLSession data task, etc.) so the connection
+    ///     does not leak.
+    func stream(
+        request: String,
+        context: AIGeneratorContext
+    ) -> AsyncThrowingStream<AIPluginGeneratorStreamEvent, Error>
+}
+
+// MARK: - Stream events
+
+/// A single event yielded by `AIPluginGenerator.stream(...)`.
+///
+/// v1 keeps the deltas as opaque text — the consumer (the M2
+/// sheet) does not parse partial JSON. A real model can stream
+/// a partial JSON object across many deltas, but the M2 sheet's
+/// streaming preview is just a `Text(...)` view, so re-parsing
+/// partial JSON would add no value and would force the UI to
+/// distinguish "syntactically broken but arriving in order"
+/// from "really broken". The fully assembled JSON appears in
+/// the `.finished(_)` payload.
+public enum AIPluginGeneratorStreamEvent: Equatable, Sendable {
+    /// A raw text delta from the model. Multiple deltas
+    /// concatenate into the final response. The consumer
+    /// appends each delta to its streaming preview verbatim —
+    /// no whitespace normalisation, no Unicode handling.
+    case textDelta(String)
+    /// The model finished. The associated value is the final,
+    /// fully assembled response — the same value the
+    /// non-streaming `generate(...)` would have decoded from
+    /// the provider's `choices[0].message.content`. The
+    /// consumer should treat the next call as a new stream.
+    case finished(String)
 }
 
 public extension AIPluginGenerator {
@@ -271,5 +342,25 @@ public extension AIPluginGenerator {
     /// `AI_PLUGIN_ARCHITECTURE.md` §7.
     func generate(request: String) async throws -> GeneratedPlugin {
         try await generate(request: request, context: .empty)
+    }
+
+    /// Default `stream(...)` implementation. Throws
+    /// `AIGeneratorError.streamingUnsupported` so the M2 sheet
+    /// can detect non-streaming providers (Mock, Echo, the
+    /// `LocalAIPluginGenerator` stub) and fall back to
+    /// `generate(...)` with the same UX.
+    ///
+    /// The `AsyncThrowingStream` is constructed with a
+    /// `BufferedPolicy` of `.unbounded` so the implementation
+    /// is free to throw before the consumer's first `for await`
+    /// iteration starts; the consumer's `try await` picks up
+    /// the throw on its first call.
+    func stream(
+        request: String,
+        context: AIGeneratorContext
+    ) -> AsyncThrowingStream<AIPluginGeneratorStreamEvent, Error> {
+        AsyncThrowingStream { continuation in
+            continuation.finish(throwing: AIGeneratorError.streamingUnsupported)
+        }
     }
 }
