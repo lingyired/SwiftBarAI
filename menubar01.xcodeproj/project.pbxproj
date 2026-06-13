@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		188634133DA64CA2B479D00F /* MarketplaceInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */; };
+		1C8045A8B2DE75E0DCEFE796 /* PluginCapabilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8399450AB6E6F880B034E17B /* PluginCapabilities.swift */; };
 		3920747E25460FD000213DBE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3920747D25460FD000213DBE /* AppDelegate.swift */; };
 		3920748225460FD300213DBE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3920748125460FD300213DBE /* Assets.xcassets */; };
 		3920748525460FD300213DBE /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3920748425460FD300213DBE /* Preview Assets.xcassets */; };
@@ -98,7 +100,20 @@
 		39B84A22257D63F700FA012E /* NSMutableAttributedString+SFSymbols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39B84A21257D63F700FA012E /* NSMutableAttributedString+SFSymbols.swift */; };
 		39E1549C25699C8F00287D8A /* URLTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39E1549B25699C8F00287D8A /* URLTextView.swift */; };
 		39E1549F2569A2D700287D8A /* ImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39E1549E2569A2D700287D8A /* ImageView.swift */; };
+		51B44432A0FB14EEE6897054 /* AIGeneratorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76224727A343C18081524B72 /* AIGeneratorSheet.swift */; };
+		7011242E8E804B8286069094 /* MarketplaceInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */; };
+		721EF289AC9C4FB2B33B670E /* MarketplaceEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705AC70319E448669E96803B /* MarketplaceEntry.swift */; };
+		78D7470EB0C6BF949D6E040F /* PluginCapabilityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD64424289EDE0D80651231D /* PluginCapabilityGate.swift */; };
+		7B97A791D1E24D1BB4F1937A /* AIPluginGeneratorFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */; };
+		7D07491F954181639E58B1A8 /* PluginGeneratorMenuCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 454445FD953D89EB9E4E367E /* PluginGeneratorMenuCommand.swift */; };
+		8BF42C414E384000A69A88B2 /* MarketplaceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */; };
+		A70651873CCB49F5884BEB7D /* MockAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */; };
+		A8F64891B552DF407EB3A4FF /* PluginCapabilityError.swift in Sources */ = {isa = PBXBuildFile; fileRef = C01E46C5B7D78CD61558CA32 /* PluginCapabilityError.swift */; };
+		A9D77907F8FD45B1BCF9FCDF /* MarketplaceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */; };
+		AB00000000000000A00000A1 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000A00000A2 /* AppVersion.swift */; };
 		ABF91B7D2589C7920020590A /* NSFont+Offset.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF91B7C2589C7920020590A /* NSFont+Offset.swift */; };
+		C6EE4631AABBB6EAF674FE94 /* AIGeneratorHistoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B6D4C6E86A4F030A93DD9DB /* AIGeneratorHistoryEntry.swift */; };
+		CA8FEF5D37C04CE89530D6C2 /* AIGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */; };
 		CC467002000000000000A102 /* MenuItemNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467001000000000000A101 /* MenuItemNode.swift */; };
 		CC467003000000000000A103 /* MenuItemNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467001000000000000A101 /* MenuItemNode.swift */; };
 		CC467005000000000000A105 /* MenuDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467004000000000000A104 /* MenuDiff.swift */; };
@@ -109,7 +124,10 @@
 		CC468005000000000000C005 /* FolderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468006000000000000C006 /* FolderPlugin.swift */; };
 		CC468007000000000000C007 /* PluginManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468004000000000000C004 /* PluginManifest.swift */; };
 		CC468008000000000000C008 /* FolderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468006000000000000C006 /* FolderPlugin.swift */; };
-		AB00000000000000A00000A1 /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000A00000A2 /* AppVersion.swift */; };
+		CD13713CB3F4453B850CEA56 /* AIPluginGeneratorFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */; };
+		DA52E96B59834115BFF8F3D7 /* AIGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */; };
+		E919EF2895D146658B798821 /* MockAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */; };
+		F096B206BDC343C8848D75A6 /* MarketplaceEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705AC70319E448669E96803B /* MarketplaceEntry.swift */; };
 		FA06104625F0564400B08B6E /* PluginEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA06104525F0564400B08B6E /* PluginEntryView.swift */; };
 		FA136A542917EE0700A7D712 /* PluginUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA136A532917EE0700A7D712 /* PluginUtilities.swift */; };
 		FA3F26072E2AFE35007CF785 /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3F26062E2AFE35007CF785 /* LaunchAtLogin.swift */; };
@@ -146,18 +164,8 @@
 		FAD1BC9B25D22E9400B761E8 /* PluginDetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD1BC9A25D22E9400B761E8 /* PluginDetailsView.swift */; };
 		FAD1BC9E25D22EEA00B761E8 /* AnimatableWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD1BC9D25D22EEA00B761E8 /* AnimatableWindow.swift */; };
 		FAFF1285273837EA00B3993B /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = FAFF1284273837EA00B3993B /* README.md */; };
-		CA8FEF5D37C04CE89530D6C2 /* AIGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */; };
-		7B97A791D1E24D1BB4F1937A /* AIPluginGeneratorFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */; };
-		A70651873CCB49F5884BEB7D /* MockAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */; };
-		A9D77907F8FD45B1BCF9FCDF /* MarketplaceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */; };
-		F096B206BDC343C8848D75A6 /* MarketplaceEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705AC70319E448669E96803B /* MarketplaceEntry.swift */; };
-		7011242E8E804B8286069094 /* MarketplaceInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */; };
-		DA52E96B59834115BFF8F3D7 /* AIGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */; };
-		CD13713CB3F4453B850CEA56 /* AIPluginGeneratorFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */; };
-		E919EF2895D146658B798821 /* MockAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */; };
-		8BF42C414E384000A69A88B2 /* MarketplaceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */; };
-		721EF289AC9C4FB2B33B670E /* MarketplaceEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705AC70319E448669E96803B /* MarketplaceEntry.swift */; };
-		188634133DA64CA2B479D00F /* MarketplaceInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */; };
+		FBF24F759C10F4AABDB802ED /* AIGeneratorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92D437FBBF273F781C9AEBE /* AIGeneratorViewModel.swift */; };
+		FE864DF69A065E496A580C63 /* AIGeneratorHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE9D408C85249D9BB0AF1DD4 /* AIGeneratorHistoryStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -184,6 +192,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAIPluginGenerator.swift; sourceTree = "<group>"; };
+		15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPluginGeneratorFactory.swift; sourceTree = "<group>"; };
 		3920747A25460FD000213DBE /* menubar01.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = menubar01.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3920747D25460FD000213DBE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3920748125460FD300213DBE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -232,14 +242,25 @@
 		39B84A21257D63F700FA012E /* NSMutableAttributedString+SFSymbols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSMutableAttributedString+SFSymbols.swift"; sourceTree = "<group>"; };
 		39E1549B25699C8F00287D8A /* URLTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLTextView.swift; sourceTree = "<group>"; };
 		39E1549E2569A2D700287D8A /* ImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageView.swift; sourceTree = "<group>"; };
+		3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceInstaller.swift; sourceTree = "<group>"; };
+		454445FD953D89EB9E4E367E /* PluginGeneratorMenuCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginGeneratorMenuCommand.swift; path = "menubar01/UI/Plugin Generator/PluginGeneratorMenuCommand.swift"; sourceTree = SOURCE_ROOT; };
+		6B6D4C6E86A4F030A93DD9DB /* AIGeneratorHistoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorHistoryEntry.swift; path = menubar01/AI/AIGeneratorHistoryEntry.swift; sourceTree = SOURCE_ROOT; };
+		6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGenerator.swift; sourceTree = "<group>"; };
+		705AC70319E448669E96803B /* MarketplaceEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceEntry.swift; sourceTree = "<group>"; };
+		76224727A343C18081524B72 /* AIGeneratorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorSheet.swift; path = "menubar01/UI/Plugin Generator/AIGeneratorSheet.swift"; sourceTree = SOURCE_ROOT; };
+		7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceClient.swift; sourceTree = "<group>"; };
+		8399450AB6E6F880B034E17B /* PluginCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginCapabilities.swift; path = menubar01/Plugin/PluginCapabilities.swift; sourceTree = SOURCE_ROOT; };
+		AB00000000000000A00000A2 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 		ABF91B7C2589C7920020590A /* NSFont+Offset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSFont+Offset.swift"; sourceTree = "<group>"; };
+		C01E46C5B7D78CD61558CA32 /* PluginCapabilityError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginCapabilityError.swift; path = menubar01/Plugin/PluginCapabilityError.swift; sourceTree = SOURCE_ROOT; };
 		CC467001000000000000A101 /* MenuItemNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemNode.swift; sourceTree = "<group>"; };
 		CC467004000000000000A104 /* MenuDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuDiff.swift; sourceTree = "<group>"; };
 		CC467007000000000000A107 /* FoldableMenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldableMenuItemView.swift; sourceTree = "<group>"; };
 		CC467009000000000000A109 /* PluginToggleMenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginToggleMenuItemView.swift; sourceTree = "<group>"; };
 		CC468004000000000000C004 /* PluginManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginManifest.swift; sourceTree = "<group>"; };
 		CC468006000000000000C006 /* FolderPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderPlugin.swift; sourceTree = "<group>"; };
-		AB00000000000000A00000A2 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
+		DE9D408C85249D9BB0AF1DD4 /* AIGeneratorHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorHistoryStore.swift; path = menubar01/AI/AIGeneratorHistoryStore.swift; sourceTree = SOURCE_ROOT; };
+		F92D437FBBF273F781C9AEBE /* AIGeneratorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorViewModel.swift; path = "menubar01/UI/Plugin Generator/AIGeneratorViewModel.swift"; sourceTree = SOURCE_ROOT; };
 		FA06104525F0564400B08B6E /* PluginEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginEntryView.swift; sourceTree = "<group>"; };
 		FA136A532917EE0700A7D712 /* PluginUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginUtilities.swift; sourceTree = "<group>"; };
 		FA3C3793281EB2760003DEDE /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -269,12 +290,7 @@
 		FAD1BC9A25D22E9400B761E8 /* PluginDetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginDetailsView.swift; sourceTree = "<group>"; };
 		FAD1BC9D25D22EEA00B761E8 /* AnimatableWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatableWindow.swift; sourceTree = "<group>"; };
 		FAFF1284273837EA00B3993B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGenerator.swift; sourceTree = "<group>"; };
-		15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPluginGeneratorFactory.swift; sourceTree = "<group>"; };
-		0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAIPluginGenerator.swift; sourceTree = "<group>"; };
-		7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceClient.swift; sourceTree = "<group>"; };
-		705AC70319E448669E96803B /* MarketplaceEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceEntry.swift; sourceTree = "<group>"; };
-		3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceInstaller.swift; sourceTree = "<group>"; };
+		FD64424289EDE0D80651231D /* PluginCapabilityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PluginCapabilityGate.swift; path = menubar01/Plugin/PluginCapabilityGate.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -315,6 +331,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3863D89E8D4543EF83DE3C01 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */,
+				15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */,
+				0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */,
+			);
+			path = AI;
+			sourceTree = "<group>";
+		};
 		3920747125460FD000213DBE = {
 			isa = PBXGroup;
 			children = (
@@ -323,6 +349,14 @@
 				FABE30D82D6FB51C00297F18 /* menubar01Tests */,
 				3920747B25460FD000213DBE /* Products */,
 				39224E4F25F43B6B00BABF21 /* Frameworks */,
+				76224727A343C18081524B72 /* AIGeneratorSheet.swift */,
+				F92D437FBBF273F781C9AEBE /* AIGeneratorViewModel.swift */,
+				454445FD953D89EB9E4E367E /* PluginGeneratorMenuCommand.swift */,
+				8399450AB6E6F880B034E17B /* PluginCapabilities.swift */,
+				C01E46C5B7D78CD61558CA32 /* PluginCapabilityError.swift */,
+				FD64424289EDE0D80651231D /* PluginCapabilityGate.swift */,
+				6B6D4C6E86A4F030A93DD9DB /* AIGeneratorHistoryEntry.swift */,
+				DE9D408C85249D9BB0AF1DD4 /* AIGeneratorHistoryStore.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -437,26 +471,6 @@
 			path = Plugin;
 			sourceTree = "<group>";
 		};
-		3863D89E8D4543EF83DE3C01 /* AI */ = {
-			isa = PBXGroup;
-			children = (
-				6F75F72E0ABF4BA1B96B6FDA /* AIGenerator.swift */,
-				15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */,
-				0ED9412F65104F95A5A1662B /* MockAIPluginGenerator.swift */,
-			);
-			path = AI;
-			sourceTree = "<group>";
-		};
-		CBBEA16EEB8940EDADD75254 /* Marketplace */ = {
-			isa = PBXGroup;
-			children = (
-				7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */,
-				705AC70319E448669E96803B /* MarketplaceEntry.swift */,
-				3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */,
-			);
-			path = Marketplace;
-			sourceTree = "<group>";
-		};
 		398B86D4254DC01800DEA027 /* MenuBar */ = {
 			isa = PBXGroup;
 			children = (
@@ -500,6 +514,16 @@
 				FA136A532917EE0700A7D712 /* PluginUtilities.swift */,
 			);
 			path = Utility;
+			sourceTree = "<group>";
+		};
+		CBBEA16EEB8940EDADD75254 /* Marketplace */ = {
+			isa = PBXGroup;
+			children = (
+				7688CAF016DB452F9AC34478 /* MarketplaceClient.swift */,
+				705AC70319E448669E96803B /* MarketplaceEntry.swift */,
+				3D9F7E369ADB47F99E02E24C /* MarketplaceInstaller.swift */,
+			);
+			path = Marketplace;
 			sourceTree = "<group>";
 		};
 		FA64C9DD25CF68FC00C4E5C5 /* Preferences */ = {
@@ -819,8 +843,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "
-";
+			shellScript = "\n";
 		};
 		FAD14BF62583256A00CB7BBE /* Codesign Sparkle */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -839,8 +862,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "
-";
+			shellScript = "\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -922,6 +944,14 @@
 				A9D77907F8FD45B1BCF9FCDF /* MarketplaceClient.swift in Sources */,
 				F096B206BDC343C8848D75A6 /* MarketplaceEntry.swift in Sources */,
 				7011242E8E804B8286069094 /* MarketplaceInstaller.swift in Sources */,
+				51B44432A0FB14EEE6897054 /* AIGeneratorSheet.swift in Sources */,
+				FBF24F759C10F4AABDB802ED /* AIGeneratorViewModel.swift in Sources */,
+				7D07491F954181639E58B1A8 /* PluginGeneratorMenuCommand.swift in Sources */,
+				1C8045A8B2DE75E0DCEFE796 /* PluginCapabilities.swift in Sources */,
+				A8F64891B552DF407EB3A4FF /* PluginCapabilityError.swift in Sources */,
+				78D7470EB0C6BF949D6E040F /* PluginCapabilityGate.swift in Sources */,
+				C6EE4631AABBB6EAF674FE94 /* AIGeneratorHistoryEntry.swift in Sources */,
+				FE864DF69A065E496A580C63 /* AIGeneratorHistoryStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1081,7 +1111,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1139,7 +1169,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -1170,7 +1200,12 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				LIBRARY_SEARCH_PATHS = (
+					"\"$(SRCROOT)/menubar01/UI/Plugin Generator\"",
+					"$(SRCROOT)/menubar01/Plugin",
+					"$(SRCROOT)/menubar01/AI",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 2.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lingyi.menubar01;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1200,7 +1235,12 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				LIBRARY_SEARCH_PATHS = (
+					"\"$(SRCROOT)/menubar01/UI/Plugin Generator\"",
+					"$(SRCROOT)/menubar01/Plugin",
+					"$(SRCROOT)/menubar01/AI",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 2.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lingyi.menubar01;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1228,7 +1268,12 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				LIBRARY_SEARCH_PATHS = (
+					"\"$(SRCROOT)/menubar01/UI/Plugin Generator\"",
+					"$(SRCROOT)/menubar01/Plugin",
+					"$(SRCROOT)/menubar01/AI",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 1.2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lingyi.menubar01;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1257,7 +1302,12 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				LIBRARY_SEARCH_PATHS = (
+					"\"$(SRCROOT)/menubar01/UI/Plugin Generator\"",
+					"$(SRCROOT)/menubar01/Plugin",
+					"$(SRCROOT)/menubar01/AI",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 1.2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lingyi.menubar01;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1279,6 +1329,11 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
+				LIBRARY_SEARCH_PATHS = (
+					"\"$(SRCROOT)/menubar01/UI/Plugin Generator\"",
+					"$(SRCROOT)/menubar01/Plugin",
+					"$(SRCROOT)/menubar01/AI",
+				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 1.0;
@@ -1303,6 +1358,11 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
+				LIBRARY_SEARCH_PATHS = (
+					"\"$(SRCROOT)/menubar01/UI/Plugin Generator\"",
+					"$(SRCROOT)/menubar01/Plugin",
+					"$(SRCROOT)/menubar01/AI",
+				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 1.0;
