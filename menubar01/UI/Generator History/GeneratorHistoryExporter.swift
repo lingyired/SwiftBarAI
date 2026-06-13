@@ -37,6 +37,12 @@ enum GeneratorHistoryExportResult: Equatable {
 }
 
 enum GeneratorHistoryExporter {
+    /// Name of the zip-root manifest file written alongside the
+    /// entry's audit log. Support tooling reads this to learn
+    /// which model + endpoint produced the bundle without
+    /// having to crack open `<promptId>/response.json`.
+    static let manifestFilename = "MANIFEST.json"
+
     /// Zip `entry`'s on-disk subdirectory (`{store.rootDirectory}/{entry.promptId}/`)
     /// into a temporary file and then hand that file to
     /// `chooseDestinationAndCopy(_:)` for the save panel.
@@ -61,18 +67,44 @@ enum GeneratorHistoryExporter {
         guard panel.runModal() == .OK, let destination = panel.url else {
             return .cancelled
         }
-        return runZip(sourceDirectory: sourceDir, destination: destination)
+        return runZip(
+            sourceDirectory: sourceDir,
+            destination: destination,
+            entry: entry
+        )
     }
 
     /// Run `/usr/bin/zip -r <destination> .` in `sourceDirectory`
     /// and surface the result as a `GeneratorHistoryExportResult`.
     /// Exposed for the test bundle, which points the call at a
     /// temp file rather than driving an `NSSavePanel`.
+    ///
+    /// When `entry` is non-nil, a `MANIFEST.json` is written
+    /// into `sourceDirectory` (which becomes the zip root after
+    /// `zip -r .`) before the zip is invoked. The manifest
+    /// records `appVersion` / `appBuild` / `exportedAt` /
+    /// `entryCount` / `provider` so a support bundle can be
+    /// traced back to the model + endpoint that produced it
+    /// without re-decoding the entry's `response.json`.
     @discardableResult
     static func runZip(
         sourceDirectory: URL,
-        destination: URL
+        destination: URL,
+        entry: AIGeneratorHistoryEntry? = nil
     ) -> GeneratorHistoryExportResult {
+        if let entry = entry {
+            do {
+                try writeManifest(
+                    into: sourceDirectory,
+                    entryCount: 1,
+                    provider: providerString(for: entry)
+                )
+            } catch {
+                return .zipFailed(
+                    reason: "Failed to write \(manifestFilename): \(error.localizedDescription)"
+                )
+            }
+        }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
         process.arguments = ["-r", destination.path, "."]
@@ -128,4 +160,63 @@ enum GeneratorHistoryExporter {
         subsystem: "com.lingyi.menubar01",
         category: "GeneratorHistory"
     )
+
+    // MARK: - Manifest
+
+    /// Write `MANIFEST.json` at `zipDirectory/`, populated with the
+    /// app version + build, the export timestamp, the number of
+    /// entries being bundled, and a `provider` string derived
+    /// from the entry's `endpointHost` / `model`.
+    ///
+    /// Called from `runZip(sourceDirectory:destination:entry:)`
+    /// before the zip is invoked. `zipDirectory` is the cwd of
+    /// the `zip -r .` invocation, so the file lands at the
+    /// archive's root alongside the entry's audit log.
+    private static func writeManifest(
+        into zipDirectory: URL,
+        entryCount: Int,
+        provider: String
+    ) throws {
+        let payload = HistoryExportManifest(
+            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown",
+            appBuild: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown",
+            exportedAt: Date(),
+            entryCount: entryCount,
+            provider: provider
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(payload)
+        let url = zipDirectory.appendingPathComponent(manifestFilename)
+        try data.write(to: url, options: [.atomic])
+    }
+
+    /// Derive the `provider` string for `MANIFEST.json` from an
+    /// entry. Mirrors the redacted host information already
+    /// surfaced on the history sheet so the support bundle is
+    /// self-describing: a remote endpoint shows up as
+    /// `"remote:<host>"`, anything else with a non-empty model
+    /// is `"local"`, and the catch-all is `"unknown"`.
+    private static func providerString(for entry: AIGeneratorHistoryEntry) -> String {
+        if let host = entry.endpointHost, !host.isEmpty {
+            return "remote:\(host)"
+        }
+        if !entry.model.isEmpty {
+            return "local"
+        }
+        return "unknown"
+    }
+}
+
+/// Codable shape for the zip-root `MANIFEST.json`. `Date` is
+/// encoded as an ISO-8601 string by the encoder's
+/// `dateEncodingStrategy`, so the on-disk field is a stable,
+/// machine-parseable timestamp.
+private struct HistoryExportManifest: Codable {
+    let appVersion: String
+    let appBuild: String
+    let exportedAt: Date
+    let entryCount: Int
+    let provider: String
 }
