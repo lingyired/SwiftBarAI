@@ -3,7 +3,7 @@
 - **Type:** docs
 - **Scope:** `docs/07-Script-Execution.md`, `docs/08-Preferences-and-Storage.md`, `docs/09-Plugin-Repository.md`, `docs/10-Intents-and-URL-Scheme.md`, `docs/11-User-Interface.md`, `docs/12-Utilities.md`, `docs/13-Build-and-Run.md`
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** (filled in after commit)
+- **Commit(s):** 7bbca16
 - **Status:** done
 
 ## Summary
