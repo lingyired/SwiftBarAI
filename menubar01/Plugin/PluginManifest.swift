@@ -75,6 +75,12 @@ struct PluginManifest: Codable {
     /// Hide the "menubar01" menu item (parent menu of plugin-specific entries).
     var hideMenubar01: Bool?
 
+    /// Permissions the plugin needs at install time. Mapped 1-to-1
+    /// to `PluginCapability` raw values by `resolvedCapabilities`;
+    /// unknown strings are dropped with an `os_log` warning so
+    /// manifests produced by future builds still decode.
+    var capabilities: [String]?
+
     /// The manifest format version this struct understands.
     static let currentVersion = 1
 
@@ -83,7 +89,7 @@ struct PluginManifest: Codable {
         case refreshInterval, schedule, runInBash, environment, parameters
         case dependencies, aboutUrl, image
         case hideAbout, hideRunInTerminal, hideLastUpdated
-        case hideDisablePlugin, hideMenubar01
+        case hideDisablePlugin, hideMenubar01, capabilities
     }
 
     init() {}
@@ -109,6 +115,7 @@ struct PluginManifest: Codable {
         hideLastUpdated = try container.decodeIfPresent(Bool.self, forKey: .hideLastUpdated)
         hideDisablePlugin = try container.decodeIfPresent(Bool.self, forKey: .hideDisablePlugin)
         hideMenubar01 = try container.decodeIfPresent(Bool.self, forKey: .hideMenubar01)
+        capabilities = try container.decodeIfPresent([String].self, forKey: .capabilities)
     }
 
     /// Encodes the manifest, omitting fields that are at their default value so
@@ -134,6 +141,7 @@ struct PluginManifest: Codable {
         try container.encodeIfPresent(hideLastUpdated, forKey: .hideLastUpdated)
         try container.encodeIfPresent(hideDisablePlugin, forKey: .hideDisablePlugin)
         try container.encodeIfPresent(hideMenubar01, forKey: .hideMenubar01)
+        try container.encodeIfPresent(capabilities, forKey: .capabilities)
     }
 }
 
@@ -190,6 +198,28 @@ extension PluginManifest {
         let value = refreshInterval ?? Double(pluginNeverUpdateInterval)
         if value <= 0 { return Double(pluginNeverUpdateInterval) }
         return value
+    }
+
+    /// Decoded capability list. Each raw string in `capabilities` is
+    /// mapped through `PluginCapability.init(rawValue:)`; strings
+    /// the v1 enum does not recognise are **dropped** (with a
+    /// warning) rather than throwing, so manifests authored by a
+    /// future build of menubar01 still load. The order of declared
+    /// strings is preserved so the gate's "first ungranted
+    /// capability wins" error is deterministic.
+    var resolvedCapabilities: [PluginCapability] {
+        guard let rawValues = capabilities else { return [] }
+        var resolved: [PluginCapability] = []
+        resolved.reserveCapacity(rawValues.count)
+        for raw in rawValues {
+            if let capability = PluginCapability(rawValue: raw) {
+                resolved.append(capability)
+            } else {
+                os_log("PluginManifest: dropping unknown capability %{public}@ declared in manifest",
+                       log: Log.plugin, type: .info, raw)
+            }
+        }
+        return resolved
     }
 }
 

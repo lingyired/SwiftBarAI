@@ -332,6 +332,11 @@ func mergePluginsPreservingOrder(existingPlugins: [Plugin], removedPluginIDs: Se
 class PluginManager: ObservableObject {
     static let shared = PluginManager()
     let prefs: PreferencesStore
+    /// M3 capability gate. Stateless from the caller's perspective —
+    /// `UserDefaults.standard` is the source of truth. Stored on the
+    /// manager so test seams can replace it with an isolated instance
+    /// (matches the `prefs` injection pattern from commit 4e1fc52).
+    let pluginCapabilityGate = PluginCapabilityGate()
     lazy var barItem: MenubarItem = {
         let item = MenubarItem.defaultBarItem()
         return item
@@ -803,9 +808,28 @@ class PluginManager: ObservableObject {
         // The discovery pipeline in `getLoadablePluginList` already filters out
         // anything that doesn't match, so we can assume here that `fileURL`
         // is a directory that contains a `manifest.json` we just validated.
-        guard isManifestPluginDirectory(fileURL),
-              let folderPlugin = FolderPlugin(manifestDirectory: fileURL)
-        else {
+        guard isManifestPluginDirectory(fileURL) else {
+            os_log("Refusing to load non-folder plugin candidate %{public}@", log: Log.plugin, type: .error, fileURL.path)
+            return nil
+        }
+        // M3 capability gate: load the manifest, verify every declared
+        // capability has been granted, then hand the manifest to
+        // `FolderPlugin` (the designated init avoids a second
+        // `loadManifest` call). If verification fails the plugin is
+        // refused silently — the user-facing "missing permission"
+        // fallback surfaces through the regular `loadPlugins`
+        // pipeline by virtue of this returning `nil`.
+        guard let manifest = PluginManifestLoader.loadManifest(from: fileURL) else {
+            return nil
+        }
+        do {
+            try pluginCapabilityGate.verify(manifest: manifest)
+        } catch {
+            os_log("Capability gate refused plugin at %{public}@: %{public}@",
+                   log: Log.plugin, type: .error, fileURL.path, String(describing: error))
+            return nil
+        }
+        guard let folderPlugin = FolderPlugin(manifestDirectory: fileURL, manifest: manifest) else {
             os_log("Refusing to load non-folder plugin candidate %{public}@", log: Log.plugin, type: .error, fileURL.path)
             return nil
         }
