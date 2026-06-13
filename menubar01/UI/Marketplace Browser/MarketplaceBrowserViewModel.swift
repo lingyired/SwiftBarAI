@@ -301,6 +301,86 @@ final class MarketplaceBrowserViewModel: ObservableObject {
         await _installSelectedAfterGrants(overwriteExisting: overwriteExisting)
     }
 
+    /// M5 install-gate follow-up: install through the new
+    /// `PluginManager.installMarketplacePluginWithCapabilityGate(...)`
+    /// overload. The overload:
+    ///  1. auto-grants every `isGrantedByDefault == true`
+    ///     capability silently,
+    ///  2. surfaces the ungranted, non-default set to
+    ///     `MarketplaceCapabilityPrompter.present(...)` via
+    ///     the closure below,
+    ///  3. on user grant, records the prompt set in the gate
+    ///     and delegates to the I/O install,
+    ///  4. on user decline, returns
+    ///     `.capabilityDeclined(...)` without touching the
+    ///     disk.
+    ///
+    /// The M5 install-prompt sheet still drives the legacy
+    /// `_installSelectedAfterGrants(...)` path so the unit
+    /// tests and any future programmatic caller continue to
+    /// compile. The sheet is intentionally distinct from
+    /// `MarketplaceCapabilityPromptSheet` — the sheet renders
+    /// per-capability checkboxes; the prompter renders an
+    /// all-or-nothing Grant/Decline because the install-gate
+    /// overload has already filtered out the
+    /// `isGrantedByDefault == true` capabilities.
+    ///
+    /// Mirrors the call site pattern from
+    /// `AIGeneratorViewModel` / `AIGeneratorInstallPromptSheet`
+    /// but uses the new closure-based install primitive.
+    func installSelectedWithCapabilityGate(overwriteExisting: Bool) async {
+        guard let entry = selectedEntry, let package else {
+            return
+        }
+        state = .installing
+        let plan: MarketplaceInstallPlan
+        do {
+            plan = try MarketplaceInstaller.plan(
+                entry: entry,
+                package: package,
+                overwriteExisting: overwriteExisting
+            )
+        } catch {
+            state = .error(error.localizedDescription)
+            return
+        }
+
+        guard let manager = pluginManager else {
+            state = .error("Plugin manager is unavailable")
+            return
+        }
+
+        let result = await manager.installMarketplacePluginWithCapabilityGate(
+            plan: plan,
+            overwriteExisting: overwriteExisting,
+            gate: pluginCapabilityGate,
+            prompt: { pluginID, capabilities in
+                await withCheckedContinuation { continuation in
+                    MarketplaceCapabilityPrompter.present(
+                        pluginID: pluginID,
+                        capabilities: capabilities
+                    ) { granted in
+                        continuation.resume(returning: granted)
+                    }
+                }
+            }
+        )
+        switch result {
+        case .success(let targetURL):
+            state = .installed(targetURL)
+        case .failure(let error):
+            if case .capabilityDeclined(_, _) = error {
+                // The user declined the prompt — roll the
+                // state back to `.loaded` so the install
+                // button re-enables and the user can retry
+                // without seeing the error banner.
+                state = .loaded
+            } else {
+                state = .error(humanReadable(error))
+            }
+        }
+    }
+
     /// Reset the sheet back to its initial state. Clears
     /// `entries`, `selectedEntry`, `package`, and sets
     /// `state = .idle`. Useful when the user clicks "Close"
@@ -330,6 +410,18 @@ final class MarketplaceBrowserViewModel: ObservableObject {
             return "Plugin was written but could not be made executable: \(reason). Run `chmod +x <script>` manually."
         case .planFailed(let reason):
             return "Install plan was invalid: \(reason)"
+        case .capabilityDeclined(let pluginID, let capabilities):
+            // M5 install-gate follow-up: when the user
+            // declines the capability prompt the
+            // install-gate overload returns
+            // `.capabilityDeclined(...)`. The parent
+            // switch in `installSelectedWithCapabilityGate(...)`
+            // rolls the state back to `.loaded` so the
+            // error banner never shows this string —
+            // `humanReadable` is still implemented for
+            // defensive coverage in case a future caller
+            // surfaces the error in a different way.
+            return "Permission to install \(pluginID) was declined (\(capabilities.count) capabilities)."
         }
     }
 }

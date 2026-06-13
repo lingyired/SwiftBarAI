@@ -130,6 +130,7 @@
 		7F1C3D1C5A1F4F9BA2D1061B /* LocalAIPluginGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1C3D1C5A1F4F9BA2D1061A /* LocalAIPluginGenerator.swift */; };
 		CAAD40FB94DA1FB971138A81 /* GeneratorHistoryMenuCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95EF42CEA9A275A956AD7AFE /* GeneratorHistoryMenuCommand.swift */; };
 		CAF84AAFB13C69B0A06DD47C /* MarketplaceInstallPromptSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 164E4786B534082283153A07 /* MarketplaceInstallPromptSheet.swift */; };
+		CC468011000000000000C011 /* MarketplaceCapabilityPromptSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468010000000000000C010 /* MarketplaceCapabilityPromptSheet.swift */; };
 		CC467002000000000000A102 /* MenuItemNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467001000000000000A101 /* MenuItemNode.swift */; };
 		CC467003000000000000A103 /* MenuItemNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467001000000000000A101 /* MenuItemNode.swift */; };
 		CC467005000000000000A105 /* MenuDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467004000000000000A104 /* MenuDiff.swift */; };
@@ -222,6 +223,7 @@
 		15856E1EF39A4DC6A4850965 /* AIPluginGeneratorFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPluginGeneratorFactory.swift; sourceTree = "<group>"; };
 		164E4786B534082283153A07 /* MarketplaceInstallPromptSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MarketplaceInstallPromptSheet.swift; path = "menubar01/UI/Marketplace Browser/MarketplaceInstallPromptSheet.swift"; sourceTree = SOURCE_ROOT; };
 		2B1C3D4E5F6A7B8C9D0E1F2B /* AIGeneratorInstallPromptSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorInstallPromptSheet.swift; path = "menubar01/UI/Plugin Generator/AIGeneratorInstallPromptSheet.swift"; sourceTree = SOURCE_ROOT; };
+		CC468010000000000000C010 /* MarketplaceCapabilityPromptSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MarketplaceCapabilityPromptSheet.swift; path = "menubar01/UI/Marketplace/MarketplaceCapabilityPromptSheet.swift"; sourceTree = SOURCE_ROOT; };
 		3920747A25460FD000213DBE /* menubar01.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = menubar01.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3920747D25460FD000213DBE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3920748125460FD300213DBE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -409,6 +411,7 @@
 				95EF42CEA9A275A956AD7AFE /* GeneratorHistoryMenuCommand.swift */,
 				0336457FBF84783754FE4BFD /* GeneratorHistoryExporter.swift */,
 				164E4786B534082283153A07 /* MarketplaceInstallPromptSheet.swift */,
+				CC468010000000000000C010 /* MarketplaceCapabilityPromptSheet.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1022,6 +1025,7 @@
 				846B4251AC37AC83DFC985D7 /* AIGeneratorMenuNode.swift in Sources */,
 				D05742D9A8603D6408F8AC76 /* GeneratorHistoryExporter.swift in Sources */,
 				CAF84AAFB13C69B0A06DD47C /* MarketplaceInstallPromptSheet.swift in Sources */,
+				CC468011000000000000C011 /* MarketplaceCapabilityPromptSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

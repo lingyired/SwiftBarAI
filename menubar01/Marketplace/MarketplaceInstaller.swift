@@ -38,19 +38,68 @@ public struct MarketplaceInstallPlan: Equatable {
     /// at the same path; `false` if it should refuse. The M5 UI
     /// will surface this to the user before invoking the installer.
     public let overwriteExisting: Bool
+    /// Decoded `PluginManifest` carried alongside the serialised
+    /// `manifestData`. Optional so older call sites that build a
+    /// plan from raw `Data` (e.g. the M4-vintage tests) continue
+    /// to compile — the M5 install-gate overload passes `nil` and
+    /// the gate-aware overload asserts it is non-`nil`. The
+    /// install path never *reads* this field; it is a
+    /// convenience carrier for the gate-aware overload so the
+    /// `manifest.resolvedCapabilities` walk does not require a
+    /// second `JSONDecoder` round-trip.
+    ///
+    /// `internal` because `PluginManifest` is `internal` —
+    /// exposing an internal-typed `public` field is a Swift
+    /// access-level error. External callers (there are none
+    /// today) reach the plan through `MarketplaceInstaller.plan(...)`
+    /// which is also `internal`-only via the rest of the
+    /// `MarketplacePackage` surface.
+    let manifest: PluginManifest?
 
-    public init(
+    /// `internal` because the `manifest: PluginManifest?`
+    /// parameter is `internal`-typed. A `public` init cannot
+    /// take an `internal` parameter (Swift's "the
+    /// initialiser's parameter types must be at least as
+    /// accessible as the initialiser itself" rule). Mirrors
+    /// the `MarketplacePackage.init(...)` access level
+    /// above — both types are reachable only through the
+    /// `MarketplaceInstaller` factory and the M5 install
+    /// surface, neither of which has a public constructor
+    /// path.
+    init(
         targetSubfolder: String,
         entryFilename: String,
         manifestData: Data,
         entryData: Data,
-        overwriteExisting: Bool
+        overwriteExisting: Bool,
+        manifest: PluginManifest? = nil
     ) {
         self.targetSubfolder = targetSubfolder
         self.entryFilename = entryFilename
         self.manifestData = manifestData
         self.entryData = entryData
         self.overwriteExisting = overwriteExisting
+        self.manifest = manifest
+    }
+
+    /// Hand-rolled `Equatable` because `PluginManifest` does
+    /// not conform to `Equatable` and we want to keep the
+    /// `manifest: PluginManifest?` carrier field on this
+    /// struct. The `manifest` field is a convenience
+    /// carrier — the canonical identity of a plan is
+    /// `manifestData` (which is the serialised bytes the
+    /// installer writes verbatim), so the equality check
+    /// compares `manifestData` and skips `manifest`. This
+    /// keeps the v4 `MarketplaceInstallPlan ==` semantics
+    /// intact for every existing call site while still
+    /// letting the M5 install-gate overload use the same
+    /// struct.
+    public static func == (lhs: MarketplaceInstallPlan, rhs: MarketplaceInstallPlan) -> Bool {
+        lhs.targetSubfolder == rhs.targetSubfolder
+            && lhs.entryFilename == rhs.entryFilename
+            && lhs.manifestData == rhs.manifestData
+            && lhs.entryData == rhs.entryData
+            && lhs.overwriteExisting == rhs.overwriteExisting
     }
 }
 
@@ -103,7 +152,8 @@ public struct MarketplaceInstaller {
             entryFilename: package.entryFilename,
             manifestData: manifestData,
             entryData: Data(package.entryScript.utf8),
-            overwriteExisting: overwriteExisting
+            overwriteExisting: overwriteExisting,
+            manifest: package.manifest
         )
     }
 }

@@ -18,6 +18,14 @@
 //      target subfolder name, writes `manifest.json` + the entry
 //      script, and `chmod +x` the entry script. The view model
 //      glues the two halves together.
+//
+//   3. `PluginManager.installMarketplacePluginWithCapabilityGate(...)`
+//      — the M5 install-gate follow-up overload. The new entry
+//      point inspects `plan.manifest?.resolvedCapabilities`,
+//      auto-grants `isGrantedByDefault == true` capabilities
+//      silently, prompts the user (via the injected closure) for
+//      every remaining capability, and only then delegates to
+//      the I/O half above.
 
 import Foundation
 import os
@@ -47,7 +55,26 @@ public enum InstallMarketplacePluginError: Error, Equatable {
     /// to signal "the caller asked to overwrite but the plan's
     /// own flag disagrees".
     case planFailed(reason: String)
+    /// The user declined the capability prompt surfaced by the
+    /// M5 install-gate overload. `pluginID` is the manifest's
+    /// `name` (or `<unnamed>` when the manifest omits one);
+    /// `capabilities` is the set the user was asked about.
+    /// Synthesised `Equatable` because `PluginCapability` and
+    /// `[PluginCapability]` both conform.
+    case capabilityDeclined(pluginID: String, capabilities: [PluginCapability])
 }
+
+/// Closure type the M5 install-gate overload hands the
+/// `CapabilityPromptHandler`-style prompt to. Returns `true`
+/// when the user grants every capability in `capabilities`,
+/// `false` to abort the install. The closure is `@MainActor`
+/// because the M5 SwiftUI sheet it drives must run on the
+/// main thread; the gate-aware install method `await`s the
+/// result before delegating to the I/O half.
+public typealias CapabilityPromptHandler = @MainActor (
+    _ pluginID: String,
+    _ capabilities: [PluginCapability]
+) async -> Bool
 
 extension PluginManager {
 
@@ -205,6 +232,96 @@ extension PluginManager {
 
         os_log("installMarketplacePlugin: installed plugin to %{public}@", log: Log.plugin, type: .info, targetDirectory.path)
         return .success(targetDirectory)
+    }
+
+    // MARK: - Gate-aware install overload
+
+    /// Install a marketplace plugin through the M3 capability
+    /// gate. Mirrors `installMarketplacePlugin(plan:overwriteExisting:)`
+    /// line-for-line except for a pre-flight loop that:
+    ///
+    ///   1. walks `plan.manifest?.resolvedCapabilities` and
+    ///      partitions the list into "already granted",
+    ///      "granted by default" (e.g. `clipboard` is
+    ///      `isGrantedByDefault == true` so it does not
+    ///      require user opt-in), and "needs user prompt";
+    ///   2. silently `gate.grant(...)`s the auto-grant set;
+    ///   3. hands the prompt set to the caller-supplied
+    ///      `prompt` closure and `await`s the result;
+    ///   4. on grant, `gate.grant(...)`s the prompt set and
+    ///      delegates to the I/O install above; on decline,
+    ///      returns `.capabilityDeclined(...)` without
+    ///      touching the disk.
+    ///
+    /// The plan must carry a non-`nil` `manifest` — the gate
+    /// decision is driven by the resolved capability list, not
+    /// the raw `manifestData` bytes. Debug builds assert the
+    /// invariant; release builds return
+    /// `.planFailed(reason:)` so the call site can present a
+    /// typed error.
+    ///
+    /// The existing `installMarketplacePlugin(plan:overwriteExisting:)`
+    /// signature is preserved for the legacy install path
+    /// (the M5 marketplace browser's pre-prompt sheet flow).
+    @discardableResult
+    public func installMarketplacePluginWithCapabilityGate(
+        plan: MarketplaceInstallPlan,
+        overwriteExisting: Bool,
+        gate: PluginCapabilityGate = PluginCapabilityGate(),
+        prompt: CapabilityPromptHandler
+    ) async -> Result<URL, InstallMarketplacePluginError> {
+        guard let manifest = plan.manifest else {
+            os_log("installMarketplacePluginWithCapabilityGate: plan.manifest is nil — gate cannot inspect capabilities",
+                   log: Log.plugin, type: .error)
+            assert(plan.manifest != nil, "plan.manifest must be non-nil for the gate-aware install")
+            return .failure(.planFailed(
+                reason: "plan.manifest is nil — the gate-aware install requires a decoded PluginManifest"
+            ))
+        }
+
+        let pluginID = manifest.name ?? "<unnamed>"
+        let required = manifest.resolvedCapabilities
+        var pending: [PluginCapability] = []
+        var autoGrant: Set<PluginCapability> = []
+
+        for capability in required {
+            if gate.isGranted(capability, for: pluginID) {
+                // Already granted in a previous round-trip — skip silently.
+                continue
+            }
+            if capability.isGrantedByDefault {
+                // Auto-grant — record for a single batched
+                // `grant` call so the user sees one log line
+                // per plugin install, not one per capability.
+                autoGrant.insert(capability)
+            } else {
+                // Needs explicit user consent — queue for the
+                // prompt sheet, preserving declaration order
+                // so the user sees the same row order they
+                // saw in the prompt sheet pre-M3.
+                pending.append(capability)
+            }
+        }
+
+        if !autoGrant.isEmpty {
+            gate.grant(autoGrant, for: pluginID)
+        }
+
+        if !pending.isEmpty {
+            let granted = await prompt(pluginID, pending)
+            if !granted {
+                os_log("installMarketplacePluginWithCapabilityGate: user declined prompt for plugin %{public}@ (%{public}d capabilities)",
+                       log: Log.plugin, type: .info,
+                       pluginID, pending.count)
+                return .failure(.capabilityDeclined(
+                    pluginID: pluginID,
+                    capabilities: pending
+                ))
+            }
+            gate.grant(Set(pending), for: pluginID)
+        }
+
+        return installMarketplacePlugin(plan: plan, overwriteExisting: overwriteExisting)
     }
 
     // MARK: - Helpers

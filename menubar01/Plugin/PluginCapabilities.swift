@@ -112,13 +112,17 @@ public enum PluginCapability: Equatable, Hashable, Sendable {
     /// `true` when the user has already consented to this
     /// capability *implicitly* (e.g. the app's own entitlements
     /// or Info.plist strings). The install-prompt sheet uses
-    /// this to pre-check the toggle for capabilities the user
-    /// does not need to be re-prompted for. v1 returns `false`
-    /// for every case — every declared capability requires
-    /// explicit consent.
+    /// this to auto-grant capabilities the user does not need
+    /// to be re-prompted for. v1 returns `true` for `clipboard`
+    /// (any foreground macOS app can read `NSPasteboard.general`
+    /// without an entitlement, so surfacing the row in the
+    /// install-prompt would just be noise) and `false` for the
+    /// other four cases — those all require explicit consent.
     public var isGrantedByDefault: Bool {
         switch self {
-        case .network, .clipboard, .notifications, .calendar, .fileWrite:
+        case .clipboard:
+            return true
+        case .network, .notifications, .calendar, .fileWrite:
             return false
         }
     }

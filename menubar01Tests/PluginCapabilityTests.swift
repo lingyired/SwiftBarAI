@@ -86,13 +86,21 @@ struct PluginCapabilityEnumTests {
         }
     }
 
-    @Test func testEnumIsGrantedByDefault_isFalseForAllCases() {
-        // The 2026-06-13 extension declares that every
-        // declared capability requires explicit user consent
-        // — none of the v1.1 cases is "implicitly granted".
-        for capability in PluginCapability.allCases {
-            #expect(capability.isGrantedByDefault == false)
-        }
+    @Test func testEnumIsGrantedByDefault_clipboardIsTrueOthersAreFalse() {
+        // v1.1 (2026-06-13 install-gate follow-up) refines
+        // the `isGrantedByDefault` policy: `clipboard` is
+        // treated as implicitly granted because any foreground
+        // macOS app can read `NSPasteboard.general` without an
+        // entitlement, so showing a prompt row would just be
+        // noise. The other four cases (network, notifications,
+        // calendar, fileWrite) all require explicit consent —
+        // the install-prompt sheet must surface them so the
+        // user can opt in per plugin.
+        #expect(PluginCapability.clipboard.isGrantedByDefault == true)
+        #expect(PluginCapability.network(hosts: []).isGrantedByDefault == false)
+        #expect(PluginCapability.notifications.isGrantedByDefault == false)
+        #expect(PluginCapability.calendar.isGrantedByDefault == false)
+        #expect(PluginCapability.fileWrite(paths: []).isGrantedByDefault == false)
     }
 
     @Test func testEnumCodable_objectFormRoundTrips() throws {
