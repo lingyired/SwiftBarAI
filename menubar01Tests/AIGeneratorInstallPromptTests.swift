@@ -75,7 +75,11 @@ private func makeIsolatedGate() -> PluginCapabilityGate {
 /// Build a `GeneratedPlugin` whose manifest declares the given
 /// capability set. Used by the pre-flight tests so we can drive
 /// `installPromptCapabilities` without involving the real
-/// generator.
+/// generator. The shorthand `[String]?` keeps the existing
+/// test call sites readable — the helper maps each v1 string
+/// to its modern descriptor (empty associated values). Unknown
+/// strings are passed through as `nil` descriptors to mirror
+/// the on-disk decoder's lenient behaviour.
 private func makePlugin(
     name: String = "TestPlugin",
     capabilities: [String]? = nil
@@ -85,7 +89,19 @@ private func makePlugin(
     manifest.version = "1.0.0"
     manifest.type = .Executable
     manifest.entry = "test.sh"
-    manifest.capabilities = capabilities
+    if let capabilities {
+        manifest.capabilities = capabilities.map { raw in
+            switch raw {
+            case "network": return .init(capability: .network(hosts: []))
+            case "clipboard": return .init(capability: .clipboard)
+            case "notifications": return .init(capability: .notifications)
+            case "calendar": return .init(capability: .calendar)
+            case "fileWrite": return .init(capability: .fileWrite(paths: []))
+            default:
+                return .init(capability: nil)
+            }
+        }
+    }
     return GeneratedPlugin(
         manifest: manifest,
         entryScript: "#!/bin/zsh\necho test\n",
@@ -108,7 +124,7 @@ struct AIGeneratorInstallPromptCapabilitiesTests {
         viewModel.request = "show weather"
         await viewModel.generate()
 
-        #expect(viewModel.installPromptCapabilities == [.network])
+        #expect(viewModel.installPromptCapabilities == [.network(hosts: [])])
     }
 
     @Test func testInstallPromptCapabilities_emptyWhenNoLatestPlugin() {
@@ -133,7 +149,7 @@ struct AIGeneratorInstallPromptCapabilitiesTests {
         viewModel.request = "show weather"
         await viewModel.generate()
 
-        #expect(viewModel.installPromptCapabilities == [.network, .clipboard])
+        #expect(viewModel.installPromptCapabilities == [.network(hosts: []), .clipboard])
     }
 }
 
@@ -146,7 +162,7 @@ struct AIGeneratorInstallPromptPreApprovalTests {
         let generator = InstallPromptMockGenerator(response: plugin)
         let viewModel = AIGeneratorViewModel(generator: generator)
         let gate = makeIsolatedGate()
-        gate.grant([.network], for: "Weather")
+        gate.grant([.network(hosts: [])], for: "Weather")
         viewModel.pluginCapabilityGate = gate
 
         viewModel.request = "show weather"

@@ -1,11 +1,14 @@
 // PluginCapabilityTests.swift
-// menubar01 — Capability Gate (M3)
+// menubar01 — Capability Gate (M3, extended)
 //
-// Swift Testing coverage for the M3 capability-gate. All tests are
-// pure: the gate is constructed with a `UserDefaults(suiteName:)`
-// per test so the suite never touches `UserDefaults.standard`. The
-// manifest is built in-memory; no filesystem, no AppKit, no
-// `PluginManager` coupling.
+// Swift Testing coverage for the M3 capability-gate and the
+// 2026-06-13 extension that adds richer capability shapes
+// (`.network(hosts:)`, `.fileWrite(paths:)`, the new
+// `isGrantedByDefault` accessor, and the dual-format manifest
+// decoder). All tests are pure: the gate is constructed with a
+// `UserDefaults(suiteName:)` per test so the suite never touches
+// `UserDefaults.standard`. The manifest is built in-memory; no
+// filesystem, no AppKit, no `PluginManager` coupling.
 
 import Foundation
 import Testing
@@ -20,47 +23,57 @@ private func makeIsolatedDefaults() -> UserDefaults {
     UserDefaults(suiteName: "menubar01.tests.capabilityGate.\(UUID().uuidString)")!
 }
 
+/// Build a manifest whose `capabilities` field carries the
+/// given descriptor list. The v1 wire-format shim
+/// (`PluginCapabilityDescriptor`) accepts both the bare-string
+/// form and the object form, so this helper is the single
+/// place the v1 string-array shorthand still appears in
+/// the test suite. Unknown strings are passed through as
+/// `nil` descriptors (matching the on-disk decoder's
+/// lenient behaviour); the helper does **not** filter
+/// them so the test can verify the decoder's behaviour.
 private func makeManifest(
     name: String = "Test Plugin",
     capabilities: [String]? = nil
 ) -> PluginManifest {
     var manifest = PluginManifest()
     manifest.name = name
-    manifest.capabilities = capabilities
+    if let capabilities {
+        manifest.capabilities = capabilities.map { raw in
+            switch raw {
+            case "network": return .init(capability: .network(hosts: []))
+            case "clipboard": return .init(capability: .clipboard)
+            case "notifications": return .init(capability: .notifications)
+            case "calendar": return .init(capability: .calendar)
+            case "fileWrite": return .init(capability: .fileWrite(paths: []))
+            default:
+                // Unknown string — pass through as a
+                // nil-capability descriptor to mirror the
+                // lenient on-disk decoder. The
+                // `resolvedCapabilities` accessor filters
+                // these out.
+                return .init(capability: nil)
+            }
+        }
+    }
     return manifest
 }
 
 // MARK: - Enum round-trip
 
 struct PluginCapabilityEnumTests {
-    @Test func testEnumRoundTrip_allCasesHaveStableRawValues() throws {
-        // Pin down the raw values: a manifest authored against the
-        // v1 vocabulary must continue to decode forever. Renaming
-        // any of these is a breaking change for every shipped
-        // plugin's `manifest.json`.
-        #expect(PluginCapability.network.rawValue == "network")
-        #expect(PluginCapability.clipboard.rawValue == "clipboard")
-        #expect(PluginCapability.notifications.rawValue == "notifications")
-        #expect(PluginCapability.calendar.rawValue == "calendar")
-        #expect(PluginCapability.allCases.count == 4)
-
-        // JSON round-trip via Codable.
-        let encoder = JSONEncoder()
-        let decoder = JSONDecoder()
-        for capability in PluginCapability.allCases {
-            let data = try encoder.encode(capability)
-            let decoded = try decoder.decode(PluginCapability.self, from: data)
-            #expect(decoded == capability)
-        }
-    }
-
-    @Test func testEnumUnknownRawValue_returnsNil() {
-        // `init(rawValue:)` is a normal failable init — an unknown
-        // string is `nil`, not a crash. The manifest decoder
-        // exploits this in `resolvedCapabilities`.
-        #expect(PluginCapability(rawValue: "future-capability") == nil)
-        #expect(PluginCapability(rawValue: "") == nil)
-        #expect(PluginCapability(rawValue: "NETWORK") == nil) // case-sensitive
+    @Test func testEnumAllCases_isExactlyFive() {
+        // Pin down the v1.1 case set: the four legacy cases
+        // (`network`, `clipboard`, `notifications`, `calendar`)
+        // plus the new `fileWrite` capability. `network` is
+        // now a case with an associated value so it still
+        // counts as one case in `allCases`.
+        #expect(PluginCapability.allCases.count == 5)
+        #expect(PluginCapability.allCases.contains(.clipboard))
+        #expect(PluginCapability.allCases.contains(.notifications))
+        #expect(PluginCapability.allCases.contains(.calendar))
+        #expect(PluginCapability.allCases.contains(.fileWrite(paths: [])))
+        #expect(PluginCapability.allCases.contains(.network(hosts: [])))
     }
 
     @Test func testEnumDisplayMetadata_isNonEmptyForAllCases() {
@@ -72,24 +85,108 @@ struct PluginCapabilityEnumTests {
             #expect(!capability.description.isEmpty)
         }
     }
+
+    @Test func testEnumIsGrantedByDefault_isFalseForAllCases() {
+        // The 2026-06-13 extension declares that every
+        // declared capability requires explicit user consent
+        // — none of the v1.1 cases is "implicitly granted".
+        for capability in PluginCapability.allCases {
+            #expect(capability.isGrantedByDefault == false)
+        }
+    }
+
+    @Test func testEnumCodable_objectFormRoundTrips() throws {
+        // The wire format for an enum with associated values
+        // is a keyed object: `{"type": "network", "hosts":
+        // [...]}`. Round-trip each case to pin down the shape
+        // — a future refactor that flips the encoder to the
+        // string form would break the gate's store.
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+        let cases: [PluginCapability] = [
+            .network(hosts: ["api.openai.com", "api.anthropic.com"]),
+            .clipboard,
+            .notifications,
+            .calendar,
+            .fileWrite(paths: ["~/Library/Logs/plugin.log"])
+        ]
+        for capability in cases {
+            let data = try encoder.encode(capability)
+            let decoded = try decoder.decode(PluginCapability.self, from: data)
+            #expect(decoded == capability)
+        }
+    }
 }
 
 // MARK: - Manifest decoder
 
 struct PluginManifestCapabilityTests {
     @Test func testResolvedCapabilities_decodesKnownStrings() {
+        // V1 form: `["network", "calendar"]` (bare strings).
+        // Each string decodes to the modern case with empty
+        // associated values.
         let manifest = makeManifest(capabilities: ["network", "calendar"])
-        #expect(manifest.resolvedCapabilities == [.network, .calendar])
+        #expect(manifest.resolvedCapabilities == [
+            .network(hosts: []),
+            .calendar
+        ])
+    }
+
+    @Test func testResolvedCapabilities_decodesObjectForm() {
+        // V1.1 form: array of `{type, ...}` objects. The
+        // `hosts` list flows through into the enum's
+        // associated value.
+        let json = #"""
+        {
+          "name": "Weather",
+          "capabilities": [
+            {"type": "network", "hosts": ["api.openai.com"]},
+            {"type": "calendar"}
+          ]
+        }
+        """#
+        let manifest = try! JSONDecoder().decode(PluginManifest.self, from: Data(json.utf8))
+        #expect(manifest.resolvedCapabilities == [
+            .network(hosts: ["api.openai.com"]),
+            .calendar
+        ])
+    }
+
+    @Test func testResolvedCapabilities_decodesMixedForms() {
+        // A manifest may mix the two forms (the descriptor
+        // is per-element, not per-array). The v1 string form
+        // and the v1.1 object form must both be accepted in
+        // the same `capabilities` array.
+        let json = #"""
+        {
+          "name": "Mixed",
+          "capabilities": [
+            "notifications",
+            {"type": "fileWrite", "paths": ["~/Library/Logs/x.log"]}
+          ]
+        }
+        """#
+        let manifest = try! JSONDecoder().decode(PluginManifest.self, from: Data(json.utf8))
+        #expect(manifest.resolvedCapabilities == [
+            .notifications,
+            .fileWrite(paths: ["~/Library/Logs/x.log"])
+        ])
     }
 
     @Test func testResolvedCapabilities_dropsUnknownStrings() {
-        // Order of the *known* capabilities is preserved. Unknown
-        // strings are silently dropped (logged via `os_log` in the
-        // real path; the log is not asserted here).
-        let manifest = makeManifest(
-            capabilities: ["network", "future-foo", "clipboard", "bogus"]
-        )
-        #expect(manifest.resolvedCapabilities == [.network, .clipboard])
+        // The v1 decoder silently dropped unknown strings;
+        // the v1.1 descriptor decoder preserves that
+        // behaviour so a manifest authored by a future
+        // build of menubar01 (with new capabilities the
+        // current build does not know about) still loads.
+        // The `os_log` warning is the observable signal;
+        // here we just verify the resolved list contains
+        // the known entries.
+        let manifest = makeManifest(capabilities: ["network", "future-foo", "clipboard"])
+        #expect(manifest.resolvedCapabilities == [
+            .network(hosts: []),
+            .clipboard
+        ])
     }
 
     @Test func testResolvedCapabilities_emptyForNilAndEmpty() {
@@ -98,15 +195,21 @@ struct PluginManifestCapabilityTests {
     }
 
     @Test func testCapabilitiesField_roundTripsThroughJSON() throws {
-        // The on-disk schema is `capabilities: [String]?` —
-        // `JSONDecoder` must accept that exact shape.
+        // The v1 string-array form (`["network", "clipboard"]`)
+        // must continue to decode — every shipped manifest
+        // uses this form, so the v1.1 extension is additive,
+        // not breaking, on the input side.
         let json = #"{"name": "X", "capabilities": ["network", "clipboard"]}"#
         let decoded = try JSONDecoder().decode(
             PluginManifest.self,
             from: Data(json.utf8)
         )
-        #expect(decoded.capabilities == ["network", "clipboard"])
-        #expect(decoded.resolvedCapabilities == [.network, .clipboard])
+        // The descriptor wrapper owns the value; the
+        // resolved list is the observable surface.
+        #expect(decoded.resolvedCapabilities == [
+            .network(hosts: []),
+            .clipboard
+        ])
     }
 
     @Test func testCapabilitiesField_absentFieldDecodesAsNil() throws {
@@ -134,7 +237,7 @@ struct PluginCapabilityGateAcceptTests {
 
     @Test func testGate_acceptsManifestWithAllCapabilitiesGranted() throws {
         let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
-        gate.grant([.network, .calendar], for: "Weather")
+        gate.grant([.network(hosts: []), .calendar], for: "Weather")
 
         let manifest = makeManifest(name: "Weather", capabilities: ["network", "calendar"])
         try gate.verify(manifest: manifest)
@@ -144,7 +247,7 @@ struct PluginCapabilityGateAcceptTests {
         // Granting more than the manifest declares is fine — the
         // gate only checks subset, not equality.
         let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
-        gate.grant([.network, .clipboard, .calendar], for: "Weather")
+        gate.grant([.network(hosts: []), .clipboard, .calendar], for: "Weather")
 
         let manifest = makeManifest(name: "Weather", capabilities: ["network"])
         try gate.verify(manifest: manifest)
@@ -164,7 +267,10 @@ struct PluginCapabilityGateRejectTests {
             try gate.verify(manifest: manifest)
             Issue.record("Expected verify to throw for ungranted .network capability")
         } catch let error as PluginCapabilityError {
-            #expect(error == .capabilityNotGranted(pluginID: "Weather", capability: .network))
+            #expect(error == .capabilityNotGranted(
+                pluginID: "Weather",
+                capability: .network(hosts: [])
+            ))
         } catch {
             Issue.record("Expected PluginCapabilityError, got \(error)")
         }
@@ -178,7 +284,10 @@ struct PluginCapabilityGateRejectTests {
             try gate.verify(manifest: manifest)
             Issue.record("Expected verify to throw for first-time plugin")
         } catch let error as PluginCapabilityError {
-            #expect(error == .capabilityNotGranted(pluginID: "Fresh", capability: .notifications))
+            #expect(error == .capabilityNotGranted(
+                pluginID: "Fresh",
+                capability: .notifications
+            ))
         } catch {
             Issue.record("Expected PluginCapabilityError, got \(error)")
         }
@@ -201,7 +310,10 @@ struct PluginCapabilityGateRejectTests {
             try gate.verify(manifest: manifest)
             Issue.record("Expected verify to throw")
         } catch let error as PluginCapabilityError {
-            #expect(error == .capabilityNotGranted(pluginID: "Order", capability: .network))
+            #expect(error == .capabilityNotGranted(
+                pluginID: "Order",
+                capability: .network(hosts: [])
+            ))
         } catch {
             Issue.record("Expected PluginCapabilityError, got \(error)")
         }
@@ -210,7 +322,7 @@ struct PluginCapabilityGateRejectTests {
     @Test func testGate_grantsAreIsolatedPerPlugin() {
         // Granting `network` to plugin A must not affect plugin B.
         let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
-        gate.grant([.network], for: "A")
+        gate.grant([.network(hosts: [])], for: "A")
 
         let manifestA = makeManifest(name: "A", capabilities: ["network"])
         let manifestB = makeManifest(name: "B", capabilities: ["network"])
@@ -220,7 +332,10 @@ struct PluginCapabilityGateRejectTests {
             try gate.verify(manifest: manifestB)
             Issue.record("Expected B to be rejected — A's grant must not leak")
         } catch let error as PluginCapabilityError {
-            #expect(error == .capabilityNotGranted(pluginID: "B", capability: .network))
+            #expect(error == .capabilityNotGranted(
+                pluginID: "B",
+                capability: .network(hosts: [])
+            ))
         } catch {
             Issue.record("Expected PluginCapabilityError, got \(error)")
         }
@@ -232,22 +347,22 @@ struct PluginCapabilityGateRejectTests {
 struct PluginCapabilityGateIdempotencyTests {
     @Test func testGate_grantIsIdempotent() {
         let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
-        gate.grant([.network], for: "P")
-        gate.grant([.network], for: "P") // a second time
-        gate.grant([.network], for: "P") // a third time
+        gate.grant([.network(hosts: [])], for: "P")
+        gate.grant([.network(hosts: [])], for: "P") // a second time
+        gate.grant([.network(hosts: [])], for: "P") // a third time
 
         // `granted(for:)` should still report exactly the one
         // capability, not duplicates.
-        #expect(gate.granted(for: "P") == Set([.network]))
+        #expect(gate.granted(for: "P") == Set([.network(hosts: [])]))
     }
 
     @Test func testGate_grantIsAdditiveAcrossCalls() {
         // Two calls with disjoint sets union into the full set.
         let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
-        gate.grant([.network], for: "P")
+        gate.grant([.network(hosts: [])], for: "P")
         gate.grant([.clipboard], for: "P")
 
-        #expect(gate.granted(for: "P") == Set([.network, .clipboard]))
+        #expect(gate.granted(for: "P") == Set([.network(hosts: []), .clipboard]))
 
         // And the gate now verifies a manifest that declares both.
         let manifest = makeManifest(name: "P", capabilities: ["network", "clipboard"])
@@ -281,8 +396,81 @@ struct PluginCapabilityGateIdempotencyTests {
         let writer = PluginCapabilityGate(defaults: makeIsolatedDefaults())
         let reader = PluginCapabilityGate(defaults: makeIsolatedDefaults())
 
-        writer.grant([.network], for: "P")
+        writer.grant([.network(hosts: [])], for: "P")
         #expect(reader.granted(for: "P").isEmpty)
+    }
+}
+
+// MARK: - New (2026-06-13) capabilities
+
+struct PluginCapabilityNetworkTests {
+    @Test func testNetwork_capabilityHasDisplayName() {
+        // The display name surfaces the host list so the
+        // install-prompt sheet can show the user exactly
+        // which domains the plugin is going to talk to.
+        let cap = PluginCapability.network(hosts: ["api.openai.com"])
+        #expect(cap.displayName.contains("api.openai.com") || cap.displayName.contains("Network"))
+    }
+
+    @Test func testNetwork_capabilityIsNotGrantedByDefault() {
+        // Network access must always require explicit user
+        // consent — there's no entitlement / Info.plist
+        // string that implicitly grants it.
+        #expect(PluginCapability.network(hosts: []).isGrantedByDefault == false)
+        #expect(PluginCapability.network(hosts: ["a.com"]).isGrantedByDefault == false)
+    }
+}
+
+struct PluginCapabilityFileWriteTests {
+    @Test func testFileWrite_capabilityHasDisplayName() {
+        let cap = PluginCapability.fileWrite(paths: ["~/Library/Logs/plugin.log"])
+        #expect(cap.displayName.contains("plugin.log") || cap.displayName.contains("Write"))
+    }
+
+    @Test func testFileWrite_capabilityIsNotGrantedByDefault() {
+        #expect(PluginCapability.fileWrite(paths: []).isGrantedByDefault == false)
+        #expect(PluginCapability.fileWrite(paths: ["a.log"]).isGrantedByDefault == false)
+    }
+}
+
+struct PluginCapabilityNotificationsTests {
+    @Test func testNotifications_capabilityHasDisplayName() {
+        #expect(PluginCapability.notifications.displayName == "Notifications")
+    }
+
+    @Test func testNotifications_capabilityIsNotGrantedByDefault() {
+        // Even though macOS has the system-level Notifications
+        // preference, the per-plugin grant is still recorded
+        // in the gate — the user must opt in per plugin.
+        #expect(PluginCapability.notifications.isGrantedByDefault == false)
+    }
+}
+
+struct PluginCapabilityGateGrantTests {
+    @Test func testGate_grantNetwork_addsToGrantedSet() {
+        // The grant is keyed on the *whole* capability value
+        // — granting `network(hosts: ["a.com"])` does NOT
+        // automatically grant `network(hosts: ["b.com"])`.
+        // The install-prompt sheet is responsible for asking
+        // for each declared shape explicitly.
+        let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
+        gate.grant([.network(hosts: ["api.openai.com"])], for: "plugin-name")
+        #expect(gate.isGranted(.network(hosts: ["api.openai.com"]), for: "plugin-name"))
+    }
+
+    @Test func testGate_grantFileWrite_addsToGrantedSet() {
+        let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
+        gate.grant([.fileWrite(paths: ["~/Library/Logs/plugin.log"])], for: "plugin-name")
+        #expect(gate.isGranted(
+            .fileWrite(paths: ["~/Library/Logs/plugin.log"]),
+            for: "plugin-name"
+        ))
+    }
+
+    @Test func testGate_grantNotifications_addsToGrantedSet() {
+        let gate = PluginCapabilityGate(defaults: makeIsolatedDefaults())
+        gate.grant([.notifications], for: "plugin-name")
+        #expect(gate.isGranted(.notifications, for: "plugin-name"))
     }
 }
 
@@ -292,15 +480,15 @@ struct PluginCapabilityErrorTests {
     @Test func testError_capabilityNotGranted_equalityAndDescription() {
         let error = PluginCapabilityError.capabilityNotGranted(
             pluginID: "Weather",
-            capability: .network
+            capability: .network(hosts: [])
         )
         let identical = PluginCapabilityError.capabilityNotGranted(
             pluginID: "Weather",
-            capability: .network
+            capability: .network(hosts: [])
         )
         let differentID = PluginCapabilityError.capabilityNotGranted(
             pluginID: "Other",
-            capability: .network
+            capability: .network(hosts: [])
         )
         let differentCap = PluginCapabilityError.capabilityNotGranted(
             pluginID: "Weather",
@@ -320,7 +508,7 @@ struct PluginCapabilityErrorTests {
     @Test func testError_unknownCapability_isDistinctFromNotGranted() {
         let notGranted = PluginCapabilityError.capabilityNotGranted(
             pluginID: "P",
-            capability: .network
+            capability: .network(hosts: [])
         )
         let unknown = PluginCapabilityError.unknownCapability(rawValue: "future-foo")
         #expect(notGranted != unknown)

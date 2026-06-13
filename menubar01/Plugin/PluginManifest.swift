@@ -75,11 +75,17 @@ struct PluginManifest: Codable {
     /// Hide the "menubar01" menu item (parent menu of plugin-specific entries).
     var hideMenubar01: Bool?
 
-    /// Permissions the plugin needs at install time. Mapped 1-to-1
-    /// to `PluginCapability` raw values by `resolvedCapabilities`;
-    /// unknown strings are dropped with an `os_log` warning so
-    /// manifests produced by future builds still decode.
-    var capabilities: [String]?
+    /// Permissions the plugin needs at install time. Each
+    /// descriptor wraps a single `PluginCapability`; the
+    /// descriptor is the wire-format boundary that accepts
+    /// **both** the v1 string-array form
+    /// (`"capabilities": ["network", "clipboard"]`) **and** the
+    /// v1.1 object-array form
+    /// (`"capabilities": [{"type": "network", "hosts": [...]}]`).
+    /// The encoder always emits the object form (forward
+    /// compatible). The list may be a mix of the two forms on
+    /// input — each descriptor is decoded independently.
+    var capabilities: [PluginCapabilityDescriptor]?
 
     /// The manifest format version this struct understands.
     static let currentVersion = 1
@@ -115,7 +121,7 @@ struct PluginManifest: Codable {
         hideLastUpdated = try container.decodeIfPresent(Bool.self, forKey: .hideLastUpdated)
         hideDisablePlugin = try container.decodeIfPresent(Bool.self, forKey: .hideDisablePlugin)
         hideMenubar01 = try container.decodeIfPresent(Bool.self, forKey: .hideMenubar01)
-        capabilities = try container.decodeIfPresent([String].self, forKey: .capabilities)
+        capabilities = try container.decodeIfPresent([PluginCapabilityDescriptor].self, forKey: .capabilities)
     }
 
     /// Encodes the manifest, omitting fields that are at their default value so
@@ -142,6 +148,91 @@ struct PluginManifest: Codable {
         try container.encodeIfPresent(hideDisablePlugin, forKey: .hideDisablePlugin)
         try container.encodeIfPresent(hideMenubar01, forKey: .hideMenubar01)
         try container.encodeIfPresent(capabilities, forKey: .capabilities)
+    }
+}
+
+/// Wire-format wrapper for a single entry in a manifest's
+/// `capabilities` array. The wrapper accepts **both**:
+///
+/// 1. the v1 string form — `"network"`, `"clipboard"`, etc.; and
+/// 2. the v1.1 object form — `{"type": "network", "hosts": [...]}`.
+///
+/// The string form is decoded into the equivalent object form
+/// with an empty associated-value list
+/// (`"network"` → `.network(hosts: [])`); the
+/// `resolvedCapabilities` accessor on the manifest returns the
+/// matching `[PluginCapability]`. Encoding is always in the
+/// object form so the on-disk schema is forward-compatible.
+///
+/// The dual-format acceptance lives here (rather than on
+/// `PluginCapability` itself) so the enum's own `Codable`
+/// conformance can stay the simple `{type, ...}` shape used
+/// by `PluginCapabilityGate`'s `UserDefaults` store. Manifest
+/// files are the only place the v1 string form is ever seen.
+///
+/// `capability` is optional: an unknown v1 string
+/// (e.g. `"future-foo"`) decodes to `nil` and is filtered
+/// out by `PluginManifest.resolvedCapabilities` with an
+/// `os_log` warning. This preserves the v1 lenient behaviour
+/// where a manifest authored by a future build of menubar01
+/// still loads under the current build.
+struct PluginCapabilityDescriptor: Codable, Equatable {
+    /// The resolved capability. `nil` when the wire form
+    /// was an unknown v1 string — `resolvedCapabilities`
+    /// filters these out.
+    let capability: PluginCapability?
+
+    init(capability: PluginCapability?) {
+        self.capability = capability
+    }
+
+    init(from decoder: Decoder) throws {
+        // Try the v1 string form first; if the value is a
+        // bare string, map it to the modern case with empty
+        // associated values. If the value is a JSON object
+        // (the new form), delegate to `PluginCapability`'s
+        // own `init(from:)`. The two `try?` / `try` branches
+        // are mutually exclusive at the JSON level — a value
+        // is either a string or an object, never both.
+        if let rawString = try? decoder.singleValueContainer().decode(String.self) {
+            if let mapped = Self.capability(forRawString: rawString) {
+                self.capability = mapped
+            } else {
+                os_log("PluginManifest: dropping unknown capability %{public}@ declared in manifest",
+                       log: Log.plugin, type: .info, rawString)
+                self.capability = nil
+            }
+        } else {
+            self.capability = try PluginCapability(from: decoder)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        // Skip dropped entries. A nil descriptor would
+        // round-trip to a missing array element on the
+        // wire, which is the correct behaviour for
+        // "this slot was never granted."
+        guard let capability else { return }
+        var container = encoder.singleValueContainer()
+        try container.encode(capability)
+    }
+
+    /// Map a v1 raw string (the discriminator token authors
+    /// used to write before the object form landed) to the
+    /// equivalent modern `PluginCapability` value. Returns
+    /// `nil` for strings the v1 vocabulary does not
+    /// recognise — the caller is responsible for filtering
+    /// the descriptor out via the `capability == nil`
+    /// check in `resolvedCapabilities`.
+    private static func capability(forRawString raw: String) -> PluginCapability? {
+        switch raw {
+        case "network": return .network(hosts: [])
+        case "clipboard": return .clipboard
+        case "notifications": return .notifications
+        case "calendar": return .calendar
+        case "fileWrite": return .fileWrite(paths: [])
+        default: return nil
+        }
     }
 }
 
@@ -200,26 +291,22 @@ extension PluginManifest {
         return value
     }
 
-    /// Decoded capability list. Each raw string in `capabilities` is
-    /// mapped through `PluginCapability.init(rawValue:)`; strings
-    /// the v1 enum does not recognise are **dropped** (with a
-    /// warning) rather than throwing, so manifests authored by a
-    /// future build of menubar01 still load. The order of declared
-    /// strings is preserved so the gate's "first ungranted
-    /// capability wins" error is deterministic.
+    /// Decoded capability list. Each descriptor's resolved
+    /// `PluginCapability` is appended in declaration order
+    /// so the gate's *"first ungranted capability wins"* rule
+    /// is deterministic. Descriptors that decoded to `nil`
+    /// (unknown v1 strings) are filtered out — see
+    /// `PluginCapabilityDescriptor` for the lenient
+    /// behaviour. The descriptor layer is the wire-format
+    /// boundary; callers should never see descriptor objects
+    /// leak past this accessor.
+    ///
+    /// Renaming any case is a breaking change for every
+    /// shipped plugin's `manifest.json`; appending new cases
+    /// is fine.
     var resolvedCapabilities: [PluginCapability] {
-        guard let rawValues = capabilities else { return [] }
-        var resolved: [PluginCapability] = []
-        resolved.reserveCapacity(rawValues.count)
-        for raw in rawValues {
-            if let capability = PluginCapability(rawValue: raw) {
-                resolved.append(capability)
-            } else {
-                os_log("PluginManifest: dropping unknown capability %{public}@ declared in manifest",
-                       log: Log.plugin, type: .info, raw)
-            }
-        }
-        return resolved
+        guard let descriptors = capabilities else { return [] }
+        return descriptors.compactMap(\.capability)
     }
 }
 

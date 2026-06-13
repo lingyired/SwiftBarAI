@@ -120,7 +120,12 @@ private func makeIsolatedGate() -> PluginCapabilityGate {
 /// Build a `MarketplacePackage` whose manifest declares the
 /// given capability set. Used by the prompt-data tests so
 /// we can drive `installPromptCapabilities` without
-/// involving the real marketplace client.
+/// involving the real marketplace client. The shorthand
+/// `[String]?` keeps the existing call sites readable — the
+/// helper maps each v1 string to its modern descriptor
+/// (empty associated values). Unknown strings are passed
+/// through as `nil` descriptors to mirror the on-disk
+/// decoder's lenient behaviour.
 private func makePackage(
     id: String = "battery-watch",
     name: String = "Battery Watch",
@@ -130,7 +135,19 @@ private func makePackage(
     manifest.name = name
     manifest.version = "1.0.0"
     manifest.entry = "battery-watch.sh"
-    manifest.capabilities = capabilities
+    if let capabilities {
+        manifest.capabilities = capabilities.map { raw in
+            switch raw {
+            case "network": return .init(capability: .network(hosts: []))
+            case "clipboard": return .init(capability: .clipboard)
+            case "notifications": return .init(capability: .notifications)
+            case "calendar": return .init(capability: .calendar)
+            case "fileWrite": return .init(capability: .fileWrite(paths: []))
+            default:
+                return .init(capability: nil)
+            }
+        }
+    }
     return MarketplacePackage(
         id: id,
         manifest: manifest,
@@ -181,7 +198,7 @@ struct MarketplaceInstallPromptCapabilitiesTests {
         await viewModel.loadCatalogue()
         await viewModel.selectEntry(viewModel.entries[0])
 
-        #expect(viewModel.installPromptCapabilities == [.network, .clipboard])
+        #expect(viewModel.installPromptCapabilities == [.network(hosts: []), .clipboard])
     }
 
     @Test func testInstallPromptCapabilities_emptyWhenNoPackage() {
@@ -214,7 +231,7 @@ struct MarketplaceInstallPromptCapabilitiesTests {
         await viewModel.loadCatalogue()
         await viewModel.selectEntry(viewModel.entries[0])
 
-        #expect(viewModel.installPromptCapabilities == [.network, .clipboard])
+        #expect(viewModel.installPromptCapabilities == [.network(hosts: []), .clipboard])
     }
 }
 
@@ -230,7 +247,7 @@ struct MarketplaceInstallPromptPreApprovalTests {
             pluginManager: nil
         )
         let gate = makeIsolatedGate()
-        gate.grant([.network], for: "Battery Watch")
+        gate.grant([.network(hosts: [])], for: "Battery Watch")
         viewModel.pluginCapabilityGate = gate
 
         await viewModel.loadCatalogue()
@@ -304,7 +321,7 @@ struct MarketplaceInstallPromptRequestTests {
         let context = viewModel.requestInstallPrompt(overwriteExisting: false)
         #expect(context != nil)
         #expect(context?.pluginName == "Battery Watch")
-        #expect(context?.capabilities == [.network, .clipboard])
+        #expect(context?.capabilities == [.network(hosts: []), .clipboard])
         #expect(context?.isPreApproved == false)
         #expect(context?.package.id == "battery-watch")
         #expect(context?.overwriteExisting == false)
@@ -349,7 +366,7 @@ struct MarketplaceInstallPromptRequestTests {
         await viewModel.selectEntry(viewModel.entries[0])
 
         // Mimic the prompt sheet's grant + install flow.
-        let enabled: Set<PluginCapability> = [.network, .clipboard]
+        let enabled: Set<PluginCapability> = [.network(hosts: []), .clipboard]
         gate.grant(enabled, for: "Battery Watch")
         await viewModel._installSelectedAfterGrants(overwriteExisting: false)
 

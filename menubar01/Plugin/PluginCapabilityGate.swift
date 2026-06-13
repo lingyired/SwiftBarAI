@@ -21,13 +21,17 @@
 //    capability is missing from the grant set.
 //
 // The store is a `[String: Set<PluginCapability>]` map persisted as
-// a `Data` blob via `JSONEncoder`. The public API surfaces
-// `pluginID` as `String` (rather than the internal `PluginID`
-// typealias) so the gate does not leak `PluginID`'s `internal`
-// access level. This is intentionally the same pattern
-// `PreferencesStore` uses for non-`@Published` payloads (commit
-// 4e1fc52). The init accepts an injected `UserDefaults` so tests
-// can pass a `UserDefaults(suiteName:)` for isolation.
+// a `Data` blob via `JSONEncoder`; the on-disk schema is
+// `[pluginID: [capability-object, ...]]` where each
+// capability-object is the manual `Codable` form from
+// `PluginCapabilities.swift` (e.g. `{"type": "network", "hosts":
+// ["api.openai.com"]}`). The public API surfaces `pluginID` as
+// `String` (rather than the internal `PluginID` typealias) so the
+// gate does not leak `PluginID`'s `internal` access level. This is
+// intentionally the same pattern `PreferencesStore` uses for
+// non-`@Published` payloads (commit 4e1fc52). The init accepts an
+// injected `UserDefaults` so tests can pass a
+// `UserDefaults(suiteName:)` for isolation.
 
 import Foundation
 import os
@@ -38,9 +42,9 @@ import os
 /// underlying `UserDefaults` is the only source of truth.
 public struct PluginCapabilityGate {
     /// `UserDefaults` key holding the JSON-encoded
-    /// `[String: [String]]` map (raw capability values).
-    /// Versioned via a `v1` suffix so the schema can evolve
-    /// without colliding with future revisions of the store.
+    /// `[String: Set<PluginCapability>]` map. Versioned via a
+    /// `v1` suffix so the schema can evolve without colliding
+    /// with future revisions of the store.
     private static let storeKey = "PluginCapabilityGate.grants.v1"
 
     private let defaults: UserDefaults
@@ -73,7 +77,7 @@ public struct PluginCapabilityGate {
         writeStore(current)
         os_log("Granted capabilities for plugin %{public}@: %{public}@",
                log: Log.plugin, type: .info,
-               pluginID, caps.map(\.rawValue).sorted().joined(separator: ","))
+               pluginID, caps.map(\.displayName).sorted().joined(separator: ","))
     }
 
     /// Returns the set of capabilities the user has granted to
@@ -81,6 +85,16 @@ public struct PluginCapabilityGate {
     /// anything (or no such plugin exists in the store).
     public func granted(for pluginID: String) -> Set<PluginCapability> {
         readStore()[pluginID] ?? []
+    }
+
+    /// `true` when `pluginID` has been granted `capability`. The
+    /// whole-capability value (including associated values) must
+    /// match — `.network(hosts: ["a.com"])` is **not** satisfied
+    /// by a grant of `.network(hosts: ["b.com"])`. The
+    /// install-prompt sheet is responsible for asking the user
+    /// to grant each declared shape explicitly.
+    public func isGranted(_ capability: PluginCapability, for pluginID: String) -> Bool {
+        granted(for: pluginID).contains(capability)
     }
 
     // MARK: - Verify (the gate itself)
@@ -103,7 +117,7 @@ public struct PluginCapabilityGate {
         for capability in requiredCapabilities where !grantedSet.contains(capability) {
             os_log("Capability gate refused plugin %{public}@: %{public}@ not granted",
                    log: Log.plugin, type: .error,
-                   pluginID, capability.rawValue)
+                   pluginID, capability.displayName)
             throw PluginCapabilityError.capabilityNotGranted(
                 pluginID: pluginID,
                 capability: capability
@@ -129,15 +143,22 @@ public struct PluginCapabilityGate {
 
     // MARK: - Store I/O
 
+    /// The on-disk schema is a direct `Codable` round-trip of
+    /// `[String: Set<PluginCapability>]` — the manual
+    /// `PluginCapability` encoder produces the
+    /// `{type, ...parameter}` object form documented in
+    /// `PluginCapabilities.swift`. The previous v0 schema
+    /// (`[String: [String]]` of raw values) is no longer
+    /// produced by the gate, so reading v0 data falls through
+    /// the catch and resets to empty — acceptable because
+    /// the v0 store shipped in M3 today (2026-06-13) and has
+    /// no real users to migrate.
     private func readStore() -> [String: Set<PluginCapability>] {
         guard let data = defaults.data(forKey: Self.storeKey) else { return [:] }
         do {
-            let arrayForm = try JSONDecoder().decode(
-                [String: [String]].self, from: data
+            return try JSONDecoder().decode(
+                [String: Set<PluginCapability>].self, from: data
             )
-            return arrayForm.mapValues { rawValues in
-                Set(rawValues.compactMap(PluginCapability.init(rawValue:)))
-            }
         } catch {
             os_log("PluginCapabilityGate: failed to decode grant store — resetting: %{public}@",
                    log: Log.plugin, type: .error, error.localizedDescription)
@@ -146,11 +167,8 @@ public struct PluginCapabilityGate {
     }
 
     private func writeStore(_ store: [String: Set<PluginCapability>]) {
-        let arrayForm = store.mapValues { caps in
-            caps.map(\.rawValue).sorted()
-        }
         do {
-            let data = try JSONEncoder().encode(arrayForm)
+            let data = try JSONEncoder().encode(store)
             defaults.set(data, forKey: Self.storeKey)
         } catch {
             os_log("PluginCapabilityGate: failed to encode grant store: %{public}@",
