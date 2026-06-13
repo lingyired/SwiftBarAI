@@ -68,6 +68,48 @@ struct MarketplaceBrowserSheet: View {
         _viewModel = StateObject(wrappedValue: viewModel)
     }
 
+    /// Which sidebar tab is currently active. Defaults to
+    /// `.catalogue` so the existing M5 first-cut UX is
+    /// preserved. Selected in `sidebarHeader` via the
+    /// segmented control. Stored as `@State` on the sheet
+    /// rather than on the VM so the choice does not
+    /// survive a sheet close — the user re-opens the
+    /// browser on the catalogue each time, which is the
+    /// "browse, then manage" flow the M5 design calls for.
+    @State private var selectedTab: SidebarTab = .catalogue
+
+    /// Identifier for the sidebar tabs. Two cases: the
+    /// remote catalogue (the M5 first-cut tab) and the
+    /// locally installed plugins (the M5 uninstall /
+    /// update follow-up).
+    enum SidebarTab: String, CaseIterable, Identifiable {
+        case catalogue
+        case installed
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .catalogue: return "Catalogue"
+            case .installed: return "Installed"
+            }
+        }
+    }
+
+    /// Backing state for the uninstall confirmation alert.
+    /// The alert is presented from a sidebar row; the
+    /// `pendingUninstallSnapshot` carries the row the
+    /// user clicked, and the alert's "Uninstall" button
+    /// delegates back to the VM. `nil` until the first
+    /// click; the parent rebuilds the snapshot on every
+    /// presentation.
+    @State private var pendingUninstallSnapshot: MarketplaceBrowserViewModel.InstalledPluginSnapshot?
+
+    /// Backing state for the update success banner. The
+    /// sheet shows a transient banner after a successful
+    /// update; the banner reads its message from
+    /// `pendingUpdateMessage` and dismisses after a
+    /// short delay.
+    @State private var pendingUpdateMessage: String?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
@@ -83,6 +125,23 @@ struct MarketplaceBrowserSheet: View {
             // automatically if the view is dismissed.
             if viewModel.entries.isEmpty && viewModel.state == .idle {
                 await viewModel.loadCatalogue()
+            }
+            // The "Installed" sidebar tab is also driven
+            // off the file system. Refresh on every
+            // appearance so a previous install / uninstall
+            // / update round-trip is reflected without
+            // requiring the user to click a refresh
+            // button. Cheap (a single directory
+            // enumerator) and idempotent.
+            viewModel.refreshInstalledPlugins()
+        }
+        .onChange(of: selectedTab) { _ in
+            // Refresh the Installed tab whenever the user
+            // switches to it, in case the on-disk state
+            // changed while the sheet was on the
+            // Catalogue tab. Cheap and idempotent.
+            if selectedTab == .installed {
+                viewModel.refreshInstalledPlugins()
             }
         }
         .sheet(isPresented: $showingInstallPrompt) {
@@ -137,6 +196,23 @@ struct MarketplaceBrowserSheet: View {
                 }
             }
         )
+        .alert(
+            "Uninstall plugin?",
+            isPresented: uninstallAlertBinding,
+            actions: {
+                Button("Uninstall", role: .destructive) {
+                    confirmPendingUninstall()
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingUninstallSnapshot = nil
+                }
+            },
+            message: {
+                if let snapshot = pendingUninstallSnapshot {
+                    Text("Uninstall \(snapshot.name)? This will delete the plugin folder. The plugin will no longer appear in your menu bar.")
+                }
+            }
+        )
     }
 
     // MARK: - Sections
@@ -162,39 +238,129 @@ struct MarketplaceBrowserSheet: View {
         // default style renders a 2-column split for
         // List(selection:) + content, which is exactly what we
         // want.
-        NavigationView {
-            sidebar
-                .frame(minWidth: 200, idealWidth: 240, maxWidth: 320)
-            // Implicit detail column. SwiftUI's macOS 12
-            // `NavigationView` shows only the root view by
-            // default; the detail is rendered next to it via
-            // the `List(selection:)` binding. We still need a
-            // detail body to drive the layout, so the body is
-            // appended below.
-            detail
+        VStack(spacing: 0) {
+            tabPicker
+            Divider()
+            NavigationView {
+                sidebar
+                    .frame(minWidth: 200, idealWidth: 240, maxWidth: 320)
+                // Implicit detail column. SwiftUI's macOS 12
+                // `NavigationView` shows only the root view by
+                // default; the detail is rendered next to it via
+                // the `List(selection:)` binding. We still need a
+                // detail body to drive the layout, so the body is
+                // appended below.
+                detail
+            }
         }
     }
 
-    private var sidebar: some View {
-        Group {
-            if viewModel.state == .loading && viewModel.entries.isEmpty {
-                VStack {
-                    ProgressView()
-                    Text("Loading catalogue…")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List(selection: selectionBinding) {
-                    ForEach(viewModel.entries) { entry in
-                        sidebarRow(for: entry)
-                            .tag(entry.id)
-                    }
-                }
-                .listStyle(.sidebar)
+    /// Segmented control that drives `selectedTab`. The
+    /// control sits between the header and the
+    /// split-view body so it is always visible regardless
+    /// of which sidebar tab is active. The two-tab shape
+    /// mirrors the M5 design ("browse, then manage").
+    private var tabPicker: some View {
+        Picker("", selection: $selectedTab) {
+            ForEach(SidebarTab.allCases) { tab in
+                Text(tab.title).tag(tab)
             }
         }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+    }
+
+    @ViewBuilder
+    private var sidebar: some View {
+        switch selectedTab {
+        case .catalogue:
+            catalogueSidebar
+        case .installed:
+            installedSidebar
+        }
+    }
+
+    @ViewBuilder
+    private var catalogueSidebar: some View {
+        if viewModel.state == .loading && viewModel.entries.isEmpty {
+            VStack {
+                ProgressView()
+                Text("Loading catalogue…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            List(selection: selectionBinding) {
+                ForEach(viewModel.entries) { entry in
+                    sidebarRow(for: entry)
+                        .tag(entry.id)
+                }
+            }
+            .listStyle(.sidebar)
+        }
+    }
+
+    @ViewBuilder
+    private var installedSidebar: some View {
+        if viewModel.installedPlugins.isEmpty {
+            VStack(spacing: 8) {
+                Image(systemName: "tray")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+                Text("No marketplace plugins installed")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("Browse the Catalogue tab to install your first plugin.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(20)
+        } else {
+            List(selection: installedSelectionBinding) {
+                ForEach(viewModel.installedPlugins) { snapshot in
+                    installedRow(for: snapshot)
+                        .tag(snapshot.id)
+                }
+            }
+            .listStyle(.sidebar)
+        }
+    }
+
+    @ViewBuilder
+    private func installedRow(
+        for snapshot: MarketplaceBrowserViewModel.InstalledPluginSnapshot
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                Text(snapshot.name)
+                    .font(.body.weight(.medium))
+                Spacer(minLength: 0)
+                if let version = snapshot.version {
+                    Text(version)
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            HStack(spacing: 6) {
+                Text(snapshot.url.lastPathComponent)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                if let lastUpdated = snapshot.lastUpdated {
+                    Text("·")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    Text(lastUpdated, style: .date)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .padding(.vertical, 2)
     }
 
     private func sidebarRow(for entry: MarketplaceEntry) -> some View {
@@ -216,6 +382,16 @@ struct MarketplaceBrowserSheet: View {
 
     @ViewBuilder
     private var detail: some View {
+        switch selectedTab {
+        case .catalogue:
+            catalogueDetail
+        case .installed:
+            installedDetail
+        }
+    }
+
+    @ViewBuilder
+    private var catalogueDetail: some View {
         if let entry = viewModel.selectedEntry {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
@@ -240,6 +416,167 @@ struct MarketplaceBrowserSheet: View {
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var installedDetail: some View {
+        if let snapshot = currentInstalledSnapshot {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    installedDetailHeader(for: snapshot)
+                    installedMetadataRow(for: snapshot)
+                    installedControls(for: snapshot)
+                    stateBanner
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else {
+            VStack(spacing: 8) {
+                Text("Select an installed plugin")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                Text("Pick a marketplace plugin on the left to see its details and manage it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func installedDetailHeader(
+        for snapshot: MarketplaceBrowserViewModel.InstalledPluginSnapshot
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(snapshot.name)
+                .font(.title2.weight(.semibold))
+            Text(snapshot.url.path)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+        }
+    }
+
+    private func installedMetadataRow(
+        for snapshot: MarketplaceBrowserViewModel.InstalledPluginSnapshot
+    ) -> some View {
+        HStack(spacing: 16) {
+            if let version = snapshot.version {
+                Label("Version \(version)", systemImage: "tag")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let lastUpdated = snapshot.lastUpdated {
+                Label("Updated \(lastUpdated, style: .date)", systemImage: "clock")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func installedControls(
+        for snapshot: MarketplaceBrowserViewModel.InstalledPluginSnapshot
+    ) -> some View {
+        HStack(spacing: 12) {
+            Button(role: .destructive) {
+                // Stage the snapshot and present the
+                // confirmation alert via
+                // `uninstallAlertBinding`. The alert
+                // delegates back to
+                // `confirmPendingUninstall()` on
+                // confirmation.
+                pendingUninstallSnapshot = snapshot
+            } label: {
+                Label("Uninstall", systemImage: "trash")
+            }
+            .disabled(viewModel.isUninstalling)
+
+            Button {
+                Task { await runUpdateForInstalledSnapshot(snapshot) }
+            } label: {
+                Label("Update", systemImage: "arrow.down.circle")
+            }
+            .disabled(viewModel.isUpdating || !canUpdate(snapshot: snapshot))
+
+            if viewModel.isUninstalling {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Uninstalling…")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else if viewModel.isUpdating {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Updating…")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// Returns `true` when the Installed tab's "Update"
+    /// button can run. The update needs the user to
+    /// have selected a matching catalogue row and a
+    /// loaded package — when the snapshot's folder
+    /// name is not in the catalogue (e.g. an install
+    /// from a previous build whose entry was retired),
+    /// the update is unavailable and the button is
+    /// disabled.
+    private func canUpdate(
+        snapshot: MarketplaceBrowserViewModel.InstalledPluginSnapshot
+    ) -> Bool {
+        guard let _ = viewModel.selectedEntry, viewModel.package != nil else {
+            // No catalogue row is selected — try to
+            // find a matching entry by folder name and
+            // load it. The button stays disabled until
+            // the user clicks the catalogue row, so
+            // the v1 UX is "click the row, then click
+            // Update".
+            return false
+        }
+        return true
+    }
+
+    /// Run the update flow for the given Installed tab
+    /// snapshot. Selects the matching catalogue entry
+    /// (if any), fetches the package, then runs
+    /// `viewModel.updateSelectedWithCapabilityGate()`.
+    /// The selection is reset to the user's prior
+    /// state on completion so the catalogue tab is
+    /// not unexpectedly hijacked.
+    private func runUpdateForInstalledSnapshot(
+        _ snapshot: MarketplaceBrowserViewModel.InstalledPluginSnapshot
+    ) async {
+        // If the catalogue row is not currently
+        // selected, look it up by folder name and
+        // fetch the package. This is a best-effort
+        // affordance: the Installed tab's "Update"
+        // button does its own package fetch so the
+        // user does not have to flip back to the
+        // Catalogue tab and click the entry.
+        if viewModel.selectedEntry?.name != snapshot.name {
+            if let entry = viewModel.entries.first(where: { $0.name == snapshot.name }) {
+                await viewModel.selectEntry(entry)
+            } else {
+                // No matching catalogue row — surface
+                // an error banner via the state
+                // machine.
+                viewModel.state = .error(
+                    "No matching catalogue entry for \(snapshot.name); the plugin may have been retired."
+                )
+                return
+            }
+        }
+        guard viewModel.package != nil else {
+            viewModel.state = .error("Package fetch failed for \(snapshot.name); please retry.")
+            return
+        }
+        let result = await viewModel.updateSelectedWithCapabilityGate()
+        if case .success(let url) = result {
+            pendingUpdateMessage = "Updated \(snapshot.name) at \(url.path)"
         }
     }
 
@@ -373,7 +710,7 @@ struct MarketplaceBrowserSheet: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Install failed")
+                    Text("Operation failed")
                         .font(.subheadline.weight(.semibold))
                     Text(reason)
                         .font(.caption)
@@ -383,6 +720,44 @@ struct MarketplaceBrowserSheet: View {
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.red.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        } else if case .uninstalled(let pluginName) = viewModel.state {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text("Uninstalled \(pluginName).")
+                    .font(.subheadline)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.green.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        } else if case .updated(let url) = viewModel.state {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Updated to latest version.")
+                        .font(.subheadline.weight(.semibold))
+                    Text(url.path)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.green.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        } else if let message = pendingUpdateMessage {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(.blue)
+                Text(message)
+                    .font(.subheadline)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.blue.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 6))
         }
     }
@@ -445,6 +820,83 @@ struct MarketplaceBrowserSheet: View {
                 }
             }
         )
+    }
+
+    /// `Alert(isPresented:)` binding for the uninstall
+    /// confirmation prompt. The alert is presented when
+    /// `pendingUninstallSnapshot` is non-`nil` and the
+    /// `Uninstall` button on the alert delegates back to
+    /// `confirmPendingUninstall()`. Setting the binding
+    /// to `false` (the alert's "Cancel" button) clears
+    /// the staged snapshot.
+    private var uninstallAlertBinding: Binding<Bool> {
+        Binding(
+            get: { pendingUninstallSnapshot != nil },
+            set: { presented in
+                if !presented {
+                    pendingUninstallSnapshot = nil
+                }
+            }
+        )
+    }
+
+    /// `List(selection:)` binding for the "Installed"
+    /// sidebar tab. We do not store the selected
+    /// snapshot on the VM (the snapshot is read off
+    /// `viewModel.installedPlugins` on every render);
+    /// the binding keeps the user's selection in
+    /// `@State` on the sheet so a switch back to the
+    /// Catalogue tab does not clear it. The selection
+    /// is keyed on `InstalledPluginSnapshot.id` (the
+    /// stringified absolute URL).
+    @State private var installedSelectionID: String?
+
+    private var installedSelectionBinding: Binding<String?> {
+        Binding(
+            get: { installedSelectionID },
+            set: { newID in
+                installedSelectionID = newID
+            }
+        )
+    }
+
+    /// Resolves the `installedSelectionID` to a
+    /// snapshot from `viewModel.installedPlugins`.
+    /// Returns `nil` when no row is selected or when
+    /// the selected id no longer matches a snapshot
+    /// (e.g. after a refresh removed the row).
+    private var currentInstalledSnapshot: MarketplaceBrowserViewModel.InstalledPluginSnapshot? {
+        guard let id = installedSelectionID else { return nil }
+        return viewModel.installedPlugins.first(where: { $0.id == id })
+    }
+
+    /// Confirm the pending uninstall alert. Sets the
+    /// VM's `selectedEntry` from the staged snapshot
+    /// (so the VM's `uninstallSelected()` can derive
+    /// the on-disk URL), then runs the uninstall and
+    /// rolls the selection state back to `.loaded` so
+    /// the Installed tab refreshes.
+    private func confirmPendingUninstall() {
+        guard let snapshot = pendingUninstallSnapshot else { return }
+        pendingUninstallSnapshot = nil
+        // Try to set `selectedEntry` to a matching
+        // catalogue row so the VM's
+        // `uninstallSelected()` can find the on-disk
+        // URL. If no catalogue row matches, the
+        // VM still works — the URL is derived from
+        // the entry filename and the install
+        // directory, and the marketplace uninstall
+        // path does not require a catalogue row.
+        if let entry = viewModel.entries.first(where: { $0.name == snapshot.name }) {
+            viewModel.selectedEntry = entry
+        }
+        viewModel.uninstallSelected()
+        // After uninstall, the Installed tab is
+        // refreshed by the VM; clear the local
+        // selection so the detail column falls back
+        // to the "Select an installed plugin"
+        // placeholder.
+        installedSelectionID = nil
     }
 
     // MARK: - Derived State

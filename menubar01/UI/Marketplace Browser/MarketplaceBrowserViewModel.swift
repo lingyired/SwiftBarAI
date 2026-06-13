@@ -17,6 +17,7 @@
 
 import Foundation
 import SwiftUI
+import os
 
 /// State machine for the marketplace browser sheet.
 ///
@@ -25,7 +26,11 @@ import SwiftUI
 /// flight), `loaded` (catalogue fetched, no entry selected yet),
 /// `installing` (install in flight), `installed(URL)` (success
 /// path — carries the on-disk folder URL for the success
-/// alert), and `error(String)` (failure path — carries a
+/// alert), `uninstalling` (uninstall in flight), `uninstalled`
+/// (uninstall success — carries the plugin name for the success
+/// banner), `updating` (update in flight), `updated(URL)` (update
+/// success — carries the on-disk folder URL for the success
+/// banner), and `error(String)` (failure path — carries a
 /// human-readable message for the error banner).
 enum MarketplaceBrowserState: Equatable {
     case idle
@@ -33,6 +38,10 @@ enum MarketplaceBrowserState: Equatable {
     case loaded
     case installing
     case installed(URL)
+    case uninstalling
+    case uninstalled(pluginName: String)
+    case updating
+    case updated(URL)
     case error(String)
 }
 
@@ -113,6 +122,22 @@ final class MarketplaceBrowserViewModel: ObservableObject {
     /// a ProgressView in the footer.
     var isInstalling: Bool {
         if case .installing = state { return true }
+        return false
+    }
+
+    /// `true` while an uninstall round-trip is in flight. The
+    /// sheet reads this to disable the Uninstall button and
+    /// show a ProgressView in the Installed tab.
+    var isUninstalling: Bool {
+        if case .uninstalling = state { return true }
+        return false
+    }
+
+    /// `true` while an update round-trip is in flight. The
+    /// sheet reads this to disable the Update button and
+    /// show a ProgressView in the Installed tab.
+    var isUpdating: Bool {
+        if case .updating = state { return true }
         return false
     }
 
@@ -390,7 +415,248 @@ final class MarketplaceBrowserViewModel: ObservableObject {
         entries = []
         selectedEntry = nil
         package = nil
+        installedPlugins = []
         state = .idle
+    }
+
+    // MARK: - Installed Plugins
+
+    /// Snapshot of a marketplace plugin currently installed
+    /// on disk. Built by
+    /// `MarketplaceBrowserViewModel.refreshInstalledPlugins()`.
+    /// The view renders one row per snapshot in the
+    /// "Installed" sidebar tab. `Identifiable` is keyed on
+    /// `id` so SwiftUI's `List` can drive selection and
+    /// `onDelete` / `onMove` modifiers can address a row
+    /// unambiguously.
+    struct InstalledPluginSnapshot: Identifiable, Equatable {
+        /// Folder name on disk (under
+        /// `<pluginDirectoryURL>/_marketplace/`). The
+        /// `id` is the absolute URL stringified so two
+        /// installs with the same folder name (which is
+        /// impossible in practice — the install path
+        /// refuses collisions — but defensive nonetheless)
+        /// would still get distinct rows.
+        let id: String
+        /// Absolute `file://` URL of the on-disk folder.
+        let url: URL
+        /// Plugin name from `manifest.json`. Falls back
+        /// to the folder name when the manifest omits
+        /// `name`.
+        let name: String
+        /// Version from `manifest.json` (e.g. `"1.0.0"`).
+        /// `nil` when the manifest omits it.
+        let version: String?
+        /// File modification date of the manifest, used
+        /// as a "last updated" hint. `nil` when the
+        /// attribute lookup fails.
+        let lastUpdated: Date?
+    }
+
+    /// Latest snapshot of the marketplace installs. The
+    /// "Installed" sidebar tab reads this to render its
+    /// list. Refreshed by
+    /// `refreshInstalledPlugins()`. Initialised to `[]`
+    /// so SwiftUI's `List` does not crash on first
+    /// appearance; the sidebar's `.task` modifier drives
+    /// the first refresh.
+    @Published private(set) var installedPlugins: [InstalledPluginSnapshot] = []
+
+    /// Re-read the on-disk marketplace installs and
+    /// rebuild `installedPlugins`. Called by the view on
+    /// appearance and after every install / uninstall /
+    /// update round-trip so the sidebar stays in sync
+    /// with the file system.
+    ///
+    /// The scan walks
+    /// `<pluginDirectoryURL>/_marketplace/*` and keeps
+    /// only the directories whose `manifest.json` loads
+    /// via `PluginManifestLoader.loadManifest(from:)`. A
+    /// corrupt directory is logged and skipped — the user
+    /// can recover by uninstalling it manually from
+    /// Finder (the marketplace uninstall refuses to
+    /// touch a corrupt directory by design).
+    func refreshInstalledPlugins() {
+        guard let pluginDirectoryURL = pluginManager?.pluginDirectoryURL else {
+            installedPlugins = []
+            return
+        }
+        let marketplaceRoot = pluginDirectoryURL
+            .appendingPathComponent(MarketplaceInstaller.defaultSubfolder, isDirectory: true)
+        let fileManager = FileManager.default
+        guard let enumerator = fileManager.enumerator(
+            at: marketplaceRoot,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            installedPlugins = []
+            return
+        }
+        var snapshots: [InstalledPluginSnapshot] = []
+        for case let entryURL as URL in enumerator {
+            // Top-level marketplace entries are always
+            // directories — the install path refuses to
+            // create anything else. Skip anything that
+            // somehow is not a directory.
+            var isDir: ObjCBool = false
+            guard fileManager.fileExists(atPath: entryURL.path, isDirectory: &isDir),
+                  isDir.boolValue
+            else { continue }
+            // Enumerate one level only: the marketplace
+            // install is a self-contained folder plugin.
+            enumerator.skipDescendants()
+            guard let manifest = PluginManifestLoader.loadManifest(from: entryURL) else {
+                os_log("refreshInstalledPlugins: skipping unparseable manifest at %{public}@",
+                       log: Log.plugin, type: .info, entryURL.path)
+                continue
+            }
+            let manifestURL = entryURL.appendingPathComponent(pluginManifestFileName)
+            let modificationDate = (try? manifestURL.resourceValues(forKeys: [.contentModificationDateKey]))?
+                .contentModificationDate
+            let name = manifest.name ?? entryURL.lastPathComponent
+            snapshots.append(InstalledPluginSnapshot(
+                id: entryURL.standardizedFileURL.path,
+                url: entryURL.standardizedFileURL,
+                name: name,
+                version: manifest.version,
+                lastUpdated: modificationDate
+            ))
+        }
+        // Sort alphabetically by name so the sidebar
+        // is stable across refreshes.
+        installedPlugins = snapshots.sorted { lhs, rhs in
+            lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+    }
+
+    // MARK: - Uninstall
+
+    /// Uninstall the marketplace plugin currently selected
+    /// in the sidebar.
+    ///
+    /// Computes the on-disk URL via
+    /// `PluginManager.marketplacePluginURL(pluginDirectoryURL:entryFilename:)`
+    /// (the same sanitisation rules the install path uses)
+    /// and delegates to
+    /// `PluginManager.uninstallMarketplacePlugin(at:)`. The
+    /// path-safety check inside the manager is the
+    /// canonical "is this a marketplace install?" gate —
+    /// the view model does not duplicate the check.
+    ///
+    /// Transitions:
+    /// - `no entry selected` → returns
+    ///   `.failure(.notAMarketplacePlugin(reason:))`. The
+    ///   Uninstall button is disabled in this state but a
+    ///   programmatic call should also fail loudly.
+    /// - `state → .uninstalling` → on success
+    ///   `.uninstalled(pluginName:)`. The success path
+    ///   refreshes `installedPlugins` so the sidebar
+    ///   drops the row.
+    /// - on failure: `.error(reason)` so the banner
+    ///   surfaces the underlying cause.
+    @discardableResult
+    func uninstallSelected() -> Result<Void, UninstallMarketplacePluginError> {
+        guard let entry = selectedEntry else {
+            return .failure(.notAMarketplacePlugin(
+                reason: "no catalogue entry is selected"
+            ))
+        }
+        // The entry filename is the manifest's `entry`
+        // field. When the manifest omits it the
+        // marketplace install path uses
+        // `FolderPlugin.inferEntryFilename(in:)`, but at
+        // uninstall time we only have the catalogue
+        // row (no manifest). The catalogue's `id` is
+        // the on-disk folder name's source of truth —
+        // fall back to it when the entry filename is
+        // empty.
+        let entryFilename = package?.entryFilename
+            ?? preferredEntryFilename(for: entry)
+        guard let pluginDirectoryURL = pluginManager?.pluginDirectoryURL else {
+            return .failure(.pluginDirectoryUnavailable)
+        }
+        guard let targetURL = PluginManager.marketplacePluginURL(
+            pluginDirectoryURL: pluginDirectoryURL,
+            entryFilename: entryFilename
+        ) else {
+            return .failure(.pluginDirectoryUnavailable)
+        }
+        guard let manager = pluginManager else {
+            return .failure(.pluginDirectoryUnavailable)
+        }
+        state = .uninstalling
+        let result = manager.uninstallMarketplacePlugin(at: targetURL)
+        switch result {
+        case .success:
+            let pluginName = selectedEntry?.name ?? entry.id
+            refreshInstalledPlugins()
+            state = .uninstalled(pluginName: pluginName)
+        case .failure(let error):
+            state = .error(humanReadable(error))
+        }
+        return result
+    }
+
+    /// Best-effort entry filename for an uninstall /
+    /// update when the package is not yet loaded. The
+    /// catalogue's `id` matches the entry script's
+    /// stem in the existing seed catalogue (`echo` →
+    /// `echo.sh`, `battery-watch` → `battery-watch.sh`,
+    /// `todays-date` → `todays-date.sh`); when the
+    /// catalogue ships an entry with a different
+    /// convention the package fetch supplies the real
+    /// filename. The fallback to `id + ".sh"` is a
+    /// safety net — the real caller always loads the
+    /// package first.
+    private func preferredEntryFilename(for entry: MarketplaceEntry) -> String {
+        if !entry.id.isEmpty {
+            return "\(entry.id).sh"
+        }
+        return "plugin.sh"
+    }
+
+    // MARK: - Update
+
+    /// Re-install the currently selected entry in place
+    /// through the M3 capability gate. Routes through
+    /// `PluginManager.updateMarketplacePluginWithCapabilityGate(...)`,
+    /// which runs `gate.verify(manifest:)` up-front so an
+    /// update that asks for a new capability the user
+    /// has not yet granted is refused with a
+    /// `.planFailed(reason:)` error (no re-prompt — the
+    /// user has to install the v2 separately and accept
+    /// the new capabilities in the prompt sheet).
+    ///
+    /// Requires a loaded package (the update needs the
+    /// manifest's bytes to write back to disk). The
+    /// view disables the Update button when no package
+    /// is loaded; a programmatic call without a
+    /// package returns the same `.notAMarketplacePlugin`
+    /// failure shape as the uninstall path.
+    @discardableResult
+    func updateSelectedWithCapabilityGate() async -> Result<URL, InstallMarketplacePluginError> {
+        guard let entry = selectedEntry, let package else {
+            return .failure(.planFailed(
+                reason: "no catalogue entry is selected or no package is loaded"
+            ))
+        }
+        guard let manager = pluginManager else {
+            return .failure(.pluginDirectoryUnavailable)
+        }
+        state = .updating
+        let result = await manager.updateMarketplacePluginWithCapabilityGate(
+            entry: entry,
+            package: package,
+            gate: pluginCapabilityGate
+        )
+        switch result {
+        case .success(let targetURL):
+            refreshInstalledPlugins()
+            state = .updated(targetURL)
+        case .failure(let error):
+            state = .error(humanReadable(error))
+        }
+        return result
     }
 
     // MARK: - Private helpers
@@ -422,6 +688,25 @@ final class MarketplaceBrowserViewModel: ObservableObject {
             // defensive coverage in case a future caller
             // surfaces the error in a different way.
             return "Permission to install \(pluginID) was declined (\(capabilities.count) capabilities)."
+        }
+    }
+
+    /// Maps an `UninstallMarketplacePluginError` to a
+    /// human-readable string for the error banner. The
+    /// messages are tuned for the "Installed" sidebar tab
+    /// — `notAMarketplacePlugin` reads as "this is not a
+    /// marketplace install" rather than dumping the path
+    /// prefix the manager logs.
+    private func humanReadable(_ error: UninstallMarketplacePluginError) -> String {
+        switch error {
+        case .pluginDirectoryUnavailable:
+            return "No plugin folder is configured. Set one in Preferences → Plugins."
+        case .notAMarketplacePlugin(let reason):
+            return "Refusing to uninstall: \(reason)"
+        case .notFound(let path):
+            return "Plugin is no longer on disk at \(path)."
+        case .removeFailed(let reason):
+            return "Could not remove plugin: \(reason)"
         }
     }
 }
