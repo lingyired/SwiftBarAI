@@ -1,5 +1,5 @@
 //Menubar strings
-"MB_SWIFT_BAR" = "SwiftBar";
+"MB_SWIFT_BAR" = "menubar01";
 "MB_UPDATING_MENU" = "Обновление…";
 "MB_LAST_UPDATED" = "Обновлено";
 "MB_ABOUT_SWIFT_BAR" = "О программе";

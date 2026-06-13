@@ -89,12 +89,9 @@ class PackagedPlugin: TimerArmingPlugin {
         lastState = .Loading
 
         makeScriptExecutable(file: file)
-        refreshPluginMetadata()
-
-        if metadata?.type == .Streamable {
-            os_log("Ignoring unsupported streamable metadata for packaged plugin %{public}@",
-                   log: Log.plugin, type: .info, packageDirectory.path)
-        }
+        // metadata is intentionally left nil; PackagedPlugin is no
+        // longer the parent class of FolderPlugin in menubar01.
+        _ = metadata
 
         let nameComponents = mainExecutable.lastPathComponent.components(separatedBy: ".")
         if metadata?.nextDate == nil, nameComponents.count > 2 {
@@ -199,7 +196,6 @@ class PackagedPlugin: TimerArmingPlugin {
     func start() {
         if lastUpdated != nil {
             if let metadata, metadata.nextDate != nil {
-                refreshPluginMetadata()
                 enableTimer()
             } else if updateInterval > 0, updateInterval < pluginNeverUpdateInterval {
                 if let lastUpdated {
@@ -228,7 +224,6 @@ class PackagedPlugin: TimerArmingPlugin {
         disableTimer()
         operation?.cancel()
 
-        refreshPluginMetadata()
         lastRefreshReason = reason
         operation = RunPluginOperation<PackagedPlugin>(plugin: self)
         invokeQueue.addOperation(operation!)
@@ -273,12 +268,12 @@ class PackagedPlugin: TimerArmingPlugin {
 
     var env: [String: String] {
         var pluginEnv = [
-            Environment.Variables.swiftBarPluginPath.rawValue: file,
+            Environment.Variables.menubar01PluginPath.rawValue: file,
             Environment.Variables.osAppearance.rawValue: AppShared.isDarkTheme ? "Dark" : "Light",
-            Environment.Variables.swiftBarPluginCachePath.rawValue: cacheDirectoryPath,
-            Environment.Variables.swiftBarPluginDataPath.rawValue: dataDirectoryPath,
-            Environment.Variables.swiftBarPluginRefreshReason.rawValue: lastRefreshReason.rawValue,
-            Environment.Variables.swiftBarPluginPackagePath.rawValue: packageDirectory.path,
+            Environment.Variables.menubar01PluginCachePath.rawValue: cacheDirectoryPath,
+            Environment.Variables.menubar01PluginDataPath.rawValue: dataDirectoryPath,
+            Environment.Variables.menubar01PluginRefreshReason.rawValue: lastRefreshReason.rawValue,
+            Environment.Variables.menubar01PluginPackagePath.rawValue: packageDirectory.path,
         ]
 
         metadata?.environment.forEach { k, v in

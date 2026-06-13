@@ -2,14 +2,9 @@ import Cocoa
 import Foundation
 import SwifCron
 
-enum PluginMetadataType: String {
-    case bitbar
-    case xbar
-    case swiftbar
-}
+// MARK: - Plugin Variable Support (manifest.json parameters)
 
-// MARK: - Plugin Variable Support (xbar.var)
-
+/// Type of a user-configurable parameter declared in `manifest.json`.
 enum PluginVariableType: String, Codable {
     case string
     case number
@@ -17,6 +12,10 @@ enum PluginVariableType: String, Codable {
     case select
 }
 
+/// A user-configurable parameter declared in `manifest.json` under
+/// `parameters: [...]`. Values are persisted by `PluginVariableStorage`
+/// in `<plugin-folder>/vars.json` and surface to the entry script as
+/// `MENUBAR01_PARAM_<NAME>` environment variables.
 struct PluginVariable: Codable, Identifiable, Hashable {
     var id: String { name }
     let type: PluginVariableType
@@ -34,40 +33,15 @@ struct PluginVariable: Codable, Identifiable, Hashable {
     }
 }
 
-enum PluginMetadataOption: String, CaseIterable {
-    case title
-    case version
-    case author
-    case github = "author.github"
-    case desc
-    case about
-    case image
-    case dependencies
-    case droptypes
-    case schedule
-    case type
-    case hideAbout
-    case hideRunInTerminal
-    case hideLastUpdated
-    case hideDisablePlugin
-    case hideSwiftBar
-    case environment
-    case runInBash
-    case refreshOnOpen
-    case persistentWebView
-    case useTrailingStreamSeparator
-    case alwaysVisible
+// MARK: - PluginMetadata
 
-    var optionType: [PluginMetadataType] {
-        switch self {
-        case .title, .version, .author, .github, .desc, .about, .image, .dependencies:
-            [.bitbar, .xbar]
-        case .runInBash, .environment, .droptypes, .schedule, .type, .hideAbout, .hideRunInTerminal, .hideLastUpdated, .hideDisablePlugin, .hideSwiftBar, .refreshOnOpen, .persistentWebView, .useTrailingStreamSeparator, .alwaysVisible:
-            [.swiftbar]
-        }
-    }
-}
-
+/// Runtime model holding a plugin's metadata.
+///
+/// All fields are populated from `manifest.json` at plugin load time by
+/// `FolderPlugin.applyManifestOverrides(_:)`. There is no tag-based
+/// script-header parser and no extended-attribute (xattr) cache: the
+/// `manifest.json` file is the single source of truth, so this class is
+/// a plain data holder used by the menu, preferences, and debug layers.
 class PluginMetadata: ObservableObject {
     @Published var name: String
     @Published var version: String
@@ -84,7 +58,7 @@ class PluginMetadata: ObservableObject {
     @Published var hideRunInTerminal: Bool
     @Published var hideLastUpdated: Bool
     @Published var hideDisablePlugin: Bool
-    @Published var hideSwiftBar: Bool
+    @Published var hideMenubar01: Bool
     @Published var environment: [String: String]
     @Published var runInBash: Bool
     @Published var refreshOnOpen: Bool
@@ -99,18 +73,27 @@ class PluginMetadata: ObservableObject {
             && author.isEmpty
             && github.isEmpty
             && desc.isEmpty
-            && previewImageURL != nil
+            && previewImageURL == nil
             && dependencies.isEmpty
-            && aboutURL != nil
+            && aboutURL == nil
     }
 
+    /// Earliest upcoming fire time across the `|`-separated cron expressions
+    /// in `schedule`, or `nil` when no schedule is set or none of the
+    /// expressions parse.
     var nextDate: Date? {
-        // parse schedule string and return the minimum date
         let date = schedule.components(separatedBy: "|").compactMap { try? SwifCron($0).next() }.reduce(Date.distantFuture, min)
         return date == Date.distantFuture ? nil : date
     }
 
-    init(name: String = "", version: String = "", author: String = "", github: String = "", desc: String = "", previewImageURL: URL? = nil, dependencies: [String] = [], aboutURL: URL? = nil, dropTypes: [String] = [], schedule: String = "", type: PluginType = .Executable, hideAbout: Bool = false, hideRunInTerminal: Bool = false, hideLastUpdated: Bool = false, hideDisablePlugin: Bool = false, hideSwiftBar: Bool = false, environment: [String: String] = [:], runInBash: Bool = true, refreshOnOpen: Bool = false, persistentWebView: Bool = false, useTrailingStreamSeparator: Bool = false, alwaysVisible: Bool = false, variables: [PluginVariable] = []) {
+    var shouldRunInBash: Bool {
+        if PreferencesStore.shared.disableBashWrapper {
+            return false
+        }
+        return runInBash
+    }
+
+    init(name: String = "", version: String = "", author: String = "", github: String = "", desc: String = "", previewImageURL: URL? = nil, dependencies: [String] = [], aboutURL: URL? = nil, dropTypes: [String] = [], schedule: String = "", type: PluginType = .Executable, hideAbout: Bool = false, hideRunInTerminal: Bool = false, hideLastUpdated: Bool = false, hideDisablePlugin: Bool = false, hideMenubar01: Bool = false, environment: [String: String] = [:], runInBash: Bool = true, refreshOnOpen: Bool = false, persistentWebView: Bool = false, useTrailingStreamSeparator: Bool = false, alwaysVisible: Bool = false, variables: [PluginVariable] = []) {
         self.name = name
         self.version = version
         self.author = author
@@ -126,7 +109,7 @@ class PluginMetadata: ObservableObject {
         self.hideRunInTerminal = hideRunInTerminal
         self.hideLastUpdated = hideLastUpdated
         self.hideDisablePlugin = hideDisablePlugin
-        self.hideSwiftBar = hideSwiftBar
+        self.hideMenubar01 = hideMenubar01
         self.environment = environment
         self.runInBash = runInBash
         self.refreshOnOpen = refreshOnOpen
@@ -136,273 +119,20 @@ class PluginMetadata: ObservableObject {
         self.variables = variables
     }
 
-    var shouldRunInBash: Bool {
-        if PreferencesStore.shared.disableBashWrapper {
-            return false
-        }
-        return runInBash
-    }
-
-    static func parser(script: String) -> PluginMetadata {
-        func getTagValue(tag: PluginMetadataOption) -> String {
-            let values = tag.optionType.compactMap { prefix -> String? in
-                let openTag = "<\(prefix).\(tag.rawValue)>"
-                let closeTag = "</\(prefix).\(tag.rawValue)>"
-                return script.slice(from: openTag, to: closeTag)
-            }
-            return values.last ?? ""
-        }
-
-        // Parse variable tags like <xbar.var>string(VAR_LOCATION="Cupertino"): Your location.</xbar.var>
-        // or <xbar.var>select(VAR_STYLE="normal"): Which style. [small, normal, big]</xbar.var>
-        func parseVarTags() -> [PluginVariable] {
-            var variables: [PluginVariable] = []
-
-            // Pattern to match: type(VAR_NAME="default"): description. [options]
-            // Groups: 1=type, 2=name, 3=default, 4=description+options
-            let pattern = #"<(?:xbar|swiftbar)\.var>\s*(string|number|boolean|select)\s*\(\s*([^=\s]+)\s*=\s*"([^"]*)"\s*\)\s*:\s*(.*?)\s*<\/(?:xbar|swiftbar)\.var>"#
-
-            do {
-                let regex = try NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
-                let range = NSRange(location: 0, length: script.utf16.count)
-                let matches = regex.matches(in: script, options: [], range: range)
-
-                for match in matches {
-                    guard match.numberOfRanges > 4,
-                          let typeRange = Range(match.range(at: 1), in: script),
-                          let nameRange = Range(match.range(at: 2), in: script),
-                          let defaultRange = Range(match.range(at: 3), in: script),
-                          let descRange = Range(match.range(at: 4), in: script)
-                    else { continue }
-
-                    let typeStr = String(script[typeRange])
-                    let name = String(script[nameRange])
-                    let defaultValue = String(script[defaultRange])
-                    let descAndOptions = String(script[descRange])
-
-                    guard let varType = PluginVariableType(rawValue: typeStr) else { continue }
-
-                    // Parse description and options (for select type)
-                    var description = descAndOptions
-                    var options: [String] = []
-
-                    // Check for options in square brackets: [option1, option2, ...]
-                    if let bracketStart = descAndOptions.lastIndex(of: "["),
-                       let bracketEnd = descAndOptions.lastIndex(of: "]"),
-                       bracketStart < bracketEnd {
-                        description = String(descAndOptions[..<bracketStart]).trimmingCharacters(in: .whitespaces)
-                        let optionsStr = descAndOptions[descAndOptions.index(after: bracketStart)..<bracketEnd]
-                        options = optionsStr.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                    }
-
-                    // Remove trailing period from description if present
-                    if description.hasSuffix(".") {
-                        description = String(description.dropLast())
-                    }
-
-                    let variable = PluginVariable(
-                        type: varType,
-                        name: name,
-                        defaultValue: defaultValue,
-                        description: description,
-                        options: options
-                    )
-                    variables.append(variable)
-                }
-            } catch {
-                print("Error parsing variable tags: \(error)")
-            }
-
-            return variables
-        }
-
-        var imageURL: URL?
-        if !getTagValue(tag: .image).isEmpty {
-            imageURL = URL(string: getTagValue(tag: .image))
-        }
-        var aboutURL: URL?
-        if !getTagValue(tag: .about).isEmpty {
-            aboutURL = URL(string: getTagValue(tag: .about))
-        }
-
-        // Parse variables from var tags
-        let variables = parseVarTags()
-
-        // Parse environment from both environment tag and var tags
-        var environment: [String: String] = [:]
-
-        // First, add default values from variables
-        for variable in variables {
-            environment[variable.name] = variable.defaultValue
-        }
-
-        // Then, parse the environment tag if present
-        if !getTagValue(tag: .environment).isEmpty {
-            let envString = getTagValue(tag: .environment)
-
-            // Handle both formats: with brackets [...] and without
-            let processedString = envString.starts(with: "[") && envString.hasSuffix("]")
-                ? String(envString.dropFirst().dropLast())
-                : envString
-
-            // Try both separators: = and :
-            for strSegment in processedString.split(separator: ",") {
-                let str = String(strSegment) // Convert Substring to String for easier processing
-                let equalsIndex = str.firstIndex(of: "=")
-                let colonIndex = str.firstIndex(of: ":")
-
-                var key: String?
-                var value: String?
-
-                if let eqIdx = equalsIndex, let colIdx = colonIndex {
-                    // Both separators are present, decide which one is primary
-                    if str.distance(from: str.startIndex, to: eqIdx) < str.distance(from: str.startIndex, to: colIdx) {
-                        // '=' comes first, so it's the separator
-                        key = str[..<eqIdx].trimmingCharacters(in: .whitespaces)
-                        value = str[str.index(after: eqIdx)...].trimmingCharacters(in: .whitespaces)
-                    } else {
-                        // ':' comes first or at the same position (though same position is unlikely for distinct chars), so it's the separator
-                        key = str[..<colIdx].trimmingCharacters(in: .whitespaces)
-                        value = str[str.index(after: colIdx)...].trimmingCharacters(in: .whitespaces)
-                    }
-                } else if let eqIdx = equalsIndex {
-                    // Only '=' is present
-                    key = str[..<eqIdx].trimmingCharacters(in: .whitespaces)
-                    value = str[str.index(after: eqIdx)...].trimmingCharacters(in: .whitespaces)
-                } else if let colIdx = colonIndex {
-                    // Only ':' is present
-                    key = str[..<colIdx].trimmingCharacters(in: .whitespaces)
-                    value = str[str.index(after: colIdx)...].trimmingCharacters(in: .whitespaces)
-                }
-
-                if let finalKey = key, let finalValue = value, !finalKey.isEmpty {
-                    environment[finalKey] = finalValue
-                }
-            }
-        }
-
-        return PluginMetadata(name: getTagValue(tag: .title),
-                              version: getTagValue(tag: .version),
-                              author: getTagValue(tag: .author),
-                              github: getTagValue(tag: .github),
-                              desc: getTagValue(tag: .desc),
-                              previewImageURL: imageURL,
-                              dependencies: getTagValue(tag: .dependencies).components(separatedBy: ","),
-                              aboutURL: aboutURL,
-                              dropTypes: getTagValue(tag: .droptypes).components(separatedBy: ","),
-                              schedule: getTagValue(tag: .schedule),
-                              type: PluginType(rawValue: getTagValue(tag: .type).capitalized) ?? .Executable,
-                              hideAbout: getTagValue(tag: .hideAbout) == "true",
-                              hideRunInTerminal: getTagValue(tag: .hideRunInTerminal) == "true",
-                              hideLastUpdated: getTagValue(tag: .hideLastUpdated) == "true",
-                              hideDisablePlugin: getTagValue(tag: .hideDisablePlugin) == "true",
-                              hideSwiftBar: getTagValue(tag: .hideSwiftBar) == "true",
-                              environment: environment,
-                              runInBash: getTagValue(tag: .runInBash) == "false" ? false : true,
-                              refreshOnOpen: getTagValue(tag: .refreshOnOpen) == "true" ? true : false,
-                              persistentWebView: getTagValue(tag: .persistentWebView) == "true" ? true : false,
-                              useTrailingStreamSeparator: getTagValue(tag: .useTrailingStreamSeparator) == "true" ? true : false,
-                              alwaysVisible: getTagValue(tag: .alwaysVisible) == "true",
-                              variables: variables)
-    }
-
-    static func parser(fileURL: URL) -> PluginMetadata? {
-        let candidateKeys = ["com.lingyi.menubar01", "com.ameba.SwiftBar"]
-        for key in candidateKeys {
-            guard let base64 = try? fileURL.extendedAttribute(forName: key),
-                  let decodedData = Data(base64Encoded: base64),
-                  let decodedString = String(data: decodedData, encoding: .utf8)
-            else {
-                continue
-            }
-            return parser(script: decodedString)
-        }
-        return nil
-    }
-
-    static func writeMetadata(metadata: PluginMetadata, fileURL: URL) {
-        let metadataString = metadata.genereteMetadataString()
-        if let encodedString = metadataString.data(using: .utf8)?.base64EncodedData() {
-            try? fileURL.setExtendedAttribute(data: encodedString, forName: "com.lingyi.menubar01")
-            // Migrate: clear the legacy key so the next read uses the new key.
-            try? fileURL.removeExtendedAttribute(forName: "com.ameba.SwiftBar")
-            return
-        }
-    }
-
-    static func cleanMetadata(fileURL: URL) {
-        try? fileURL.removeExtendedAttribute(forName: "com.lingyi.menubar01")
-        try? fileURL.removeExtendedAttribute(forName: "com.ameba.SwiftBar")
-    }
-
+    /// Returns a default-valued `PluginMetadata`. Used by the preferences
+    /// panel as the initial state before a real plugin is bound.
     static func empty() -> PluginMetadata {
         PluginMetadata()
-    }
-
-    func genereteMetadataString() -> String {
-        var result = ""
-        for option in PluginMetadataOption.allCases {
-            var value = ""
-            switch option {
-            case .title:
-                value = name
-            case .version:
-                value = version
-            case .author:
-                value = author
-            case .github:
-                value = github
-            case .desc:
-                value = desc
-            case .about:
-                value = aboutURL?.absoluteString ?? ""
-            case .image:
-                value = previewImageURL?.absoluteString ?? ""
-            case .dependencies:
-                value = dependencies.joined(separator: ",")
-            case .droptypes:
-                value = dropTypes.joined(separator: ",")
-            case .schedule:
-                value = schedule
-            case .type:
-                value = type == .Streamable ? type.rawValue : ""
-            case .hideAbout:
-                value = hideAbout ? "true" : ""
-            case .hideRunInTerminal:
-                value = hideRunInTerminal ? "true" : ""
-            case .hideLastUpdated:
-                value = hideLastUpdated ? "true" : ""
-            case .hideDisablePlugin:
-                value = hideDisablePlugin ? "true" : ""
-            case .hideSwiftBar:
-                value = hideSwiftBar ? "true" : ""
-            case .environment:
-                value = environment.isEmpty ? "" : "[\(environment.map { "\($0.key)=\($0.value)" }.joined(separator: ","))]"
-            case .runInBash:
-                value = runInBash ? "" : "false"
-            case .refreshOnOpen:
-                value = refreshOnOpen ? "true" : ""
-            case .persistentWebView:
-                value = persistentWebView ? "true" : ""
-            case .useTrailingStreamSeparator:
-                value = useTrailingStreamSeparator ? "true" : ""
-            case .alwaysVisible:
-                value = alwaysVisible ? "true" : ""
-            }
-            guard !value.isEmpty else { continue }
-            let tag = option
-            let prefix = tag.optionType.last!.rawValue
-            result.append("\n<\(prefix).\(tag)>\(value)</\(prefix).\(tag)>")
-        }
-
-        return result.trimmingCharacters(in: .whitespaces)
     }
 }
 
 // MARK: - Plugin Variable Storage
 
+/// Persists the user-customised values of the `PluginVariable`s declared
+/// in `manifest.json`. The file lives at `<plugin-folder>/vars.json`,
+/// next to the entry script.
 class PluginVariableStorage {
-    /// Get the variables file URL for a plugin (stored next to the plugin file, matching xbar behavior)
+    /// File URL of the on-disk `vars.json` for a given entry script path.
     static func variablesFileURL(forPluginFile pluginFile: String) -> URL {
         let pluginURL = URL(fileURLWithPath: pluginFile)
         return pluginURL.deletingPathExtension()
@@ -410,7 +140,8 @@ class PluginVariableStorage {
             .appendingPathExtension("json")
     }
 
-    /// Load user-configured variable values from the plugin's vars.json file
+    /// Loads the user's saved values for the given plugin's `vars.json`.
+    /// Returns an empty dictionary if the file is missing or unparseable.
     static func loadUserValues(pluginFile: String) -> [String: String] {
         let fileURL = variablesFileURL(forPluginFile: pluginFile)
 
@@ -424,7 +155,7 @@ class PluginVariableStorage {
         return values
     }
 
-    /// Save user-configured variable values to the plugin's vars.json file
+    /// Persists the user-customised variable values to `vars.json`.
     static func saveUserValues(_ values: [String: String], pluginFile: String) {
         let fileURL = variablesFileURL(forPluginFile: pluginFile)
         let encoder = JSONEncoder()
@@ -435,7 +166,8 @@ class PluginVariableStorage {
         }
     }
 
-    /// Build environment dictionary by merging defaults with user values
+    /// Builds the final `key → value` map by combining the parameter
+    /// schema's defaults with any user overrides.
     static func buildEnvironment(variables: [PluginVariable], userValues: [String: String]) -> [String: String] {
         var environment: [String: String] = [:]
 
@@ -445,15 +177,5 @@ class PluginVariableStorage {
         }
 
         return environment
-    }
-}
-
-extension String {
-    func slice(from: String, to: String) -> String? {
-        (range(of: from)?.upperBound).flatMap { substringFrom in
-            (range(of: to, range: substringFrom ..< endIndex)?.lowerBound).map { substringTo in
-                String(self[substringFrom ..< substringTo])
-            }
-        }
     }
 }

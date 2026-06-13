@@ -1,5 +1,5 @@
 //Menubar strings
-"MB_SWIFT_BAR" = "SwiftBar";
+"MB_SWIFT_BAR" = "menubar01";
 "MB_UPDATING_MENU" = "Bijwerken…";
 "MB_LAST_UPDATED" = "Bijgewerkt";
 "MB_ABOUT_SWIFT_BAR" = "Over";
@@ -35,9 +35,9 @@
 "PF_CHANGE_PATH" = "Wijzig…";
 "PF_SHELL" = "Shell";
 "PF_TERMINAL" = "Shell-applicatie";
-"PF_HIDE_SWIFTBAR_ICON" = "Verberg SwiftBar-icoon";
-"PF_STEALTH_MODE" = "Hide SwiftBar in the menu bar";
-"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "SwiftBar-menu altijd weergeven";
+"PF_HIDE_SWIFTBAR_ICON" = "Verberg menubar01-icoon";
+"PF_STEALTH_MODE" = "Hide menubar01 in the menu bar";
+"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "menubar01-menu altijd weergeven";
 "PF_CHECK_FOR_UPDATE" = "Updates";
 "PF_CHECK_FOR_UPDATES" = "Controleer op updates…";
 "PR_INCLUDE_BETA_UPDATES" = "Pre-releaseversies Opnemen";
@@ -85,7 +85,7 @@
 "APP_FOLDER_HAS_TOO_MANY_FILES_MESSAGE" = "Wauw! De map die je hebt gekozen bevat heel veel bestanden. Kies een andere map, alsjeblieft. Als je een map genaamd 'node_modules' hebt die vereist is voor een plug-in, verberg die dan.";
 "APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Kies een locatie voor menubar01 plug-ins";
 "APP_CHOOSE_PLUGIN_FOLDER_INFO" = "Selecteer een map voor de plug-inverzameling";
-"APP_QUIT" = "Stop SwiftBar";
+"APP_QUIT" = "Stop menubar01";
 "OK" = "OK";
 "CANCEL" = "Annuleer";
 

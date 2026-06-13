@@ -14,10 +14,10 @@ enum Localizable {
     }
 
     enum MenuBar: String {
-        case SwiftBar = "MB_SWIFT_BAR"
+        case Menubar01 = "MB_SWIFT_BAR"
         case UpdatingMenu = "MB_UPDATING_MENU"
         case LastUpdated = "MB_LAST_UPDATED"
-        case AboutSwiftBar = "MB_ABOUT_SWIFT_BAR"
+        case AboutMenubar01 = "MB_ABOUT_SWIFT_BAR"
         case AboutPlugin = "MB_ABOUT_PLUGIN"
         case RunInTerminal = "MB_RUN_IN_TERMINAL"
         case DisablePlugin = "MB_DISABLE_PLUGIN"
@@ -53,9 +53,9 @@ enum Localizable {
         case LaunchAtLogin = "PR_LAUNCH_AT_LOGIN"
         case IncludeBetaUpdates = "PR_INCLUDE_BETA_UPDATES"
         case ShareCrashReports = "PR_SHARE_CRASH_REPORTS"
-        case HideSwiftBarIcon = "PF_HIDE_SWIFTBAR_ICON"
+        case HideMenubar01Icon = "PF_HIDE_SWIFTBAR_ICON"
         case StealthMode = "PF_STEALTH_MODE"
-        case AlwaysShowSwiftBarMenu = "PF_ALWAYS_SHOW_SWIFTBAR_MENU"
+        case AlwaysShowMenubar01Menu = "PF_ALWAYS_SHOW_SWIFTBAR_MENU"
         case UpdateLabel = "PF_CHECK_FOR_UPDATE"
         case CheckForUpdates = "PF_CHECK_FOR_UPDATES"
         case NoPluginsMessage = "PF_NO_PLUGINS_MESSAGE"

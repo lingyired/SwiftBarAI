@@ -20,7 +20,7 @@ extension URL {
 }
 
 /// Returns `true` when `url` points at a directory that contains a
-/// `manifest.json` — i.e. a folder-based SwiftBar plugin.
+/// `manifest.json` — i.e. a folder-based menubar01 plugin.
 func isManifestPluginDirectory(_ url: URL) -> Bool {
     var isDir: ObjCBool = false
     guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir),
@@ -62,7 +62,7 @@ func packagedPluginDirectory(for fileURL: URL) -> URL? {
     // (e.g. `/tmp/weather/plugin.sh` and `/tmp/weather/plugin.py`) collapse
     // into a single plugin during sync. We require the file to look like an
     // entry script (`.sh`, `.py`, `.js`, ...) and the parent to look like a
-    // plain directory name (not a dotfile, not the `.swiftbarignore` parent).
+    // plain directory name (not a dotfile, not a legacy `.swiftbar` suffix).
     if looksLikeFolderPluginEntry(fileURL),
        isPlausibleFolderName(parentDirectory.lastPathComponent)
     {
@@ -95,13 +95,12 @@ private func looksLikeFolderPluginEntry(_ fileURL: URL) -> Bool {
 }
 
 /// Heuristic check for "this directory name is reasonable for a folder plugin".
-/// Excludes dotfiles, `.swiftbarignore`, `.swiftbar` (legacy), and bare names
-/// that look like the plugin directory itself (e.g. `weather.swiftbar`).
+/// Excludes dotfiles and legacy `.swiftbar` suffixes. There is no ignore-file
+/// mechanism in menubar01 — the manifest is the only opt-in.
 private func isPlausibleFolderName(_ name: String) -> Bool {
     !name.isEmpty
         && !name.hasPrefix(".")
         && !name.hasSuffix(".swiftbar")
-        && name != "swiftbarignore"
 }
 
 /// Returns a canonical path used to identify a plugin across sync cycles.
@@ -218,8 +217,8 @@ func shouldLoadPluginFile(at fileURL: URL, makePluginExecutable: Bool, fileManag
     return true
 }
 
-func shouldShowDefaultBarItem(hasVisiblePlugins: Bool, stealthMode: Bool, alwaysShowSwiftBarMenu: Bool) -> Bool {
-    !stealthMode && (!hasVisiblePlugins || alwaysShowSwiftBarMenu)
+func shouldShowDefaultBarItem(hasVisiblePlugins: Bool, stealthMode: Bool, alwaysShowMenubar01Menu: Bool) -> Bool {
+    !stealthMode && (!hasVisiblePlugins || alwaysShowMenubar01Menu)
 }
 
 private let knownMenuBarManagerNames = [
@@ -246,83 +245,6 @@ func statusItemPersistenceEntries(in defaults: [String: Any]) -> [String] {
         .map { key in
             "\(key) = \(String(describing: defaults[key] ?? ""))"
         }
-}
-
-// MARK: - .swiftbarignore helpers
-
-/// Parses the content of a `.swiftbarignore` file into a list of glob patterns.
-/// Supports full-line `#` comments, blank lines, and inline `#` comments.
-func parseIgnorePatterns(_ content: String) -> [String] {
-    let lines = content
-        .replacingOccurrences(of: "\r\n", with: "\n")
-        .replacingOccurrences(of: "\r", with: "\n")
-        .split(separator: "\n", omittingEmptySubsequences: false)
-        .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
-
-    var patterns: [String] = []
-    for line in lines {
-        // Skip blank lines and full-line comments
-        guard !line.isEmpty, !line.hasPrefix("#") else { continue }
-
-        // Strip trailing inline comments (e.g. "*.txt  # notes")
-        let stripped: String
-        if let hashIndex = line.firstIndex(of: "#") {
-            stripped = String(line[..<hashIndex]).trimmingCharacters(in: .whitespaces)
-        } else {
-            stripped = line
-        }
-
-        if !stripped.isEmpty {
-            patterns.append(stripped)
-        }
-    }
-    return patterns
-}
-
-/// Translates a `.swiftbarignore` glob pattern into an `NSRegularExpression` body.
-/// Glob semantics:
-///   `**/`  -> any number of directories (including none)
-///   `*`    -> any characters within a single path segment
-///   `?`    -> a single character within a path segment
-///   `/`    -> a literal path separator
-func globToRegex(_ pattern: String) -> String {
-    // `NSRegularExpression.escapedPattern` also escapes `/` (as `\/`), so the
-    // `**/` token has to be substituted on the *escaped* string as `\*\*\/`.
-    // Doing the substitution before escaping would never match a backslash.
-    let escaped = NSRegularExpression.escapedPattern(for: pattern)
-    return escaped
-        .replacingOccurrences(of: "\\*\\*\\/", with: "(?:.*/)?")
-        .replacingOccurrences(of: "\\*", with: "[^/]*")
-        .replacingOccurrences(of: "\\?", with: "[^/]")
-}
-
-/// Returns true when the given `url` (expressed relative to `baseURL`) matches
-/// any of the supplied ignore patterns. Patterns are matched against both the
-/// relative path and the file name so that a bare `*.txt` ignores files in
-/// sub-directories as well as at the root.
-func shouldBeIgnored(url: URL, patterns: [String], baseURL: URL) -> Bool {
-    let relativePath = url.path.replacingOccurrences(of: baseURL.path + "/", with: "")
-    let filename = url.lastPathComponent
-
-    for pattern in patterns {
-        // 1) Exact, case-sensitive match against the file's relative path
-        if relativePath == pattern { return true }
-        // 2) Exact match against the file's name only (covers "*.ext" style rules)
-        if filename == pattern { return true }
-        // 3) Treat pattern as a glob: match against both the relative path
-        //    AND the filename so a bare "*.txt" still excludes files in sub-dirs.
-        let escapedPattern = globToRegex(pattern)
-        if let regex = try? NSRegularExpression(pattern: "^\(escapedPattern)$", options: []) {
-            let filenameRange = NSRange(location: 0, length: filename.utf16.count)
-            let pathRange = NSRange(location: 0, length: relativePath.utf16.count)
-            if regex.firstMatch(in: filename, options: [], range: filenameRange) != nil ||
-                regex.firstMatch(in: relativePath, options: [], range: pathRange) != nil
-            {
-                return true
-            }
-        }
-    }
-    return false
 }
 
 func systemReportCandidateStatus(for fileURL: URL, makePluginExecutable: Bool, fileManager: FileManager = .default) -> String {
@@ -399,10 +321,10 @@ func mergePluginsPreservingOrder(existingPlugins: [Plugin], removedPluginIDs: Se
     var consumedReloadedFiles = Set<String>()
     var mergedPlugins: [Plugin] = []
 
-    // Only file-backed plugins (Executable/Streamable) are eligible for in-place replacement.
+    // Only file-backed plugins (Executable) are eligible for in-place replacement.
     for plugin in existingPlugins where !removedPluginIDs.contains(plugin.id) {
         let syncPath = pluginSyncPath(for: plugin)
-        guard (plugin.type == .Executable || plugin.type == .Streamable),
+        guard plugin.type == .Executable,
               reloadedPluginSyncPaths.contains(syncPath),
               let replacementPlugin = reloadedPluginsBySyncPath[syncPath]
         else {
@@ -448,7 +370,7 @@ class PluginManager: ObservableObject {
     private static let directoryChangeDebounceInterval: TimeInterval = 0.5
 
     var filePlugins: [Plugin] {
-        plugins.filter { $0.type == .Streamable || $0.type == .Executable }
+        plugins.filter { $0.type == .Executable }
     }
 
     var ephemeralPlugins: [EphemeralPlugin] {
@@ -464,14 +386,6 @@ class PluginManager: ObservableObject {
         prefs.pluginDirectoryResolvedURL
     }
 
-    var ignoreFileContent: String? {
-        guard let url = pluginDirectoryURL,
-              case let ignoreFile = url.appendingPathComponent(".swiftbarignore"),
-              FileManager.default.fileExists(atPath: ignoreFile.path),
-              let content = try? String(contentsOfFile: ignoreFile.path)
-        else { return nil }
-        return content
-    }
 
     var disablePluginCancellable: AnyCancellable?
     var osAppearanceChangeCancellable: AnyCancellable?
@@ -544,7 +458,7 @@ class PluginManager: ObservableObject {
                 })
             }
 
-            // The default SwiftBar `MenubarItem` (the one without a
+            // The default menubar01 `MenubarItem` (the one without a
             // plugin) hosts the inlined "Toggle Plugins" section.
             // When the set of enabled plugins changes (add / remove
             // / enable / disable), we refresh the section so the
@@ -665,7 +579,7 @@ class PluginManager: ObservableObject {
         shouldShowDefaultBarItem(
             hasVisiblePlugins: hasVisiblePlugins,
             stealthMode: prefs.stealthMode,
-            alwaysShowSwiftBarMenu: prefs.alwaysShowSwiftBarMenu
+            alwaysShowMenubar01Menu: prefs.alwaysShowMenubar01Menu
         ) ? barItem.show() : barItem.hide()
         os_log("updateDefaultBarItemVisibility: default barItem.isVisible=%{public}@, defaultObjId=%{public}d, pluginObjIds=%{public}@",
                log: Log.plugin, type: .info,
@@ -775,27 +689,15 @@ class PluginManager: ObservableObject {
             return (files, dirs)
         }
 
-        func filterFilesAndDirs(files: [URL], dirs: [URL], ignoreContent: String) -> (filteredFiles: [URL], filteredDirs: [URL]) {
-            let ignorePatterns = parseIgnorePatterns(ignoreContent)
-            guard !ignorePatterns.isEmpty else { return (files, dirs) }
-            let filteredFiles = files.filter { !shouldBeIgnored(url: $0, patterns: ignorePatterns, baseURL: url) }
-            let filteredDirs = dirs.filter { !shouldBeIgnored(url: $0, patterns: ignorePatterns, baseURL: url) }
-            return (filteredFiles, filteredDirs)
-        }
-
         // The enumerator is recursive, so a single pass returns every file at every
         // depth. Filtering once on that result is sufficient — the previous code
         // also re-enumerated sub-directories which produced duplicate entries and
         // silently dropped any sub-directories that should have been ignored.
-        var (files, dirs) = filter(url: url)
-        if let ignoreFileContent {
-            (files, dirs) = filterFilesAndDirs(files: files, dirs: dirs, ignoreContent: ignoreFileContent)
-        }
 
         // Deduplicate files based on resolved paths
+        let (files, _) = filter(url: url)
         var uniqueFiles: [URL] = []
         var seenPaths = Set<String>()
-
         for file in files {
             let resolvedPath = file.resolvingSymlinksInPath().path
             if !seenPaths.contains(resolvedPath) {
@@ -862,7 +764,7 @@ class PluginManager: ObservableObject {
             shortcutPlugins.removeAll()
             menuBarItems.removeAll()
             filePluginStates.removeAll()
-            // Preserve the original escape hatch: if everything is gone, show SwiftBar
+            // Preserve the original escape hatch: if everything is gone, show menubar01
             // even in stealth mode so the user can recover.
             barItem.show()
             persistLatestSystemReport(reason: "no-loadable-plugins")
@@ -1261,7 +1163,7 @@ extension PluginManager {
             "Configured Shell: \(prefs.shell.rawValue)",
             "Configured Terminal: \(prefs.terminal.rawValue)",
             "Make Plugin Executable: \(boolString(prefs.makePluginExecutable))",
-            "Hide SwiftBar Icon: \(boolString(prefs.swiftBarIconIsHidden))",
+            "Hide menubar01 Icon: \(boolString(prefs.menubar01IconIsHidden))",
             "Stealth Mode: \(boolString(prefs.stealthMode))",
             "Include Beta Updates: \(boolString(prefs.includeBetaUpdates))",
             "Plugin Debug Mode: \(boolString(prefs.pluginDebugMode))",
@@ -1302,7 +1204,7 @@ extension PluginManager {
         lines.append("== Runtime Plugins ==")
         lines.append("Loaded Plugins: \(plugins.count)")
         lines.append("Enabled Plugins: \(enabledPlugins.count)")
-        lines.append("Fallback SwiftBar Item Visible: \(boolString(barItem.barItem.isVisible))")
+        lines.append("Fallback menubar01 Item Visible: \(boolString(barItem.barItem.isVisible))")
 
         if plugins.isEmpty {
             lines.append("No runtime plugins loaded.")
@@ -1334,12 +1236,6 @@ extension PluginManager {
                 lines.append("  metadata schedule: \(stringValue(metadata?.schedule))")
                 lines.append("  metadata variables: \(metadata?.variables.count ?? 0)")
             }
-        }
-
-        if let ignoreFileContent, !ignoreFileContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            lines.append("")
-            lines.append("== .swiftbarignore ==")
-            lines.append(ignoreFileContent)
         }
 
         return lines.joined(separator: "\n")

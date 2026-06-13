@@ -1,5 +1,5 @@
 //Menubar strings
-"MB_SWIFT_BAR" = "SwiftBar";
+"MB_SWIFT_BAR" = "menubar01";
 "MB_UPDATING_MENU" = "Aktualiziranje …";
 "MB_LAST_UPDATED" = "Aktualizirano";
 "MB_ABOUT_SWIFT_BAR" = "Informacije";
@@ -35,9 +35,9 @@
 "PF_CHANGE_PATH" = "Promijeni …";
 "PF_SHELL" = "Naredbeni redak";
 "PF_TERMINAL" = "Terminal";
-"PF_HIDE_SWIFTBAR_ICON" = "Sakrij ikonu SwiftBara";
-"PF_STEALTH_MODE" = "Hide SwiftBar in the menu bar";
-"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Uvijek prikaži izbornik SwiftBar";
+"PF_HIDE_SWIFTBAR_ICON" = "Sakrij ikonu menubar01";
+"PF_STEALTH_MODE" = "Hide menubar01 in the menu bar";
+"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Uvijek prikaži izbornik menubar01";
 "PF_CHECK_FOR_UPDATE" = "Aktualiziraj";
 "PF_CHECK_FOR_UPDATES" = "Traži nove verzije";
 "PR_INCLUDE_BETA_UPDATES" = "Uključuju Verzije Prije Izdanja";
@@ -85,7 +85,7 @@
 "APP_FOLDER_HAS_TOO_MANY_FILES_MESSAGE" = "AJME! Odabrao/la si mapu s PUNO DATOTEKA. Odaberi jednu drugu mapu. Ako imaš mapu node_modules koja ti treba za dodatak, sakrij ju.";
 "APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Odredi mjesto za menubar01 dodatke";
 "APP_CHOOSE_PLUGIN_FOLDER_INFO" = "Odaberi mapu za spremanje repozitorija dodataka";
-"APP_QUIT" = "Zatvori SwiftBar";
+"APP_QUIT" = "Zatvori menubar01";
 "OK" = "U redu";
 "CANCEL" = "Odustani";
 

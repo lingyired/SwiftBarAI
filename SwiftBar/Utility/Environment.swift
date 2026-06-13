@@ -3,21 +3,25 @@ import Foundation
 class Environment {
     static let shared = Environment()
 
+    /// Environment variable names exposed to plugin scripts. The
+    /// `SWIFTBAR_*` aliases that used to ship alongside the `MENUBAR01_*`
+    /// names are gone — there is no longer any compatibility shim, and
+    /// plugin authors should read `MENUBAR01_*` exclusively.
     enum Variables: String {
-        case swiftBar = "SWIFTBAR"
-        case swiftBarVersion = "SWIFTBAR_VERSION"
-        case swiftBarBuild = "SWIFTBAR_BUILD"
-        case swiftBarPluginsPath = "SWIFTBAR_PLUGINS_PATH"
-        case swiftBarPluginPath = "SWIFTBAR_PLUGIN_PATH"
-        case swiftBarPluginCachePath = "SWIFTBAR_PLUGIN_CACHE_PATH"
-        case swiftBarPluginDataPath = "SWIFTBAR_PLUGIN_DATA_PATH"
-        case swiftBarPluginRefreshReason = "SWIFTBAR_PLUGIN_REFRESH_REASON"
-        case swiftBarLaunchTime = "SWIFTBAR_LAUNCH_TIME"
+        case menubar01 = "MENUBAR01"
+        case menubar01Version = "MENUBAR01_VERSION"
+        case menubar01Build = "MENUBAR01_BUILD"
+        case menubar01PluginsPath = "MENUBAR01_PLUGINS_PATH"
+        case menubar01PluginPath = "MENUBAR01_PLUGIN_PATH"
+        case menubar01PluginCachePath = "MENUBAR01_PLUGIN_CACHE_PATH"
+        case menubar01PluginDataPath = "MENUBAR01_PLUGIN_DATA_PATH"
+        case menubar01PluginRefreshReason = "MENUBAR01_PLUGIN_REFRESH_REASON"
+        case menubar01LaunchTime = "MENUBAR01_LAUNCH_TIME"
         case osVersionMajor = "OS_VERSION_MAJOR"
         case osVersionMinor = "OS_VERSION_MINOR"
         case osVersionPatch = "OS_VERSION_PATCH"
         case osAppearance = "OS_APPEARANCE"
-        case swiftBarPluginPackagePath = "SWIFTBAR_PLUGIN_PACKAGE_PATH"
+        case menubar01PluginPackagePath = "MENUBAR01_PLUGIN_PACKAGE_PATH"
         case osLastSleepTime = "OS_LAST_SLEEP_TIME"
         case osLastWakeTime = "OS_LAST_WAKE_TIME"
     }
@@ -31,10 +35,10 @@ class Environment {
     var userLoginShell = "/bin/zsh"
 
     private var systemEnv: [Variables: String] = [
-        .swiftBar: "1",
-        .swiftBarVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "",
-        .swiftBarBuild: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "",
-        .swiftBarPluginsPath: PreferencesStore.shared.pluginDirectoryPath ?? "",
+        .menubar01: "1",
+        .menubar01Version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "",
+        .menubar01Build: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "",
+        .menubar01PluginsPath: PreferencesStore.shared.pluginDirectoryPath ?? "",
         .osVersionMajor: String(ProcessInfo.processInfo.operatingSystemVersion.majorVersion),
         .osVersionMinor: String(ProcessInfo.processInfo.operatingSystemVersion.minorVersion),
         .osVersionPatch: String(ProcessInfo.processInfo.operatingSystemVersion.patchVersion),
@@ -45,12 +49,12 @@ class Environment {
             systemEnv.map { key, value in (key.rawValue, value) })
         // Always resolve plugin directory path dynamically so it reflects the current value,
         // not the potentially stale value captured at init time.
-        env[Variables.swiftBarPluginsPath.rawValue] = PreferencesStore.shared.pluginDirectoryPath ?? ""
+        env[Variables.menubar01PluginsPath.rawValue] = PreferencesStore.shared.pluginDirectoryPath ?? ""
         return env
     }
 
     init() {
-        systemEnv[.swiftBarLaunchTime] = dateFormatter.string(from: NSDate.now)
+        systemEnv[.menubar01LaunchTime] = dateFormatter.string(from: NSDate.now)
     }
 
     func updateSleepTime(date: Date) {

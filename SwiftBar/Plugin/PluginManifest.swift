@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-/// File name SwiftBar looks for inside a folder-based plugin.
+/// File name menubar01 looks for inside a folder-based plugin.
 let pluginManifestFileName = "manifest.json"
 
 /// Schema of `manifest.json` for folder-based plugins.
@@ -57,11 +57,13 @@ struct PluginManifest: Codable {
     /// environment variables.
     var parameters: [PluginManifestParameter]?
     /// Comma-separated tool/runtime dependencies shown in the About panel
-    /// (e.g. `bash, python3, curl`). Informational only — SwiftBar does not
+    /// (e.g. `bash, python3, curl`). Informational only — menubar01 does not
     /// install these for you.
     var dependencies: String?
     /// URL surfaced in the About panel / `AboutPlugin` UI.
     var aboutUrl: String?
+    /// Optional preview image shown in the About panel.
+    var image: String?
     /// Hide the default "About Plugin" menu item.
     var hideAbout: Bool?
     /// Hide the "Run in Terminal" menu item.
@@ -70,8 +72,8 @@ struct PluginManifest: Codable {
     var hideLastUpdated: Bool?
     /// Hide the "Disable Plugin" menu item.
     var hideDisablePlugin: Bool?
-    /// Hide the "SwiftBar" menu item (parent menu of plugin-specific entries).
-    var hideSwiftBar: Bool?
+    /// Hide the "menubar01" menu item (parent menu of plugin-specific entries).
+    var hideMenubar01: Bool?
 
     /// The manifest format version this struct understands.
     static let currentVersion = 1
@@ -79,9 +81,9 @@ struct PluginManifest: Codable {
     enum CodingKeys: String, CodingKey {
         case name, version, description, author, type, entry
         case refreshInterval, schedule, runInBash, environment, parameters
-        case dependencies, aboutUrl
+        case dependencies, aboutUrl, image
         case hideAbout, hideRunInTerminal, hideLastUpdated
-        case hideDisablePlugin, hideSwiftBar
+        case hideDisablePlugin, hideMenubar01
     }
 
     init() {}
@@ -101,11 +103,12 @@ struct PluginManifest: Codable {
         parameters = try container.decodeIfPresent([PluginManifestParameter].self, forKey: .parameters)
         dependencies = try container.decodeIfPresent(String.self, forKey: .dependencies)
         aboutUrl = try container.decodeIfPresent(String.self, forKey: .aboutUrl)
+        image = try container.decodeIfPresent(String.self, forKey: .image)
         hideAbout = try container.decodeIfPresent(Bool.self, forKey: .hideAbout)
         hideRunInTerminal = try container.decodeIfPresent(Bool.self, forKey: .hideRunInTerminal)
         hideLastUpdated = try container.decodeIfPresent(Bool.self, forKey: .hideLastUpdated)
         hideDisablePlugin = try container.decodeIfPresent(Bool.self, forKey: .hideDisablePlugin)
-        hideSwiftBar = try container.decodeIfPresent(Bool.self, forKey: .hideSwiftBar)
+        hideMenubar01 = try container.decodeIfPresent(Bool.self, forKey: .hideMenubar01)
     }
 
     /// Encodes the manifest, omitting fields that are at their default value so
@@ -125,11 +128,12 @@ struct PluginManifest: Codable {
         try container.encodeIfPresent(parameters, forKey: .parameters)
         try container.encodeIfPresent(dependencies, forKey: .dependencies)
         try container.encodeIfPresent(aboutUrl, forKey: .aboutUrl)
+        try container.encodeIfPresent(image, forKey: .image)
         try container.encodeIfPresent(hideAbout, forKey: .hideAbout)
         try container.encodeIfPresent(hideRunInTerminal, forKey: .hideRunInTerminal)
         try container.encodeIfPresent(hideLastUpdated, forKey: .hideLastUpdated)
         try container.encodeIfPresent(hideDisablePlugin, forKey: .hideDisablePlugin)
-        try container.encodeIfPresent(hideSwiftBar, forKey: .hideSwiftBar)
+        try container.encodeIfPresent(hideMenubar01, forKey: .hideMenubar01)
     }
 }
 
@@ -157,7 +161,7 @@ struct PluginManifestParameter: Codable, Equatable {
     }
 
     /// Converts this manifest-level description into the runtime
-    /// `PluginVariable` that the rest of SwiftBar's metadata pipeline expects.
+    /// `PluginVariable` that the rest of menubar01's metadata pipeline expects.
     func toPluginVariable() -> PluginVariable {
         PluginVariable(
             type: type,

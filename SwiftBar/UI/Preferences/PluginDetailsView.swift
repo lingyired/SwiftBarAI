@@ -87,7 +87,7 @@ struct PluginDetailsView: View {
                     Preferences.Section(bottomDivider: !md.variables.isEmpty, label: {
                         HStack {
                             PluginDetailsToggleView(label: "menubar01",
-                                                    state: $md.hideSwiftBar,
+                                                    state: $md.hideMenubar01,
                                                     width: width * screenProportion)
 
                             PluginDetailsToggleView(label: "Disable Plugin",
@@ -122,19 +122,17 @@ struct PluginDetailsView: View {
                 HStack {
                     if #available(macOS 11.0, *) {
                         Button(action: {
-                            NSWorkspace.shared.open(URL(string: "https://github.com/swiftbar/SwiftBar#metadata-for-binary-plugins")!)
+                            NSWorkspace.shared.open(URL(string: "https://github.com/lingyi/menubar01#plugin-format")!)
                         }, label: {
                             Image(systemName: "questionmark.circle")
                         }).buttonStyle(LinkButtonStyle())
                     }
                     Spacer()
-                    Button("Reset", action: {
-                        PluginMetadata.cleanMetadata(fileURL: URL(fileURLWithPath: plugin.file))
-                        plugin.refreshPluginMetadata()
-                    })
-                    Button("Save in Plugin File", action: {
-                        PluginMetadata.writeMetadata(metadata: md, fileURL: URL(fileURLWithPath: plugin.file))
-                    })
+                    // `manifest.json` is the single source of truth for plugin
+                    // metadata — there is nothing to "save" or "reset" in the
+                    // plugin file. The folder icon at the top of this view
+                    // already reveals the plugin folder so the user can edit
+                    // `manifest.json` directly.
                 }
                 .padding()
             }

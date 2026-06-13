@@ -25,7 +25,7 @@ struct PluginErrorView: View {
 
     func errorMessage() -> String {
         switch plugin.type {
-        case .Executable, .Streamable:
+        case .Executable:
             (plugin.error as? ShellOutError)?.message ?? "none"
         case .Shortcut:
             (plugin.error as? RunShortcutError)?.message ?? "none"
@@ -36,7 +36,7 @@ struct PluginErrorView: View {
 
     func errorOutput() -> String {
         switch plugin.type {
-        case .Executable, .Streamable:
+        case .Executable:
             (plugin.error as? ShellOutError)?.output ?? "none"
         case .Shortcut, .Ephemeral:
             "none"

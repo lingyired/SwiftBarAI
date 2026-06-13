@@ -46,7 +46,7 @@ extension NSImage {
     /// the destination frame. The destination is therefore filled
     /// edge-to-edge in both axes by the visible portion of the
     /// glyph. We rely on the source's tight bbox already being
-    /// centred inside the master canvas (true for the SwiftBar
+    /// centred inside the master canvas (true for the menubar01
     /// `icon.png`) so that the cropped spill is symmetric and the
     /// main subject of the icon remains visible.
     ///
@@ -173,7 +173,7 @@ extension NSImage {
     /// `from` rect lies entirely outside the source, the draw
     /// is a no-op, and the destination image ends up fully
     /// transparent. That is exactly the failure observed when
-    /// the SwiftBar fallback icon disappears from the menu bar
+    /// the menubar01 fallback icon disappears from the menu bar
     /// after replacing the app icon.
     ///
     /// Instead we walk the rep's `CGImage` directly. A `CGImage`

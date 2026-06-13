@@ -26,7 +26,6 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>menubar01</string>
-				<string>swiftbar</string>
 			</array>
 		</dict>
 	</array>
@@ -68,48 +67,6 @@
 		<string>GetPluginsIntent</string>
 		<string>ReloadPluginIntent</string>
 		<string>SetEphemeralPluginIntent</string>
-	</array>
-	<key>CFBundleDocumentTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeExtensions</key>
-			<array>
-				<string>swiftbar</string>
-			</array>
-			<key>CFBundleTypeName</key>
-			<string>menubar01 Plugin Package</string>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>LSHandlerRank</key>
-			<string>Owner</string>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>com.lingyi.menubar01.PluginPackage</string>
-			</array>
-			<key>LSTypeIsPackage</key>
-			<true/>
-		</dict>
-	</array>
-	<key>UTExportedTypeDeclarations</key>
-	<array>
-		<dict>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>com.apple.package</string>
-				<string>public.directory</string>
-			</array>
-			<key>UTTypeDescription</key>
-			<string>menubar01 Plugin Package</string>
-			<key>UTTypeIdentifier</key>
-			<string>com.lingyi.menubar01.PluginPackage</string>
-			<key>UTTypeTagSpecification</key>
-			<dict>
-				<key>public.filename-extension</key>
-				<array>
-					<string>swiftbar</string>
-				</array>
-			</dict>
-		</dict>
 	</array>
 </dict>
 </plist>

@@ -11,7 +11,7 @@ struct PluginsPreferencesView: View {
                     .font(.largeTitle)
                     .padding(.bottom, 50)
             } else {
-                PluginsView(plugin: pluginManager.plugins.first!, plugins: pluginManager.plugins.filter { $0.type == .Streamable || $0.type == .Executable })
+                PluginsView(plugin: pluginManager.plugins.first!, plugins: pluginManager.plugins.filter { $0.type == .Executable })
             }
         }.frame(width: 750, height: 400)
     }

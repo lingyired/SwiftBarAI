@@ -8,20 +8,19 @@ let pluginNeverUpdateInterval: Double = 60 * 60 * 24 * 100
 
 enum PluginType: String, Codable, Equatable {
     case Executable
-    case Streamable
     case Shortcut
     case Ephemeral
 
     static var debugable: [Self] {
-        [.Executable, .Streamable]
+        [.Executable]
     }
 
     static var runnableInTerminal: [Self] {
-        [.Executable, .Streamable]
+        [.Executable]
     }
 
     static var disableable: [Self] {
-        [.Executable, .Streamable, .Shortcut]
+        [.Executable, .Shortcut]
     }
 }
 
@@ -87,7 +86,6 @@ protocol Plugin: AnyObject {
     func terminate()
     func invoke() -> String?
     func makeScriptExecutable(file: String)
-    func refreshPluginMetadata()
     func writeStdin(_ input: String) throws
 }
 
@@ -135,38 +133,6 @@ extension Plugin {
         _ = try? runScript(to: "chmod", args: ["+x", "\(file.escaped())"])
     }
 
-    func refreshPluginMetadata() {
-        os_log("Refreshing plugin metadata \n%{public}@", log: Log.plugin, file)
-        let url = URL(fileURLWithPath: file)
-
-        // Parse metadata in a thread-safe way
-        var newMetadata: PluginMetadata?
-        var scriptVariables: [PluginVariable] = []
-
-        // Always parse from script first to get variables (they're only defined in the script)
-        if let script = try? String(contentsOf: url) {
-            let scriptMetadata = PluginMetadata.parser(script: script)
-            newMetadata = scriptMetadata
-            scriptVariables = scriptMetadata.variables
-        }
-
-        // If there's metadata in extended attributes, use it but preserve variables from script
-        if let md = PluginMetadata.parser(fileURL: url) {
-            md.variables = scriptVariables
-            newMetadata = md
-        }
-
-        // Only update if we got new metadata
-        if let newMetadata = newMetadata {
-            metadata = newMetadata
-
-            // Update refresh environment if needed
-            if !newMetadata.environment.isEmpty {
-                refreshEnv = newMetadata.environment
-            }
-        }
-    }
-
     var cacheDirectory: URL? {
         AppShared.cacheDirectory?.appendingPathComponent(id)
     }
@@ -194,25 +160,29 @@ extension Plugin {
 
     var env: [String: String] {
         var pluginEnv = [
-            Environment.Variables.swiftBarPluginPath.rawValue: file,
+            Environment.Variables.menubar01PluginPath.rawValue: file,
             Environment.Variables.osAppearance.rawValue: AppShared.isDarkTheme ? "Dark" : "Light",
-            Environment.Variables.swiftBarPluginCachePath.rawValue: cacheDirectoryPath,
-            Environment.Variables.swiftBarPluginDataPath.rawValue: dataDirectoryPath,
-            Environment.Variables.swiftBarPluginRefreshReason.rawValue: lastRefreshReason.rawValue,
+            Environment.Variables.menubar01PluginCachePath.rawValue: cacheDirectoryPath,
+            Environment.Variables.menubar01PluginDataPath.rawValue: dataDirectoryPath,
+            Environment.Variables.menubar01PluginRefreshReason.rawValue: lastRefreshReason.rawValue,
         ]
 
-        // Add metadata environment (contains defaults from script parsing)
+        // Add metadata environment (declarative `environment` block from
+        // `manifest.json`, plus any `refreshEnv` overrides added since the
+        // last refresh).
         metadata?.environment.forEach { k, v in
             pluginEnv[k] = v
         }
 
-        // Add refreshEnv (from swiftbar.environment tag, may overlap with xbar.var defaults)
+        // Add refreshEnv (overrides merged in by the menu at refresh time)
         for (k, v) in refreshEnv {
             pluginEnv[k] = v
         }
         refreshEnv.removeAll()
 
-        // Add xbar.var variables LAST - user values must take final precedence
+        // Surface parameter defaults + user overrides LAST so that
+        // user-customised values always take final precedence over the
+        // schema defaults declared in `manifest.json`.
         if let variables = metadata?.variables, !variables.isEmpty {
             let userValues = PluginVariableStorage.loadUserValues(pluginFile: file)
             let varEnv = PluginVariableStorage.buildEnvironment(variables: variables, userValues: userValues)

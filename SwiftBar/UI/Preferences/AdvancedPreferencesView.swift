@@ -19,9 +19,9 @@ struct AdvancedPreferencesView: View {
 
             SettingsPaneSection {
                 SettingsPaneRow(title: "") {
-                    Toggle("", isOn: $preferences.swiftBarIconIsHidden)
+                    Toggle("", isOn: $preferences.menubar01IconIsHidden)
                         .labelsHidden()
-                    Text(Localizable.Preferences.HideSwiftBarIcon.localized)
+                    Text(Localizable.Preferences.HideMenubar01Icon.localized)
                 }
 
                 SettingsPaneRow(title: "") {

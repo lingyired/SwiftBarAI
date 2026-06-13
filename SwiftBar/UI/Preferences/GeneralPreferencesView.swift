@@ -19,10 +19,10 @@ struct GeneralPreferencesView: View {
                     Text(Localizable.Preferences.DimOnManualRefresh.localized)
                 }
 
-                SettingsPaneRow(title: Localizable.Preferences.AlwaysShowSwiftBarMenu.localized) {
-                    Toggle("", isOn: $preferences.alwaysShowSwiftBarMenu)
+                SettingsPaneRow(title: Localizable.Preferences.AlwaysShowMenubar01Menu.localized) {
+                    Toggle("", isOn: $preferences.alwaysShowMenubar01Menu)
                         .labelsHidden()
-                    Text(Localizable.Preferences.AlwaysShowSwiftBarMenu.localized)
+                    Text(Localizable.Preferences.AlwaysShowMenubar01Menu.localized)
                 }
             }
 

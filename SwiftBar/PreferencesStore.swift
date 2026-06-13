@@ -33,14 +33,14 @@ class PreferencesStore: ObservableObject {
         case DisabledPlugins
         case Terminal
         case Shell
-        case HideSwiftBarIcon
+        case HideMenubar01Icon
         case MakePluginExecutable
         case PluginDeveloperMode
         case DisableBashWrapper
         case StreamablePluginDebugOutput
         case PluginDebugMode
         case StealthMode
-        case AlwaysShowSwiftBarMenu
+        case AlwaysShowMenubar01Menu
         case IncludeBetaUpdates
         case DimOnManualRefresh
         case CollectCrashReports
@@ -112,9 +112,9 @@ class PreferencesStore: ObservableObject {
         }
     }
 
-    @Published var swiftBarIconIsHidden: Bool {
+    @Published var menubar01IconIsHidden: Bool {
         didSet {
-            PreferencesStore.setValue(value: swiftBarIconIsHidden, key: .HideSwiftBarIcon)
+            PreferencesStore.setValue(value: menubar01IconIsHidden, key: .HideMenubar01Icon)
             delegate.pluginManager.rebuildAllMenus()
         }
     }
@@ -173,14 +173,14 @@ class PreferencesStore: ObservableObject {
         }
     }
 
-    /// When true, the fallback SwiftBar status item stays in the menu bar
+    /// When true, the fallback menubar01 status item stays in the menu bar
     /// even if at least one plugin is currently visible. This is a safety
     /// net so the user can always reach Preferences / Quit / logs even when
     /// a misbehaving plugin (or disabling all plugins) would otherwise leave
     /// the menu bar empty.
-    @Published var alwaysShowSwiftBarMenu: Bool {
+    @Published var alwaysShowMenubar01Menu: Bool {
         didSet {
-            PreferencesStore.setValue(value: alwaysShowSwiftBarMenu, key: .AlwaysShowSwiftBarMenu)
+            PreferencesStore.setValue(value: alwaysShowMenubar01Menu, key: .AlwaysShowMenubar01Menu)
             delegate.pluginManager.updateDefaultBarItemVisibility()
         }
     }
@@ -213,12 +213,12 @@ class PreferencesStore: ObservableObject {
         disabledPlugins = PreferencesStore.getValue(key: .DisabledPlugins) as? [PluginID] ?? []
         terminal = .Terminal
         shell = .Bash
-        swiftBarIconIsHidden = PreferencesStore.getValue(key: .HideSwiftBarIcon) as? Bool ?? false
+        menubar01IconIsHidden = PreferencesStore.getValue(key: .HideMenubar01Icon) as? Bool ?? false
         includeBetaUpdates = PreferencesStore.getValue(key: .IncludeBetaUpdates) as? Bool ?? false
         collectCrashReports = PreferencesStore.getValue(key: .CollectCrashReports) as? Bool ?? true
         dimOnManualRefresh = PreferencesStore.getValue(key: .DimOnManualRefresh) as? Bool ?? true
         stealthMode = PreferencesStore.getValue(key: .StealthMode) as? Bool ?? false
-        alwaysShowSwiftBarMenu = PreferencesStore.getValue(key: .AlwaysShowSwiftBarMenu) as? Bool ?? true
+        alwaysShowMenubar01Menu = PreferencesStore.getValue(key: .AlwaysShowMenubar01Menu) as? Bool ?? true
         shortcutsPlugins = {
             guard let data = PreferencesStore.getValue(key: .ShortcutPlugins) as? Data,
                   let plugins = try? PropertyListDecoder().decode([PersistentShortcutPlugin].self, from: data) else { return [] }

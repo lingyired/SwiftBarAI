@@ -57,7 +57,23 @@ struct DebugView: View {
                     debugInfo.addEvent(type: .Environment, value: "\n\(debugString)")
                 })
                 Button("Print Plugin Metadata", action: {
-                    debugInfo.addEvent(type: .PluginMetadata, value: "\n\(plugin.metadata?.genereteMetadataString() ?? "")")
+                    // `manifest.json` is the single source of truth for plugin
+                    // metadata, so the most useful debug output is the raw
+                    // file contents as the app sees it on disk.
+                    let manifestURL = URL(fileURLWithPath: plugin.file)
+                        .deletingLastPathComponent()
+                        .appendingPathComponent(pluginManifestFileName)
+                    let raw: String
+                    if let data = try? Data(contentsOf: manifestURL),
+                       let json = try? JSONSerialization.data(withJSONObject: try JSONSerialization.jsonObject(with: data),
+                                                              options: [.prettyPrinted, .sortedKeys]),
+                       let pretty = String(data: json, encoding: .utf8)
+                    {
+                        raw = pretty
+                    } else {
+                        raw = "(unable to read \(manifestURL.path))"
+                    }
+                    debugInfo.addEvent(type: .PluginMetadata, value: "\n\(raw)")
                 })
             }
         }.padding()

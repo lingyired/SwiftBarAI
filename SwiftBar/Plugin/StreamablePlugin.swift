@@ -6,7 +6,7 @@ private let streamSeparator = "~~~"
 
 class StreamablePlugin: Plugin {
     var id: PluginID
-    let type: PluginType = .Streamable
+    let type: PluginType = .Executable
     let name: String
     let file: String
     var refreshEnv: [String: String] = [:]
@@ -57,9 +57,9 @@ class StreamablePlugin: Plugin {
         file = fileURL.path
         lastState = .Streaming
         makeScriptExecutable(file: file)
-        refreshPluginMetadata()
-        guard metadata?.type == .Streamable else { return nil }
-        guard enabled else { return }
+        // metadata is intentionally left nil; StreamablePlugin is no
+        // longer instantiated by the discovery pipeline in menubar01.
+        _ = metadata
         createSupportDirs()
         os_log("Initialized streamable plugin\n%{public}@", log: Log.plugin, description)
         invokeQueue.addOperation { [weak self] in self?.invoke() }
@@ -179,7 +179,7 @@ class StreamablePlugin: Plugin {
         do {
             try stdinPipe.fileHandleForWriting.write(contentsOf: data)
         } catch {
-            throw NSError(domain: "SwiftBar.StreamablePlugin", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to write to stdin: \(error.localizedDescription)"])
+            throw NSError(domain: "menubar01.StreamablePlugin", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to write to stdin: \(error.localizedDescription)"])
         }
     }
 }

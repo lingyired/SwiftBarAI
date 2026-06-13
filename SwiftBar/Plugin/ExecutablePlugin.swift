@@ -62,7 +62,9 @@ class ExecutablePlugin: TimerArmingPlugin {
 
         lastState = .Loading
         makeScriptExecutable(file: file)
-        refreshPluginMetadata()
+        // metadata is intentionally left nil; ExecutablePlugin is no
+        // longer instantiated by the discovery pipeline in menubar01.
+        _ = metadata
 
         if metadata?.nextDate == nil, nameComponents.count > 2 {
             updateInterval = nameComponents.dropFirst().compactMap { parseRefreshInterval(intervalStr: $0, baseUpdateinterval: updateInterval) }.reduce(updateInterval, min)
@@ -119,7 +121,6 @@ class ExecutablePlugin: TimerArmingPlugin {
             // Handle wake from sleep differently - check if it's time to update based on schedule
             if let metadata, metadata.nextDate != nil {
                 // For cron-scheduled plugins, calculate next date and set timer
-                refreshPluginMetadata()
                 enableTimer()
             } else if updateInterval > 0, updateInterval < pluginNeverUpdateInterval {
                 // For interval-based plugins (excluding "never" plugins), check if the scheduled time has passed
@@ -153,7 +154,6 @@ class ExecutablePlugin: TimerArmingPlugin {
         disableTimer()
         operation?.cancel()
 
-        refreshPluginMetadata()
         lastRefreshReason = reason
         operation = RunPluginOperation<ExecutablePlugin>(plugin: self)
         invokeQueue.addOperation(operation!)

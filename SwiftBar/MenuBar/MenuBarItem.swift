@@ -33,19 +33,19 @@ class MenubarItem: NSObject {
     var titleCycleCancellable: AnyCancellable?
     var stalenessCheckCancellable: AnyCancellable?
     let lastUpdatedItem = NSMenuItem(title: Localizable.MenuBar.UpdatingMenu.localized, action: nil, keyEquivalent: "")
-    let aboutItem = NSMenuItem(title: Localizable.MenuBar.AboutSwiftBar.localized, action: #selector(showAboutPopover), keyEquivalent: "")
+    let aboutItem = NSMenuItem(title: Localizable.MenuBar.AboutMenubar01.localized, action: #selector(showAboutPopover), keyEquivalent: "")
     let runInTerminalItem = NSMenuItem(title: Localizable.MenuBar.RunInTerminal.localized, action: #selector(runInTerminal), keyEquivalent: "")
     let disablePluginItem = NSMenuItem(title: Localizable.MenuBar.DisablePlugin.localized, action: #selector(disablePlugin), keyEquivalent: "")
     let debugPluginItem = NSMenuItem(title: Localizable.MenuBar.DebugPlugin.localized, action: #selector(debugPlugin), keyEquivalent: "")
     let terminatePluginItem = NSMenuItem(title: Localizable.MenuBar.TerminateEphemeralPlugin.localized, action: #selector(terminateEphemeralPlugin), keyEquivalent: "")
-    let swiftBarItem = NSMenuItem(title: Localizable.MenuBar.SwiftBar.localized, action: nil, keyEquivalent: "")
+    let menubar01Item = NSMenuItem(title: Localizable.MenuBar.Menubar01.localized, action: nil, keyEquivalent: "")
     /// Cached plain `NSMenuItem` (no submenu) used as a bold-style
     /// section header for the inlined "Toggle Plugins" list. We
     /// deliberately do NOT use a submenu here: macOS 13+
     /// `NSStatusItemScene` rebuilds the status item's button view
     /// whenever any submenu on a status item opens, which silently
     /// clears `button.image` (the only way we had to render the
-    /// SwiftBar fallback icon). See `changes/2026-06-12-p19-flatten-toggle-menu.md`.
+    /// menubar01 fallback icon). See `changes/2026-06-12-p19-flatten-toggle-menu.md`.
     private var togglePluginsHeaderItem: NSMenuItem?
     private var togglePluginItems: [PluginID: NSMenuItem] = [:]
     var isDefault = false
@@ -397,7 +397,7 @@ extension MenubarItem {
         // The "Toggle Plugins" submenu was removed (p19) because
         // AppKit's NSStatusItemScene rebuilds the status item's
         // button view whenever any submenu on a status item opens,
-        // silently clearing the SwiftBar fallback icon. Instead,
+        // silently clearing the menubar01 fallback icon. Instead,
         // the toggle plugin list is inlined into the root menu as
         // a section, with a bold disabled header and one
         // NSMenuItem (with `state = .on` / `.off`) per toggleable
@@ -412,16 +412,16 @@ extension MenubarItem {
         let sendFeedbackItem = NSMenuItem(title: Localizable.MenuBar.SendFeedback.localized, action: #selector(sendFeedback), keyEquivalent: "")
         let copySystemReportItem = NSMenuItem(title: Localizable.MenuBar.CopySystemReport.localized, action: #selector(copySystemReport), keyEquivalent: "")
         let openSystemReportItem = NSMenuItem(title: Localizable.MenuBar.OpenSystemReport.localized, action: #selector(openSystemReport), keyEquivalent: "")
-        let aboutSwiftbarItem = NSMenuItem(title: Localizable.MenuBar.AboutPlugin.localized, action: #selector(aboutSwiftBar), keyEquivalent: "")
+        let aboutMenubar01Item = NSMenuItem(title: Localizable.MenuBar.AboutPlugin.localized, action: #selector(aboutMenubar01), keyEquivalent: "")
         let quitItem = NSMenuItem(title: Localizable.App.Quit.localized, action: #selector(quit), keyEquivalent: "q")
         let showErrorItem = NSMenuItem(title: Localizable.MenuBar.ShowError.localized, action: #selector(showErrorPopover), keyEquivalent: "")
-        for item in [refreshAllItem, enableAllItem, disableAllItem, preferencesItem, openPluginFolderItem, changePluginFolderItem, getPluginsItem, quitItem, disablePluginItem, debugPluginItem, terminatePluginItem, aboutItem, aboutSwiftbarItem, runInTerminalItem, showErrorItem, sendFeedbackItem, copySystemReportItem, openSystemReportItem] {
+        for item in [refreshAllItem, enableAllItem, disableAllItem, preferencesItem, openPluginFolderItem, changePluginFolderItem, getPluginsItem, quitItem, disablePluginItem, debugPluginItem, terminatePluginItem, aboutItem, aboutMenubar01Item, runInTerminalItem, showErrorItem, sendFeedbackItem, copySystemReportItem, openSystemReportItem] {
             item.target = self
             item.attributedTitle = NSAttributedString(string: item.title, attributes: [.font: NSFont.menuBarFont(ofSize: 0)])
         }
 
         // Outermost version header — must be the very first row the
-        // user sees when they click the SwiftBar menu bar icon.
+        // user sees when they click the menubar01 menu bar icon.
         // Non-selectable / non-clickable. Re-created on every menu
         // rebuild so the label always reflects the binary that is
         // actually running, including any hot-reloaded `AppVersion`
@@ -452,7 +452,7 @@ extension MenubarItem {
         menu.addItem(changePluginFolderItem)
         menu.addItem(getPluginsItem)
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(aboutSwiftbarItem)
+        menu.addItem(aboutMenubar01Item)
         menu.addItem(preferencesItem)
         menu.addItem(copySystemReportItem)
         menu.addItem(openSystemReportItem)
@@ -463,10 +463,10 @@ extension MenubarItem {
             statusBarMenu.addItem(NSMenuItem.separator())
 
             // put swiftbar menu as submenu
-            swiftBarItem.attributedTitle = NSAttributedString(string: swiftBarItem.title, attributes: [.font: NSFont.menuBarFont(ofSize: 0)])
-            swiftBarItem.submenu = menu
-            swiftBarItem.image = PreferencesStore.shared.swiftBarIconIsHidden ? nil : NSImage(named: "AppIcon")?.resizedCopy(w: 21, h: 21)
-            insertReusable(swiftBarItem, into: statusBarMenu)
+            menubar01Item.attributedTitle = NSAttributedString(string: menubar01Item.title, attributes: [.font: NSFont.menuBarFont(ofSize: 0)])
+            menubar01Item.submenu = menu
+            menubar01Item.image = PreferencesStore.shared.menubar01IconIsHidden ? nil : NSImage(named: "AppIcon")?.resizedCopy(w: 21, h: 21)
+            insertReusable(menubar01Item, into: statusBarMenu)
 
             // default plugin menu items
             statusBarMenu.addItem(NSMenuItem.separator())
@@ -508,7 +508,7 @@ extension MenubarItem {
     /// which AppKit's `NSStatusItemScene` interpreted as a trigger to
     /// rebuild the status item's button view whenever the user opened
     /// any submenu. That rebuild silently cleared `button.image`,
-    /// making the SwiftBar fallback icon disappear while the menu
+    /// making the menubar01 fallback icon disappear while the menu
     /// was open. Inlining the rows into the root menu removes the
     /// submenu entirely.
     func rebuildTogglePluginSection() {
@@ -772,16 +772,16 @@ extension MenubarItem {
         }
     }
 
-    @objc func aboutSwiftBar() {
+    @objc func aboutMenubar01() {
         AppShared.showAbout()
     }
 }
 
 extension MenubarItem {
     static func defaultBarItem() -> MenubarItem {
-        let item = MenubarItem(title: "SwiftBar")
+        let item = MenubarItem(title: "menubar01")
         item.isDefault = true
-        // The fallback SwiftBar item intentionally has no visibility callback.
+        // The fallback menubar01 item intentionally has no visibility callback.
         // PluginManager owns its visibility directly, which avoids callback recursion.
         //
         // Order matters: the previous version set `isVisible = true` first
@@ -930,7 +930,7 @@ extension MenubarItem {
 
         // Track how many items belong to the plugin content.
         // Includes title/header items + optional separator + body root-level items + fold children.
-        // Standard menu items (SwiftBar submenu, etc.) are appended after this point.
+        // Standard menu items (menubar01 submenu, etc.) are appended after this point.
         currentHeaderLines = parts.header
         currentMenuTree = tree
         pluginItemCount = statusBarMenu.items.count
@@ -1334,7 +1334,7 @@ extension MenubarItem {
         updateLastUpdatedItem()
 
         if showsAllStandardItemsWhileOpen {
-            [lastUpdatedItem, runInTerminalItem, disablePluginItem, debugPluginItem, aboutItem, swiftBarItem].forEach { $0.isHidden = false }
+            [lastUpdatedItem, runInTerminalItem, disablePluginItem, debugPluginItem, aboutItem, menubar01Item].forEach { $0.isHidden = false }
             return
         }
 
@@ -1342,7 +1342,7 @@ extension MenubarItem {
         runInTerminalItem.isHidden = plugin?.metadata?.hideRunInTerminal ?? false
         disablePluginItem.isHidden = plugin?.metadata?.hideDisablePlugin ?? false
         aboutItem.isHidden = plugin?.metadata?.hideAbout ?? false
-        swiftBarItem.isHidden = plugin?.metadata?.hideSwiftBar ?? false
+        menubar01Item.isHidden = plugin?.metadata?.hideMenubar01 ?? false
     }
 
     private func applyShortcut(for item: NSMenuItem, params: MenuLineParameters) {

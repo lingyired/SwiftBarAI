@@ -1,5 +1,5 @@
 //Menubar strings
-"MB_SWIFT_BAR" = "SwiftBar";
+"MB_SWIFT_BAR" = "menubar01";
 "MB_UPDATING_MENU" = "Actualizando…";
 "MB_LAST_UPDATED" = "Actualizado";
 "MB_ABOUT_SWIFT_BAR" = "Acerca";
@@ -35,9 +35,9 @@
 "PF_CHANGE_PATH" = "Cambiar...";
 "PF_SHELL" = "Shell";
 "PF_TERMINAL" = "Terminal";
-"PF_HIDE_SWIFTBAR_ICON" = "Ocultar Ícono SwiftBar";
-"PF_STEALTH_MODE" = "Hide SwiftBar in the menu bar";
-"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Mostrar siempre el menú de SwiftBar";
+"PF_HIDE_SWIFTBAR_ICON" = "Ocultar Ícono menubar01";
+"PF_STEALTH_MODE" = "Hide menubar01 in the menu bar";
+"PF_ALWAYS_SHOW_SWIFTBAR_MENU" = "Mostrar siempre el menú de menubar01";
 "PF_CHECK_FOR_UPDATE" = "Actualizar";
 "PF_CHECK_FOR_UPDATES" = "Verificar Actualizaciones";
 "PR_INCLUDE_BETA_UPDATES" = "Incluir Versiones Beta";
@@ -80,7 +80,7 @@
 
 //App strings
 "APP_CHOOSE_PLUGIN_FOLDER_TITLE" = "Elegir carpeta de complementos";
-"APP_FOLDER_NOT_ALLOWED_MESSAGE" = "No se puede usar esta carpeta como ubicación de los complementos de SwiftBar";
+"APP_FOLDER_NOT_ALLOWED_MESSAGE" = "No se puede usar esta carpeta como ubicación de los complementos de menubar01";
 "APP_FOLDER_NOT_ALLOWED_ACTION" = "Elegir nueva ubicación";
 "APP_FOLDER_HAS_TOO_MANY_FILES_MESSAGE" = "GUAU! Tal parece que la carpeta elegida posee DEMASIADO ARCHIVOS, por favor elegir otra. Si un complemento necesita de una carpeta node_modules, hágala oculta.";
 "APP_CHOOSE_PLUGIN_FOLDER_MESSAGE" = "Establecer la ubicación de los complementos de menubar01";

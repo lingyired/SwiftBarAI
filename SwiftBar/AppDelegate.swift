@@ -202,9 +202,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUStandardUserDriverDelegat
 
     func feedURLString(for _: SPUUpdater) -> String? {
         if prefs.includeBetaUpdates {
-            return "https://swiftbar.github.io/SwiftBar/appcast-beta.xml"
+            return "https://lingyi.github.io/menubar01/appcast-beta.xml"
         }
-        return "https://swiftbar.github.io/SwiftBar/appcast.xml"
+        return "https://lingyi.github.io/menubar01/appcast.xml"
     }
 
     func application(_: NSApplication, open urls: [URL]) {
