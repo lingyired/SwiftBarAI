@@ -126,6 +126,6 @@ for what had to change to make the deletions possible.
 | Mirror SwiftPM forks at the new owner | Requires new GitHub org + ownership transfer. |
 | Provision a real Sparkle appcast URL | Requires the new owner's GitHub Pages + EdDSA keypair. |
 | ~~`docs/00-README.md` through `docs/13-Build-and-Run.md` header rewrite~~ | The 14 in-tree `docs/` files mirror the SwiftBar upstream copy. Their headers still reference SwiftBar; the body content is broadly correct but uses "SwiftBar" throughout. | Done in `docs-sweep-partial` (mechanical + critical prose; body-prose full rewrite is a separate follow-up). |
-| Test-suite state-isolation fixes | Pre-existing `Menubar01IntegrationTests` failures due to shared singleton state. |
+| Test-suite state-isolation fixes | 19/21 failures fixed in `ff26978`; 2 pre-existing `PreferencesStore.shared` cross-process contamination remain. |
 | `AIPluginGenerator` (M1) | See [`AI_PLUGIN_ARCHITECTURE.md`](AI_PLUGIN_ARCHITECTURE.md). |
 | `PluginMarketplace` (M4) | See [`AI_PLUGIN_ARCHITECTURE.md`](AI_PLUGIN_ARCHITECTURE.md). |
