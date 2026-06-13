@@ -65,7 +65,7 @@ Helper files under [Utility/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI
 4. The plugin folder root.
 5. The user's home.
 
-Used by `<swiftbar.image>` resolution.
+Used by resolution of the `image` field declared in a plugin's `manifest.json` — menubar01 looks up the relative path against the plugin's data folder and the user's home directory. See the `image` key in [`README-MANIFEST-PLUGINS.md`](../README-MANIFEST-PLUGINS.md).
 
 ## `NSColorPickerExtension`
 

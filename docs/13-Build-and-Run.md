@@ -68,7 +68,7 @@ The two targets use different code-signing identities. The default for local dev
 
 Dependencies are resolved automatically by SwiftPM through [Package.resolved](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved). They are:
 
-- `HotKey` (forked under `swiftbar/`) — 0.1.3
+- `HotKey` (forked under `swiftbar/`) — 0.1.3. The project plans to vendor a `menubar01/HotKey` fork in a follow-up; tracked in [`MIGRATION_PLAN.md`](../MIGRATION_PLAN.md) § 4.
 - `LaunchAtLogin` (sindresorhus) — 5.0.0
 - `Preferences` (sindresorhus) — 2.6.0
 - `Sparkle` (sparkle-project) — 2.4.1
