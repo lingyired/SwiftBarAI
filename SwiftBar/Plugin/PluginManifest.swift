@@ -227,10 +227,10 @@ enum PluginManifestLoader {
             return nil
         }
 
-        // If the manifest omits `entry`, fall back to legacy `plugin.*` discovery
-        // so users can migrate folders by simply dropping a `manifest.json`
-        // into an existing `.swiftbar` directory.
-        let entryPath = manifest.entry ?? PackagedPlugin.findMainExecutable(in: directory)?.lastPathComponent
+        // If the manifest omits `entry`, fall back to `plugin.*` discovery
+        // so users can author a folder plugin without declaring the entry
+        // explicitly.
+        let entryPath = manifest.entry ?? FolderPlugin.inferEntryFilename(in: directory)
         guard let entryPath, !entryPath.isEmpty else {
             os_log("manifest.json at %{public}@ is missing the required 'entry' field and no plugin.* file was found",
                    log: Log.plugin, type: .error, manifestURL.path)

@@ -40,11 +40,12 @@ remaining residue is:
   (used only by the orphan `PackagedPlugin` class), historical
   comments in `NSImage.swift` / `NSFont+Offset.swift` that reference
   the SwiftBar wordmark design rationale.
-- **Three orphan plugin files** kept on disk per the no-deletion
+- ~~**Three orphan plugin files** kept on disk per the no-deletion
   policy: `SwiftBar/Plugin/ExecutablePlugin.swift`,
   `SwiftBar/Plugin/StreamablePlugin.swift`,
   `SwiftBar/Plugin/PackagedPlugin.swift`. They are dead code; safe to
-  `git rm` in a follow-up.
+  `git rm` in a follow-up.~~ — **Deleted** in
+  [`changes/2026-06-13-delete-orphan-plugins.md`](changes/2026-06-13-delete-orphan-plugins.md).
 - **Xcode project file** `SwiftBar.xcodeproj/`: file name and the
   four `SwiftBar*` scheme file names are unchanged for git history
   continuity. Renaming is tracked separately.

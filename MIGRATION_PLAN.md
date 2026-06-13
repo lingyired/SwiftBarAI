@@ -110,14 +110,11 @@ Subtractive only — no new public API.
 - **`Reset` / `Save in Plugin File` buttons** in `PluginDetailsView` (depended on the xattr mechanism).
 - **"Print Plugin Metadata" xattr dump** in `DebugView` (now reads `manifest.json` and pretty-prints it as JSON).
 
-Three orphan source files were intentionally left on disk (per the
-no-deletion policy for the active refactor commit):
-
-- `SwiftBar/Plugin/ExecutablePlugin.swift` — single-file executable plugin
-- `SwiftBar/Plugin/StreamablePlugin.swift` — long-stream script (type now `.Executable`)
-- `SwiftBar/Plugin/PackagedPlugin.swift` — `.swiftbar` directory plugin
-
-These are candidates for a follow-up commit that actually deletes them.
+Three orphan source files were intentionally left on disk in
+`99248b7` per the no-deletion policy; they were deleted in the
+subsequent `delete-orphan-plugins` commit. See
+[`changes/2026-06-13-delete-orphan-plugins.md`](changes/2026-06-13-delete-orphan-plugins.md)
+for what had to change to make the deletions possible.
 
 ## 4. Open follow-ups
 

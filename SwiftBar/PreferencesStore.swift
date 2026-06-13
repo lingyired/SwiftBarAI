@@ -163,10 +163,6 @@ class PreferencesStore: ObservableObject {
         PreferencesStore.getValue(key: .DisableBashWrapper) as? Bool ?? false
     }
 
-    var streamablePluginDebugOutput: Bool {
-        PreferencesStore.getValue(key: .StreamablePluginDebugOutput) as? Bool ?? false
-    }
-
     @Published var stealthMode: Bool {
         didSet {
             PreferencesStore.setValue(value: stealthMode, key: .StealthMode)

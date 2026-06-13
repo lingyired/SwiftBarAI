@@ -50,11 +50,11 @@ menubar01 是一款 macOS 菜单栏自定义工具，用 Swift 编写，基于 A
 ### 架构分层
 1. **App 层** — `main.swift`、`AppDelegate` + `+Menu` / `+Toolbar` / `+Intents`
    扩展，处理生命周期、URL 路由、Siri/Shortcuts。
-2. **Plugin 层** — `Plugin` 协议 + 三种活跃实现（`ExecutablePlugin` /
-   `ShortcutPlugin` / `EphemeralPlugin`）+ `FolderPlugin` 装载器。`PluginManager`
-   单例调度（`pluginInvokeQueue` + `menuUpdateQueue` 两个 `OperationQueue`）。
-   `PackagedPlugin` 与 `StreamablePlugin` 现已不再被 `PluginManager` 实例化，
-   作为孤儿类保留在源码里以备将来彻底删除。
+2. **Plugin 层** — `Plugin` 协议 + 三种实现（`ShortcutPlugin` /
+   `EphemeralPlugin` + `FolderPlugin` 作为 `Executable` 的发现管线装载器）。
+   `PluginManager` 单例调度（`pluginInvokeQueue` + `menuUpdateQueue` 两个
+   `OperationQueue`）。老的 `ExecutablePlugin` / `StreamablePlugin` /
+   `PackagedPlugin` 在 `changes/2026-06-13-delete-orphan-plugins.md` 中删除。
 3. **MenuBar 层** — `MenubarItem` + `MenuItemNode` + `MenuDiff` +
    `FoldableMenuItemView`，对 `NSStatusItem` 和 `NSMenu` 做增量更新
    （基于值等价的 `MenuItemNode: Equatable`）。

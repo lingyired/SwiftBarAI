@@ -846,41 +846,6 @@ struct Menubar01IntegrationTests {
         #expect(syncResult.loadedPlugins.isEmpty)
     }
 
-    @Test func testSyncFilePlugins_keepsPackagedPluginMatchedByBundlePath() async throws {
-        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDirectory) }
-
-        let folderURL = tempDirectory.appendingPathComponent("weather", isDirectory: true)
-        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
-        try Data("{\"entry\": \"plugin.sh\"}".utf8).write(to: folderURL.appendingPathComponent("manifest.json"))
-
-        let mainExecutableURL = folderURL.appendingPathComponent("plugin.sh")
-        try Data("#!/bin/zsh\necho weather\n".utf8).write(to: mainExecutableURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: mainExecutableURL.path)
-
-        let existingPlugin = TestPlugin(id: "weather-package", file: mainExecutableURL.path, content: "weather", lastState: .Success)
-        let packageState = try #require(pluginFileState(for: folderURL))
-        let packageSyncPath = pluginSyncPath(for: folderURL)
-        var loadCallCount = 0
-
-        let syncResult = syncFilePlugins(
-            existingFilePlugins: [existingPlugin],
-            freshFilePlugins: [folderURL],
-            previousFileStates: [packageSyncPath: packageState],
-            discoveredFilePlugins: [folderURL]
-        ) { _ in
-            loadCallCount += 1
-            return nil
-        }
-
-        #expect(syncResult.removedPluginIDs.isEmpty)
-        #expect(syncResult.modifiedPluginIDs.isEmpty)
-        #expect(syncResult.loadedPlugins.isEmpty)
-        #expect(syncResult.freshFileStates[packageSyncPath] == packageState)
-        #expect(loadCallCount == 0)
-    }
-
     @Test func testSyncFilePlugins_keepsSymlinkedFolderPluginMatchedByBundlePath() async throws {
         let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)

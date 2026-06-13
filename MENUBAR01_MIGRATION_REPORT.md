@@ -84,10 +84,10 @@ are dead code and candidates for a follow-up commit:
 
 | File | Reason kept | Removal blocker |
 | --- | --- | --- |
-| `SwiftBar/Plugin/ExecutablePlugin.swift` | Single-file executable plugin | No active references; safe to `git rm`. |
-| `SwiftBar/Plugin/StreamablePlugin.swift` | Long-stream script | No active references; safe to `git rm`. |
-| `SwiftBar/Plugin/PackagedPlugin.swift` | `.swiftbar` directory plugin | No active references; safe to `git rm`. |
-| `URL.isSwiftBarPackage` extension (`SwiftBar/Plugin/PluginManger.swift`) | Used by `PackagedPlugin` and the historical `inferEntryFilename` | Goes with the PackagedPlugin removal. |
+| ~~`SwiftBar/Plugin/ExecutablePlugin.swift`~~ | ~~Single-file executable plugin~~ | **Deleted** in `delete-orphan-plugins`. |
+| ~~`SwiftBar/Plugin/StreamablePlugin.swift`~~ | ~~Long-stream script~~ | **Deleted** in `delete-orphan-plugins`. |
+| ~~`SwiftBar/Plugin/PackagedPlugin.swift`~~ | ~~`.swiftbar` directory plugin~~ | **Deleted** in `delete-orphan-plugins`. |
+| ~~`URL.isSwiftBarPackage` extension (`SwiftBar/Plugin/PluginManger.swift`)~~ | ~~Used by `PackagedPlugin` and the historical `inferEntryFilename`~~ | **Deleted** in `delete-orphan-plugins`. |
 | `SwiftBar/Utility/NSFont+Offset.swift` and `SwiftBar/Utility/NSImage.swift` | Comments still mention "SwiftBar" in historical context | Cosmetic; tracked as a follow-up. |
 | `changes/archive/` | Historical change records | Project rule: never rewrite history. |
 | `docs/00-README.md` through `docs/13-Build-and-Run.md` | Mirror the SwiftBar upstream copy; headers still reference SwiftBar | Tracked as a follow-up. |

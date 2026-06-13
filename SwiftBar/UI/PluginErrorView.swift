@@ -44,8 +44,7 @@ struct PluginErrorView: View {
     }
 }
 
-struct PluginErrorView_Previews: PreviewProvider {
-    static var previews: some View {
-        PluginErrorView(plugin: ExecutablePlugin(fileURL: URL(string: "/Users/melonamin/Downloads/bitbar-scripts-copy/mounted.5s.sh")!))
-    }
-}
+// Preview intentionally removed: the historical preview instantiated
+// `ExecutablePlugin`, which has been deleted in 2026-06-13-delete-orphan-plugins.
+// `PluginErrorView` only needs a `Plugin`-conforming value to render;
+// the production call sites pass a live plugin instance.

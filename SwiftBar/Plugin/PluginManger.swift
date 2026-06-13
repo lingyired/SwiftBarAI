@@ -5,20 +5,6 @@ import os
 import SwiftUI
 import UserNotifications
 
-extension URL {
-    /// Whether this URL represents a legacy `.swiftbar` packaged plugin
-    /// directory.
-    ///
-    /// **Deprecated**: New plugins should be folder-based and identified by
-    /// `manifest.json`. The `.swiftbar` suffix is no longer recognised by the
-    /// discovery pipeline — this helper exists only so that the still-in-tree
-    /// `PackagedPlugin` class can self-validate its inputs in legacy tests.
-    @available(*, deprecated, message: "Use a manifest.json folder plugin instead of a .swiftbar bundle.")
-    var isSwiftBarPackage: Bool {
-        lastPathComponent.hasSuffix(".swiftbar")
-    }
-}
-
 /// Returns `true` when `url` points at a directory that contains a
 /// `manifest.json` — i.e. a folder-based menubar01 plugin.
 func isManifestPluginDirectory(_ url: URL) -> Bool {

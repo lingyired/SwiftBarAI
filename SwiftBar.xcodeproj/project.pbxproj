@@ -31,7 +31,6 @@
 		39224DFA25F4344600BABF21 /* PluginManger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AF7774254613C9001D76E5 /* PluginManger.swift */; };
 		39224DFB25F4344600BABF21 /* PluginErrorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 398DAE7925537DAF00747D90 /* PluginErrorView.swift */; };
 		39224DFC25F4344600BABF21 /* PluginRepositoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 396257252569667000341A19 /* PluginRepositoryView.swift */; };
-		39224DFD25F4344600BABF21 /* ExecutablePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AF7777254613FB001D76E5 /* ExecutablePlugin.swift */; };
 		39224DFE25F4344600BABF21 /* Localizable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 396E6CAF258E8D47002C735D /* Localizable.swift */; };
 		39224DFF25F4344600BABF21 /* AppShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AF77832547750E001D76E5 /* AppShared.swift */; };
 		39224E0025F4344600BABF21 /* AboutPluginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39641EA0254DD32100713DAF /* AboutPluginView.swift */; };
@@ -46,7 +45,6 @@
 		39224E0925F4344600BABF21 /* NSMutableAttributedString+SFSymbols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39B84A21257D63F700FA012E /* NSMutableAttributedString+SFSymbols.swift */; };
 		39224E0A25F4344600BABF21 /* AppDelegate+Toolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39224DD125F3F19B00BABF21 /* AppDelegate+Toolbar.swift */; };
 		39224E0B25F4344600BABF21 /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39641EAC254E0E3400713DAF /* ImageLoader.swift */; };
-		39224E0C25F4344600BABF21 /* StreamablePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD571A225A0071700623B57 /* StreamablePlugin.swift */; };
 		39224E0D25F4344600BABF21 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39641EA4254E096200713DAF /* PreferencesView.swift */; };
 		39224E0E25F4344600BABF21 /* PluginMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AF7771254612BF001D76E5 /* PluginMetadata.swift */; };
 		39224E0F25F4344600BABF21 /* RunScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39B84A1E257D436200FA012E /* RunScript.swift */; };
@@ -86,7 +84,6 @@
 		39AF776F25461277001D76E5 /* Plugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AF776E25461277001D76E5 /* Plugin.swift */; };
 		39AF7772254612BF001D76E5 /* PluginMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AF7771254612BF001D76E5 /* PluginMetadata.swift */; };
 		39AF7775254613C9001D76E5 /* PluginManger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AF7774254613C9001D76E5 /* PluginManger.swift */; };
-		39AF7778254613FB001D76E5 /* ExecutablePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AF7777254613FB001D76E5 /* ExecutablePlugin.swift */; };
 		39AF777C254618F6001D76E5 /* MenuBarItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AF777B254618F6001D76E5 /* MenuBarItem.swift */; };
 		39AF77842547750E001D76E5 /* AppShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AF77832547750E001D76E5 /* AppShared.swift */; };
 		39AF778D2548EBA3001D76E5 /* MenuLineParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AF778C2548EBA3001D76E5 /* MenuLineParameters.swift */; };
@@ -108,8 +105,6 @@
 		CC467006000000000000A106 /* MenuDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467004000000000000A104 /* MenuDiff.swift */; };
 		CC467008000000000000A108 /* FoldableMenuItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467007000000000000A107 /* FoldableMenuItemView.swift */; };
 		CC467010000000000000A110 /* PluginToggleMenuItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC467009000000000000A109 /* PluginToggleMenuItemView.swift */; };
-		CC468001000000000000C001 /* PackagedPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468000000000000000C000 /* PackagedPlugin.swift */; };
-		CC468002000000000000C002 /* PackagedPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468000000000000000C000 /* PackagedPlugin.swift */; };
 		CC468003000000000000C003 /* PluginManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468004000000000000C004 /* PluginManifest.swift */; };
 		CC468005000000000000C005 /* FolderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468006000000000000C006 /* FolderPlugin.swift */; };
 		CC468007000000000000C007 /* PluginManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468004000000000000C004 /* PluginManifest.swift */; };
@@ -150,7 +145,6 @@
 		FAD14C052585AE1800CB7BBE /* String+ANSIColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD14C042585AE1800CB7BBE /* String+ANSIColor.swift */; };
 		FAD1BC9B25D22E9400B761E8 /* PluginDetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD1BC9A25D22E9400B761E8 /* PluginDetailsView.swift */; };
 		FAD1BC9E25D22EEA00B761E8 /* AnimatableWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD1BC9D25D22EEA00B761E8 /* AnimatableWindow.swift */; };
-		FAD571A325A0071700623B57 /* StreamablePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD571A225A0071700623B57 /* StreamablePlugin.swift */; };
 		FAFF1285273837EA00B3993B /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = FAFF1284273837EA00B3993B /* README.md */; };
 /* End PBXBuildFile section */
 
@@ -214,7 +208,6 @@
 		39AF776E25461277001D76E5 /* Plugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Plugin.swift; sourceTree = "<group>"; };
 		39AF7771254612BF001D76E5 /* PluginMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginMetadata.swift; sourceTree = "<group>"; };
 		39AF7774254613C9001D76E5 /* PluginManger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginManger.swift; sourceTree = "<group>"; };
-		39AF7777254613FB001D76E5 /* ExecutablePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutablePlugin.swift; sourceTree = "<group>"; };
 		39AF777B254618F6001D76E5 /* MenuBarItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarItem.swift; sourceTree = "<group>"; };
 		39AF77832547750E001D76E5 /* AppShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShared.swift; sourceTree = "<group>"; };
 		39AF778C2548EBA3001D76E5 /* MenuLineParameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuLineParameters.swift; sourceTree = "<group>"; };
@@ -232,7 +225,6 @@
 		CC467004000000000000A104 /* MenuDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuDiff.swift; sourceTree = "<group>"; };
 		CC467007000000000000A107 /* FoldableMenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldableMenuItemView.swift; sourceTree = "<group>"; };
 		CC467009000000000000A109 /* PluginToggleMenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginToggleMenuItemView.swift; sourceTree = "<group>"; };
-		CC468000000000000000C000 /* PackagedPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackagedPlugin.swift; sourceTree = "<group>"; };
 		CC468004000000000000C004 /* PluginManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginManifest.swift; sourceTree = "<group>"; };
 		CC468006000000000000C006 /* FolderPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderPlugin.swift; sourceTree = "<group>"; };
 		AB00000000000000A00000A2 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
@@ -264,7 +256,6 @@
 		FAD14C042585AE1800CB7BBE /* String+ANSIColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+ANSIColor.swift"; sourceTree = "<group>"; };
 		FAD1BC9A25D22E9400B761E8 /* PluginDetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginDetailsView.swift; sourceTree = "<group>"; };
 		FAD1BC9D25D22EEA00B761E8 /* AnimatableWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatableWindow.swift; sourceTree = "<group>"; };
-		FAD571A225A0071700623B57 /* StreamablePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamablePlugin.swift; sourceTree = "<group>"; };
 		FAFF1284273837EA00B3993B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -415,10 +406,7 @@
 			isa = PBXGroup;
 			children = (
 				39AF776E25461277001D76E5 /* Plugin.swift */,
-				FAD571A225A0071700623B57 /* StreamablePlugin.swift */,
-				39AF7777254613FB001D76E5 /* ExecutablePlugin.swift */,
 				FAC4AE4829722CD2000BED63 /* EphemeralPlugin.swift */,
-				CC468000000000000000C000 /* PackagedPlugin.swift */,
 				FA6E13852915B70E00BA4594 /* ShortcutPlugin.swift */,
 				39AF7771254612BF001D76E5 /* PluginMetadata.swift */,
 				CC468004000000000000C004 /* PluginManifest.swift */,
@@ -846,7 +834,6 @@
 				39AF7775254613C9001D76E5 /* PluginManger.swift in Sources */,
 				398DAE7A25537DAF00747D90 /* PluginErrorView.swift in Sources */,
 				396257262569667000341A19 /* PluginRepositoryView.swift in Sources */,
-				39AF7778254613FB001D76E5 /* ExecutablePlugin.swift in Sources */,
 				FA6E13862915B70E00BA4594 /* ShortcutPlugin.swift in Sources */,
 				396E6CB0258E8D47002C735D /* Localizable.swift in Sources */,
 				FA58E39A27AD855D0034837F /* SystemNotificationName.swift in Sources */,
@@ -858,7 +845,6 @@
 				398B86C4254DA85300DEA027 /* URL+Extension.swift in Sources */,
 				FAAFB2A52A1A567D00316F79 /* AdvancedPreferencesView.swift in Sources */,
 				FAC4AE4929722CD2000BED63 /* EphemeralPlugin.swift in Sources */,
-				CC468001000000000000C001 /* PackagedPlugin.swift in Sources */,
 				CC468003000000000000C003 /* PluginManifest.swift in Sources */,
 				CC468005000000000000C005 /* FolderPlugin.swift in Sources */,
 				FAA14A192728C7FC0052FDB8 /* AppDelegate+Intents.swift in Sources */,
@@ -881,7 +867,6 @@
 				3990DCE12602BB5B002CDCD5 /* PluginDebugInfo.swift in Sources */,
 				FA69F5BC2791145E00D6DDC6 /* WebView.swift in Sources */,
 				39B64C3F26152F5E00B7FA63 /* PluginRepositoryAPI.swift in Sources */,
-				FAD571A325A0071700623B57 /* StreamablePlugin.swift in Sources */,
 				39641EA5254E096200713DAF /* PreferencesView.swift in Sources */,
 				39AF7772254612BF001D76E5 /* PluginMetadata.swift in Sources */,
 				39B84A1F257D436200FA012E /* RunScript.swift in Sources */,
@@ -918,7 +903,6 @@
 				39224DFA25F4344600BABF21 /* PluginManger.swift in Sources */,
 				39224DFB25F4344600BABF21 /* PluginErrorView.swift in Sources */,
 				39224DFC25F4344600BABF21 /* PluginRepositoryView.swift in Sources */,
-				39224DFD25F4344600BABF21 /* ExecutablePlugin.swift in Sources */,
 				FA57F2A8272A308F00817A79 /* ReloadPluginIntentHandler.swift in Sources */,
 				FA57F2A5272A308F00817A79 /* DisablePluginIntentHandler.swift in Sources */,
 				39224DFE25F4344600BABF21 /* Localizable.swift in Sources */,
@@ -943,8 +927,6 @@
 				39224E0B25F4344600BABF21 /* ImageLoader.swift in Sources */,
 				3990DCE22602BB5B002CDCD5 /* PluginDebugInfo.swift in Sources */,
 				FA57F2A4272A307900817A79 /* PluginRepositoryAPI.swift in Sources */,
-				39224E0C25F4344600BABF21 /* StreamablePlugin.swift in Sources */,
-				CC468002000000000000C002 /* PackagedPlugin.swift in Sources */,
 				CC468007000000000000C007 /* PluginManifest.swift in Sources */,
 				CC468008000000000000C008 /* FolderPlugin.swift in Sources */,
 				39224E0D25F4344600BABF21 /* PreferencesView.swift in Sources */,
