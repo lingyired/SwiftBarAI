@@ -1,8 +1,8 @@
 # AIGenerator history UI — filter by provider/host and delete-single
 
 **Date:** 2026-06-13
-**Status:** pending
-**Commit:** _fill in after commit_
+**Status:** done
+**Commit:** 50ba31b
 
 ## Summary
 - Generator History sheet now has a filter picker (All / by provider / by endpoint host)
