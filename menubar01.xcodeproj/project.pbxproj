@@ -400,8 +400,6 @@
 				8399450AB6E6F880B034E17B /* PluginCapabilities.swift */,
 				C01E46C5B7D78CD61558CA32 /* PluginCapabilityError.swift */,
 				FD64424289EDE0D80651231D /* PluginCapabilityGate.swift */,
-				6B6D4C6E86A4F030A93DD9DB /* AIGeneratorHistoryEntry.swift */,
-				DE9D408C85249D9BB0AF1DD4 /* AIGeneratorHistoryStore.swift */,
 				7FEB4F41823AF230C30E0B8D /* PluginManager+MarketplaceInstall.swift */,
 				64DE4D39B0E6E12F920F4DBE /* MarketplaceBrowserViewModel.swift */,
 				A8A04BF4B232D396052DD067 /* MarketplaceBrowserSheet.swift */,
@@ -409,7 +407,6 @@
 				D80A4BFFBA7B1D755D23EF4A /* GeneratorHistoryViewModel.swift */,
 				00D54B6E986280BB1B0D476A /* GeneratorHistorySheet.swift */,
 				95EF42CEA9A275A956AD7AFE /* GeneratorHistoryMenuCommand.swift */,
-				AB3F44F2B40C403EDCC0F57F /* AIGeneratorMenuNode.swift */,
 				0336457FBF84783754FE4BFD /* GeneratorHistoryExporter.swift */,
 				164E4786B534082283153A07 /* MarketplaceInstallPromptSheet.swift */,
 			);
