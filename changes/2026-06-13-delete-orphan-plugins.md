@@ -3,8 +3,8 @@
 - **Type:** refactor
 - **Scope:** `SwiftBar/Plugin/{Executable,Streamable,Packaged}Plugin.swift`, `SwiftBar/Plugin/PluginManger.swift`, `SwiftBar/Plugin/PluginManifest.swift`, `SwiftBar/PreferencesStore.swift`, `SwiftBar/UI/PluginErrorView.swift`, `SwiftBar.xcodeproj/project.pbxproj`, `SwiftBarTests/SwiftBarTests.swift`, plus 4 active docs
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** _pending_
-- **Status:** in-progress
+- **Commit(s):** 1ccd8ef
+- **Status:** done
 
 ## Summary
 
