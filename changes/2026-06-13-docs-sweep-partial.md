@@ -3,8 +3,8 @@
 - **Type:** docs
 - **Scope:** `docs/00-README.md` through `docs/13-Build-and-Run.md` (14 files), plus the docs-sweep follow-up row in `MIGRATION_PLAN.md` § 4
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** _pending_
-- **Status:** in-progress
+- **Commit(s):** 326f3a3
+- **Status:** done
 
 ## Summary
 
