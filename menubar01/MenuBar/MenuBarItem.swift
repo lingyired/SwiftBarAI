@@ -109,7 +109,11 @@ class MenubarItem: NSObject {
         plugin?.metadata?.refreshOnOpen ?? false
     }
 
-    lazy var menuUpdateQueue: OperationQueue = delegate.pluginManager.menuUpdateQueue
+    // Use PluginManager.shared instead of the undeclared top-level `delegate`
+    // (matches the precedent at line 577). The lazy var is only evaluated when
+    // the owning MenubarItem is initialised with a non-nil plugin, so the
+    // test bundle's missing main.swift no longer traps.
+    lazy var menuUpdateQueue: OperationQueue = PluginManager.shared.menuUpdateQueue
 
     init(title: String, plugin: Plugin? = nil, visibilityDidChange: ((Bool) -> Void)? = nil) {
         self.visibilityDidChange = visibilityDidChange
@@ -496,7 +500,7 @@ extension MenubarItem {
     }
 
     @objc func refreshAllPlugins() {
-        delegate.pluginManager.refreshAllPlugins(reason: .RefreshAllMenu)
+        PluginManager.shared.refreshAllPlugins(reason: .RefreshAllMenu)
     }
 
     /// Rebuild the inlined "Toggle Plugins" section. Each toggleable
@@ -525,7 +529,7 @@ extension MenubarItem {
             togglePluginsHeaderItem = header
         }
 
-        let toggleablePlugins = delegate.pluginManager.plugins
+        let toggleablePlugins = PluginManager.shared.plugins
             .filter { PluginType.disableable.contains($0.type) }
 
         // Reconcile: keep the `togglePluginItems` cache in sync with
@@ -565,15 +569,17 @@ extension MenubarItem {
                     // shared singleton rather than `self.delegate`.
                     // `MenubarItem` does not actually declare a
                     // `delegate` property — the other call sites
-                    // that read `self.delegate.pluginManager` (e.g.
-                    // `refreshAllPlugins`, `disableAllPlugins`) only
-                    // compile in the same file because of how Swift
-                    // resolves unqualified identifiers in some
+                    // that used to read `self.delegate.pluginManager`
+                    // (e.g. `refreshAllPlugins`, `disableAllPlugins`)
+                    // only compiled in the same file because of how
+                    // Swift resolves unqualified identifiers in some
                     // extensions. Inside a `[weak self]` closure the
                     // resolution differs and fails. The shared
                     // singleton is the canonical handle and is
                     // created once in `PluginManager.init` long
-                    // before any toggle is rendered.
+                    // before any toggle is rendered. All call sites
+                    // in this file have been migrated to
+                    // `PluginManager.shared.X(...)`.
                     guard let manager = PluginManager.shared as PluginManager?,
                           let target = manager.plugins.first(where: { $0.id == pluginID })
                     else { return }
@@ -614,11 +620,11 @@ extension MenubarItem {
     }
 
     @objc func disableAllPlugins() {
-        delegate.pluginManager.disableAllPlugins()
+        PluginManager.shared.disableAllPlugins()
     }
 
     @objc func enableAllPlugins() {
-        delegate.pluginManager.enableAllPlugins()
+        PluginManager.shared.enableAllPlugins()
     }
 
     @objc func openPluginFolder() {
@@ -643,11 +649,11 @@ extension MenubarItem {
     }
 
     @objc func copySystemReport() {
-        _ = delegate.pluginManager.copyLatestSystemReportToPasteboard()
+        _ = PluginManager.shared.copyLatestSystemReportToPasteboard()
     }
 
     @objc func openSystemReport() {
-        delegate.pluginManager.openLatestSystemReport()
+        PluginManager.shared.openLatestSystemReport()
     }
 
     @objc func quit() {
@@ -672,7 +678,7 @@ extension MenubarItem {
 
     @objc func disablePlugin() {
         guard let plugin else { return }
-        delegate.pluginManager.disablePlugin(plugin: plugin)
+        PluginManager.shared.disablePlugin(plugin: plugin)
     }
 
     @objc func debugPlugin() {
@@ -1803,7 +1809,7 @@ extension MenubarItem {
     }
 
     func dimOnManualRefresh() {
-        guard delegate.prefs.dimOnManualRefresh else { return }
+        guard PluginManager.shared.prefs.dimOnManualRefresh else { return }
         barItem.button?.appearsDisabled = true
     }
 
