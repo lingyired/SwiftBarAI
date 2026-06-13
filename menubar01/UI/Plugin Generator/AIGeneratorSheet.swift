@@ -30,6 +30,7 @@
 // `person.crop.circle` badge and a long-press / context menu
 // "Delete template" action.
 
+import AppKit
 import SwiftUI
 
 /// Modal sheet that hosts the AI plugin generator workflow.
@@ -66,6 +67,16 @@ struct AIGeneratorSheet: View {
     /// parent sheet owns the disk write and the gallery
     /// refresh.
     @State private var showingSaveTemplateSheet: Bool = false
+
+    /// One-shot alert surfaced by the "Export…" footer button
+    /// after an `AIGeneratorExporter.exportPlugin(_:)` call.
+    /// `nil` means no alert is shown; a non-nil value is
+    /// rendered as a modal `NSAlert` on the main run loop
+    /// (the sheet's host window is a plain `NSWindow`, so an
+    /// `NSAlert` is the right tool — it stacks on top of the
+    /// key window and the user can dismiss with Return /
+    /// Escape). Reset back to `nil` after the alert returns.
+    @State private var exportAlert: ExportAlert?
 
     /// User-saved templates loaded from
     /// `AIGeneratorTemplateStore.shared` at sheet-open time
@@ -156,6 +167,34 @@ struct AIGeneratorSheet: View {
                     break
                 }
             }
+        }
+        // Post-export alert. `runExport()` writes a non-nil
+        // `exportAlert` after each `AIGeneratorExporter`
+        // call; the `.onChange` modifier shows the alert and
+        // resets the binding back to `nil` so the next
+        // export can re-arm the alert. We use `.onChange`
+        // (rather than rendering the alert inside the body)
+        // because `NSAlert.runModal()` is a blocking call —
+        // it would freeze the SwiftUI render loop if called
+        // directly from the view body. The single-parameter
+        // closure form is the macOS 12+ API; the two-
+        // parameter `(oldValue, newValue) in` variant is
+        // gated to macOS 14+ and the project deploys back
+        // to macOS 12.
+        .onChange(of: exportAlert) { newValue in
+            guard let alert = newValue else { return }
+            let nsAlert = NSAlert()
+            nsAlert.messageText = alert.title
+            nsAlert.informativeText = alert.message
+            nsAlert.alertStyle = alert.style == .informational ? .informational : .warning
+            nsAlert.addButton(withTitle: "OK")
+            nsAlert.runModal()
+            // Reset after the alert returns so the next
+            // export can re-arm it. A bare `exportAlert =
+            // nil` would not fire the `.onChange` (SwiftUI
+            // sees a no-op transition), so we mutate the
+            // binding via the captured copy.
+            exportAlert = nil
         }
     }
 
@@ -598,6 +637,21 @@ struct AIGeneratorSheet: View {
                     Task { await viewModel.generateStreaming() }
                 }
                 .disabled(!viewModel.canGenerate)
+                // M2+ "Export…" affordance. Lives in the
+                // footer between "Re-generate" and "Save to
+                // Plugin Folder" so it is visible on the
+                // success view (the button only renders when
+                // `viewModel.latestPlugin != nil`) and never
+                // collides with the empty-state "Generate"
+                // button. The actual export logic — save
+                // panel, staging temp dir, `/usr/bin/zip`,
+                // cleanup — lives in `AIGeneratorExporter` so
+                // the test bundle can exercise the zip
+                // pipeline without driving an `NSAlert` /
+                // `NSSavePanel`.
+                Button("Export…") {
+                    runExport()
+                }
                 Button("Save to Plugin Folder") {
                     // M2 install-prompt: opening the prompt sheet
                     // here, not in the view model. The sub-sheet
@@ -649,4 +703,61 @@ struct AIGeneratorSheet: View {
             && !viewModel.isLoading
             && !viewModel.isImproving
     }
+
+    /// Drive the "Export…" footer button. Captures the
+    /// current `viewModel.latestPlugin` (the footer's button
+    /// only renders when one exists, so this is always
+    /// non-nil here) and delegates to
+    /// `AIGeneratorExporter.exportPlugin(_:)`, which shows the
+    /// `NSSavePanel`, runs the zip, and surfaces the result
+    /// via a modal `NSAlert`. The result is stored back into
+    /// `exportAlert` so the SwiftUI body renders the alert on
+    /// the next redraw.
+    private func runExport() {
+        guard let plugin = viewModel.latestPlugin else { return }
+        switch AIGeneratorExporter.exportPlugin(plugin) {
+        case .success(let destination):
+            // The exporter already calls
+            // `NSWorkspace.shared.activateFileViewerSelecting(...)`
+            // on success so Finder pops up with the new zip
+            // highlighted. The alert copy mirrors the
+            // GeneratorHistorySheet's "Exported" alert so the
+            // two flows feel consistent.
+            exportAlert = ExportAlert(
+                title: "Exported",
+                message: "Exported to \(destination.lastPathComponent). Finder has been opened to the file.",
+                style: .informational
+            )
+        case .cancelled:
+            // User dismissed the save panel — no alert.
+            break
+        case .writeFailed(let reason),
+             .zipFailed(let reason),
+             .launchFailed(let reason):
+            exportAlert = ExportAlert(
+                title: "Export failed",
+                message: reason,
+                style: .warning
+            )
+        }
+    }
+}
+
+// MARK: - Export alert
+
+/// Backing model for the post-export `NSAlert`. Lives at file
+/// scope (rather than inside the `View`) so it can be
+/// `Equatable` and the SwiftUI `onChange(of:)` modifier can
+/// fire the alert exactly once per non-nil transition. The
+/// `style` is split out because the `NSAlert` initialiser
+/// wants an `NSAlert.Style`, not a custom enum, and the SwiftUI
+/// view body has no direct handle on AppKit types.
+struct ExportAlert: Equatable {
+    enum Style: Equatable {
+        case informational
+        case warning
+    }
+    let title: String
+    let message: String
+    let style: Style
 }

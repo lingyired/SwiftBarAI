@@ -132,6 +132,7 @@
 		A0A0A0A0A0A0A0A0A0A0A001 /* AIGeneratorTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A0A0A0A0A0A0A0A0A0A002 /* AIGeneratorTemplate.swift */; };
 		B0B0B0B0B0B0B0B0B0B0B001 /* AIGeneratorTemplateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0B0B0B0B0B0B0B0B0B0B002 /* AIGeneratorTemplateStore.swift */; };
 		C0C0C0C0C0C0C0C0C0C0C001 /* AIGeneratorSaveTemplateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0C0C0C0C0C0C0C0C0C002 /* AIGeneratorSaveTemplateSheet.swift */; };
+		D0D0D0D0D0D0D0D0D0D0D0D1 /* AIGeneratorExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D0D0D0D0D0D0D0D0D0D0D2 /* AIGeneratorExporter.swift */; };
 		CAAD40FB94DA1FB971138A81 /* GeneratorHistoryMenuCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95EF42CEA9A275A956AD7AFE /* GeneratorHistoryMenuCommand.swift */; };
 		CAF84AAFB13C69B0A06DD47C /* MarketplaceInstallPromptSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 164E4786B534082283153A07 /* MarketplaceInstallPromptSheet.swift */; };
 		CC468011000000000000C011 /* MarketplaceCapabilityPromptSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC468010000000000000C010 /* MarketplaceCapabilityPromptSheet.swift */; };
@@ -153,6 +154,7 @@
 		A0A0A0A0A0A0A0A0A0A0A003 /* AIGeneratorTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A0A0A0A0A0A0A0A0A0A002 /* AIGeneratorTemplate.swift */; };
 		B0B0B0B0B0B0B0B0B0B0B003 /* AIGeneratorTemplateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0B0B0B0B0B0B0B0B0B0B002 /* AIGeneratorTemplateStore.swift */; };
 		C0C0C0C0C0C0C0C0C0C0C003 /* AIGeneratorSaveTemplateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0C0C0C0C0C0C0C0C0C002 /* AIGeneratorSaveTemplateSheet.swift */; };
+		D0D0D0D0D0D0D0D0D0D0D0D3 /* AIGeneratorExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D0D0D0D0D0D0D0D0D0D0D2 /* AIGeneratorExporter.swift */; };
 		DB7749C98F0850F5B994DDDE /* MarketplaceBrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64DE4D39B0E6E12F920F4DBE /* MarketplaceBrowserViewModel.swift */; };
 		DBEA403DAF5D4C3226EA7FDA /* AIPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEE243E5A225D2B187D1F4C9 /* AIPreferencesView.swift */; };
 		E49E4B0A9F6784825DE62979 /* AIPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEE243E5A225D2B187D1F4C9 /* AIPreferencesView.swift */; };
@@ -288,6 +290,7 @@
 		A0A0A0A0A0A0A0A0A0A0A002 /* AIGeneratorTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorTemplate.swift; path = menubar01/AI/AIGeneratorTemplate.swift; sourceTree = SOURCE_ROOT; };
 		B0B0B0B0B0B0B0B0B0B0B002 /* AIGeneratorTemplateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorTemplateStore.swift; path = menubar01/AI/AIGeneratorTemplateStore.swift; sourceTree = SOURCE_ROOT; };
 		C0C0C0C0C0C0C0C0C0C0C002 /* AIGeneratorSaveTemplateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorSaveTemplateSheet.swift; path = "menubar01/UI/Plugin Generator/AIGeneratorSaveTemplateSheet.swift"; sourceTree = SOURCE_ROOT; };
+		D0D0D0D0D0D0D0D0D0D0D0D2 /* AIGeneratorExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIGeneratorExporter.swift; path = "menubar01/UI/Plugin Generator/AIGeneratorExporter.swift"; sourceTree = SOURCE_ROOT; };
 		070775436F2E9DC682BE1BFE /* RemoteAIPluginGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAIPluginGenerator.swift; sourceTree = "<group>"; };
 		7F1C3D1C5A1F4F9BA2D1061A /* LocalAIPluginGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAIPluginGenerator.swift; sourceTree = "<group>"; };
 		705AC70319E448669E96803B /* MarketplaceEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketplaceEntry.swift; sourceTree = "<group>"; };
@@ -426,6 +429,7 @@
 				164E4786B534082283153A07 /* MarketplaceInstallPromptSheet.swift */,
 				CC468010000000000000C010 /* MarketplaceCapabilityPromptSheet.swift */,
 				C0C0C0C0C0C0C0C0C0C0C002 /* AIGeneratorSaveTemplateSheet.swift */,
+				D0D0D0D0D0D0D0D0D0D0D0D2 /* AIGeneratorExporter.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1045,6 +1049,7 @@
 				CAF84AAFB13C69B0A06DD47C /* MarketplaceInstallPromptSheet.swift in Sources */,
 				CC468011000000000000C011 /* MarketplaceCapabilityPromptSheet.swift in Sources */,
 				C0C0C0C0C0C0C0C0C0C0C001 /* AIGeneratorSaveTemplateSheet.swift in Sources */,
+				D0D0D0D0D0D0D0D0D0D0D0D1 /* AIGeneratorExporter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1121,6 +1126,7 @@
 				23B944FBACF883E78157EB7C /* AIGeneratorMenuNode.swift in Sources */,
 				04F94D3391B2D6626313AF79 /* GeneratorHistoryExporter.swift in Sources */,
 				C0C0C0C0C0C0C0C0C0C0C003 /* AIGeneratorSaveTemplateSheet.swift in Sources */,
+				D0D0D0D0D0D0D0D0D0D0D0D3 /* AIGeneratorExporter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
