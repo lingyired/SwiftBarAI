@@ -151,6 +151,41 @@ Full suite: 235 tests, 0 failing.
   in the sheet's footer would let users send the audit trail to
   support.
 
+## Follow-up (this commit)
+
+All three follow-ups from the section above are now landed in a
+follow-up commit. The detailed description lives in
+[`changes/2026-06-13-m5-history-followups.md`](2026-06-13-m5-history-followups.md);
+this section is the executive summary so anyone scanning the
+M5 history UI record sees the resolution.
+
+- **Re-generate wiring landed.** The "Re-generate" footer
+  button now opens the M2 sheet with `viewModel.request` pre-
+  populated from the selected entry's `request` column. The
+  wiring is a new
+  `PluginGeneratorMenuCommand.presentSheet(appDelegate:prefillRequest:)`
+  overload plus a one-line update to the history sheet's
+  `onRegenerate` closure. See
+  `changes/2026-06-13-m5-history-followups.md` §1.
+- **`menuTreeJSON` population landed.** The
+  `record-after-generate` hook in
+  `AIGeneratorViewModel.generate()` now passes a non-nil
+  `menuTreeJSON` for every parseable entry script. v1 uses a
+  synthetic line-by-line parse that mirrors the M2 sheet's
+  result section (the entry script's text is parsed into
+  `[AIGeneratorMenuNode]` and pretty-printed to JSON). A future
+  round can replace the synthetic parser with a real
+  sandboxed dry-run of the entry script. See
+  `changes/2026-06-13-m5-history-followups.md` §2.
+- **Audit-log export landed.** A new "Export…" button in the
+  sheet's footer opens an `NSSavePanel` and hands the chosen
+  destination to `GeneratorHistoryExporter.runZip(...)`, which
+  shells out to `/usr/bin/zip -r <destination> .` in the
+  selected entry's `{rootDirectory}/{promptId}/` subdirectory.
+  The success / failure result is surfaced via an `NSAlert`. See
+  `changes/2026-06-13-m5-history-followups.md` §3.
+
+
 ## Related
 
 - M5 data layer (f2a1cf4) —
