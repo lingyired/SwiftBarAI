@@ -3,8 +3,8 @@
 - **Type:** refactor
 - **Scope:** SwiftBar/Plugin, SwiftBar/Resources, SwiftBar/UI, SwiftBar/Utility, SwiftBarTests
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** _pending — fill in after `git commit`_
-- **Status:** in-progress
+- **Commit(s):** 99248b7
+- **Status:** done
 
 ## Summary
 
