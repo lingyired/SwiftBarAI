@@ -3,7 +3,7 @@
 - **Type:** feat
 - **Scope:** `menubar01/AI/`, `menubar01/UI/Plugin Generator/`, `menubar01Tests/`, `menubar01.xcodeproj/project.pbxproj`
 - **Author(s):** Trae AI
-- **Commit(s):** 47d9f03
+- **Commit(s):** b64da46
 - **Status:** done
 
 ## Summary
