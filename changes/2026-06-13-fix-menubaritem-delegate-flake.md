@@ -3,8 +3,8 @@
 - **Type:** fix
 - **Scope:** `menubar01/MenuBar/MenuBarItem.swift`
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** 6bc26de
+- **Status:** done
 
 ## Summary
 

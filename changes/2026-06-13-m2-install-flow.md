@@ -1,10 +1,10 @@
 # 2026-06-13: M2 install-flow — wire the save stub to a real install path
 
 - **Type:** feat
-- **Scope:** `menubar01/Plugin/PluginManger.swift`, `menubar01/UI/Plugin Generator/AIGeneratorViewModel.swift`, `menubar01Tests/`, `docs/`
+- **Scope:** `menubar01/Plugin/PluginManger.swift`, `menubar01/UI/Plugin Generator/AIGeneratorViewModel.swift`, `menubar01Tests/`
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** 2beeccc
+- **Status:** done
 
 ## Summary
 

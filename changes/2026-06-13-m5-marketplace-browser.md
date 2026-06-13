@@ -9,8 +9,8 @@
   `menubar01.xcodeproj/project.pbxproj` (edit — new sources),
   `menubar01Tests/MarketplaceBrowserViewModelTests.swift` (new)
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** 351b460
+- **Status:** done
 
 ## Summary
 
