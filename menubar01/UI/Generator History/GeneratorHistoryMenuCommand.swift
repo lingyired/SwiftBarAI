@@ -114,6 +114,14 @@ enum GeneratorHistoryMenuCommand {
                         // visible immediately, replacing the v1
                         // workaround of "user copies / pastes
                         // from the detail pane".
+                        //
+                        // Close the history window first so the
+                        // user does not end up with two stacked
+                        // sheets (M5 history underneath the M2
+                        // generator). The M2 window controller is
+                        // owned by the same `AppDelegate` so the
+                        // close is local to this call.
+                        windowController.window?.close()
                         PluginGeneratorMenuCommand.presentSheet(
                             appDelegate: appDelegate,
                             prefillRequest: entry.request
