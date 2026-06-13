@@ -3,8 +3,8 @@
 - **Type:** docs
 - **Scope:** top-level Markdown docs (CLAUDE.md, README.md, MIGRATION_PLAN.md, MENUBAR01_MIGRATION_REPORT.md, AI_PLUGIN_ARCHITECTURE.md, SWIFTBAR_REFERENCE_REPORT.md) + new README-MANIFEST-PLUGINS.md
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** _pending_
-- **Status:** in-progress
+- **Commit(s):** 70ef392
+- **Status:** done
 
 ## Summary
 
