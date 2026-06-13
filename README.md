@@ -13,6 +13,36 @@ rebranded and re-platformed for new product directions:
 - Plugin ecosystem
 - Automation tool runtime
 
+## Recent additions
+
+- **AI streaming** — the M2+ generator's "Generate" / "Re-generate"
+  buttons now stream the model's reply token-by-token into a
+  monospaced preview area inside the sheet, with an automatic
+  fallback to the non-streaming round-trip for providers that do
+  not support streaming. See [`docs/M2-ai-streaming.md`](docs/M2-ai-streaming.md).
+- **Plugin capabilities gate** — every install path in menubar01
+  (AI generator, marketplace browser) now funnels through a
+  single `PluginCapabilityGate` so a plugin's declared
+  `network` / `clipboard` / `notifications` / `calendar` /
+  `fileWrite` capabilities are user-granted before the plugin
+  loads. The plugin About view's **Permissions** section lets
+  the user revoke a grant. See
+  [`docs/M3-plugin-capabilities.md`](docs/M3-plugin-capabilities.md).
+- **Marketplace install prompt** — the M5 marketplace browser's
+  "Install" button now opens a sub-sheet that lists the
+  plugin's declared capabilities and grants them via the gate
+  before installing. The marketplace install-gate overload
+  auto-grants `isGrantedByDefault == true` capabilities
+  (e.g. `clipboard`) and prompts for the rest in a single
+  Grant / Decline choice. See
+  [`docs/M5-marketplace-install-prompt.md`](docs/M5-marketplace-install-prompt.md).
+- **History export with Finder reveal** — the M5 generator
+  history sheet's "Export…" button writes a `MANIFEST.json`
+  to the zip root (with `appVersion`, `appBuild`, `exportedAt`,
+  `entryCount`, `provider`) and activates Finder with the new
+  zip pre-selected on success. See
+  [`docs/M5-history-export-reveal.md`](docs/M5-history-export-reveal.md).
+
 ## Highlights
 
 - **Folder-based plugins** — drop a folder containing a `manifest.json`
