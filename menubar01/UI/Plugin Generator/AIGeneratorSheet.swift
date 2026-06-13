@@ -490,10 +490,54 @@ struct AIGeneratorSheet: View {
     @ViewBuilder
     private func resultSection(for plugin: GeneratedPlugin) -> some View {
         VStack(alignment: .leading, spacing: 12) {
+            regenerateHeader(for: plugin)
             explanationSection(for: plugin)
             promptIdSection(for: plugin)
             manifestSection
             entryScriptSection(for: plugin)
+        }
+    }
+
+    /// M2+ success-view header. Renders the "Re-generate"
+    /// button next to a "Generated" label so the user has a
+    /// single, always-visible affordance to ask the LLM for a
+    /// variation of the current result. The button shows a
+    /// small `ProgressView` in place of the label's icon
+    /// while `viewModel.isRegenerating == true` and is disabled
+    /// during the round-trip so a double-click does not fire
+    /// two parallel LLM calls. The button is also disabled
+    /// while the request field is empty (mirrors
+    /// `canRegenerate`) so the user can never burn a round-trip
+    /// on a blank prompt.
+    private func regenerateHeader(for plugin: GeneratedPlugin) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "sparkles")
+                .foregroundStyle(.tint)
+            Text("Generated")
+                .font(.headline)
+            Spacer()
+            Button {
+                // Fire-and-forget task: the closure runs on
+                // the main actor (the button is in a SwiftUI
+                // view body), and the `Task` re-enters the
+                // view model's `@MainActor` `regenerateWithVariation()`.
+                // The button does not need to await the result
+                // — `isRegenerating` and the new `latestPlugin`
+                // drive the UI.
+                Task { await viewModel.regenerateWithVariation() }
+            } label: {
+                HStack(spacing: 4) {
+                    if viewModel.isRegenerating {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                    }
+                    Text("Re-generate")
+                }
+            }
+            .disabled(!canRegenerate)
+            .help("Ask the AI for a variation of this result (uses a higher temperature).")
         }
     }
 
@@ -702,6 +746,19 @@ struct AIGeneratorSheet: View {
         !viewModel.request.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !viewModel.isLoading
             && !viewModel.isImproving
+    }
+
+    /// `true` when the success-view "Re-generate" button
+    /// should be enabled. Mirrors `canImprove` (non-empty
+    /// request, not currently loading, not already
+    /// regenerating) so a double-click during a round-trip is
+    /// a no-op rather than a parallel LLM call. Centralised
+    /// here so the SwiftUI `.disabled` modifier does not
+    /// have to repeat the rule.
+    private var canRegenerate: Bool {
+        !viewModel.request.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !viewModel.isLoading
+            && !viewModel.isRegenerating
     }
 
     /// Drive the "Export…" footer button. Captures the

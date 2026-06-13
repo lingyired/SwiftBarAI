@@ -99,6 +99,17 @@ final class AIGeneratorViewModel: ObservableObject {
     /// with the streaming-preview spinner.
     @Published private(set) var isImproving: Bool = false
 
+    /// `true` while the M2+ "Re-generate" button is mid-flight
+    /// (the user clicked the success-view "Re-generate" button
+    /// to ask the LLM for a variation of the previous result).
+    /// The M2 sheet's success view flips this on click and
+    /// shows a small spinner next to the button; a second click
+    /// while `true` is a no-op (see `regenerateWithVariation()`).
+    /// Independent of `isLoading`, `isStreaming`, and
+    /// `isImproving` so the spinner never races with the
+    /// streaming-preview / improve / first-run spinners.
+    @Published private(set) var isRegenerating: Bool = false
+
     // MARK: - Dependencies
 
     /// The generator used by `generate()`. Default factory comes
@@ -131,6 +142,17 @@ final class AIGeneratorViewModel: ObservableObject {
     /// in `AIGenerator.swift` so the two flows' log messages show up
     /// under the same subsystem / split out by category.
     private static let log = OSLog(subsystem: "com.lingyi.menubar01", category: "AIGenerator")
+
+    /// Temperature the M2+ "Re-generate" button asks the model
+    /// to use. `0.8` is high enough to produce a clearly
+    /// different plugin from the first run (the first run uses
+    /// the Remote generator's `0.2` default) but low enough to
+    /// stay coherent — the user is asking for a *variation* of
+    /// the previous result, not a random unrelated plugin.
+    /// Pinned as a `static let` on the view model so the SwiftUI
+    /// button, the test suite, and the Remote generator's
+    /// `temperature` payload all read the same constant.
+    static let regenerateTemperature: Double = 0.8
 
     // MARK: - Init
 
@@ -264,6 +286,85 @@ final class AIGeneratorViewModel: ObservableObject {
         } catch {
             // Keep existing state, do not overwrite request.
             os_log("AIGenerator: improve failed: %{public}@",
+                   log: Self.log, type: .error, error.localizedDescription)
+        }
+    }
+
+    /// M2+ "Re-generate" helper. Re-runs the active generator
+    /// with the same `request` but a deliberately higher
+    /// temperature (`Self.regenerateTemperature`, currently
+    /// `0.8`) so the LLM produces a *variation* of the previous
+    /// result. Designed for the success view's "Re-generate"
+    /// button — the user already has a result they like, and
+    /// clicking the button asks the model to "try again, but
+    /// give me something different".
+    ///
+    /// Concurrency: a second click while `isRegenerating` is
+    /// `true` is a no-op, so a user double-click does not fire
+    /// two LLM round-trips. Empty / whitespace-only requests
+    /// are short-circuited before the call (mirrors
+    /// `canGenerate`).
+    ///
+    /// Success: the new plugin replaces `latestPlugin` and the
+    /// state transitions to `.success(newPlugin)`. A new
+    /// `AIGeneratorHistoryEntry` is recorded with the
+    /// high-temperature `promptId` (the
+    /// `MockAIPluginGenerator.promptId(for:model:temperature:)`
+    /// overload bakes the temperature into the hash so the
+    /// history row is distinct from the first run's row — no
+    /// duplicate history entry).
+    ///
+    /// Failure: the existing `state` / `latestPlugin` are
+    /// preserved (the error is logged via `os_log` at `.error`
+    /// but not surfaced through `state`), so a transient LLM
+    /// error does not blow away the previous successful
+    /// generation. The success view keeps showing the last
+    /// good plugin.
+    func regenerateWithVariation() async {
+        guard !isRegenerating else { return }
+        guard !request.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        isRegenerating = true
+        defer { isRegenerating = false }
+        // Snapshot the previous state so we can roll back on
+        // failure without the call site having to reason about
+        // `latestPlugin` / `state` separately.
+        let previousPlugin = latestPlugin
+        let previousState = state
+        // Build a fresh context that overrides the temperature
+        // with the high-temperature constant. We do **not**
+        // mutate the published `context` because the user's
+        // chosen default temperature (when they have one)
+        // should not flip just because they hit "Re-generate"
+        // once — the override is scoped to this single call.
+        var variationContext = context
+        variationContext.temperature = Self.regenerateTemperature
+        do {
+            let newPlugin = try await generator.generate(
+                request: request, context: variationContext
+            )
+            latestPlugin = newPlugin
+            state = .success(newPlugin)
+            // Record a fresh history row keyed on the
+            // high-temperature `promptId`. The Mock / Remote
+            // generators' `promptId(for:model:temperature:)`
+            // overload bakes the temperature into the hash, so
+            // the new entry is keyed on a different `promptId`
+            // from the first run and lands as a separate row
+            // in the on-disk history store. Mirrors the
+            // streaming `recordHistory(...)` helper so the
+            // menu-tree JSON and host/model attribution
+            // behaviour is identical to the first-run path.
+            recordHistory(plugin: newPlugin, request: request)
+        } catch {
+            // Preserve the previous success: roll `latestPlugin`
+            // and `state` back to the snapshot taken at the
+            // top of the call. The error is logged but not
+            // surfaced through `state` so the success banner
+            // and the `Save to Plugin Folder` button stay
+            // available for the previous (good) plugin.
+            latestPlugin = previousPlugin
+            state = previousState
+            os_log("AIGenerator: regenerate-with-variation failed: %{public}@",
                    log: Self.log, type: .error, error.localizedDescription)
         }
     }

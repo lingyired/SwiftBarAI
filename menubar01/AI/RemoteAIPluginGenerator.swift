@@ -340,20 +340,32 @@ public final class RemoteAIPluginGenerator: AIPluginGenerator {
         // Deterministic promptId, matching the Mock / Echo
         // contract so the existing test suite (and any future
         // history-persistence code keyed on promptId) treats
-        // remote payloads uniformly.
-        let promptId = MockAIPluginGenerator.promptId(for: request, model: context.model)
+        // remote payloads uniformly. The temperature-aware
+        // overload appends "|t=<value>" to the hash when
+        // `context.temperature != nil`, so a high-temperature
+        // re-generate (the M2+ "Re-generate" button) gets its
+        // own `promptId` and lands in history as a fresh row.
+        let promptId = MockAIPluginGenerator.promptId(
+            for: request,
+            model: context.model,
+            temperature: context.temperature
+        )
 
         // Encode the request body. `JSONEncoder` defaults use the
         // property name verbatim, so `response_format` is emitted
         // as `response_format` and the `Message` struct is encoded
-        // as `{"role": …, "content": …}`.
+        // as `{"role": …, "content": …}`. The temperature is read
+        // from the context when present (M2+ "Re-generate" path
+        // sets it to 0.8) and falls back to the historical 0.2
+        // default for the first-run / normal-generate path.
         let bodyData: Data
         do {
             bodyData = try JSONEncoder().encode(
                 RemoteChatCompletionsRequest(
                     model: context.model,
                     systemPrompt: Self.systemPrompt,
-                    userPrompt: request
+                    userPrompt: request,
+                    temperature: context.temperature ?? 0.2
                 )
             )
         } catch {
@@ -420,14 +432,22 @@ public final class RemoteAIPluginGenerator: AIPluginGenerator {
             // Compute the same deterministic promptId the
             // non-streaming `generate(...)` would, so the M5
             // history store treats streamed and non-streamed
-            // runs as the same logical event.
+            // runs as the same logical event. The
+            // temperature-aware overload appends "|t=<value>"
+            // to the hash when `context.temperature != nil`,
+            // so a high-temperature re-generate gets its own
+            // `promptId` and a fresh history row.
             let promptId = MockAIPluginGenerator.promptId(
-                for: request, model: context.model
+                for: request, model: context.model,
+                temperature: context.temperature
             )
 
             // Encode the request body once, here, so the
             // stream can re-issue it after a 429 / 5xx retry
             // without rebuilding the JSONEncoder from scratch.
+            // The temperature is read from the context when
+            // present (M2+ "Re-generate" path sets it to 0.8)
+            // and falls back to the historical 0.2 default.
             let bodyData: Data
             do {
                 bodyData = try JSONEncoder().encode(
@@ -435,7 +455,8 @@ public final class RemoteAIPluginGenerator: AIPluginGenerator {
                         model: context.model,
                         systemPrompt: Self.systemPrompt,
                         userPrompt: request,
-                        stream: true
+                        stream: true,
+                        temperature: context.temperature ?? 0.2
                     )
                 )
             } catch {

@@ -42,7 +42,11 @@ public final class MockAIPluginGenerator: AIPluginGenerator {
         request: String,
         context: AIGeneratorContext
     ) async throws -> GeneratedPlugin {
-        let promptId = Self.promptId(for: request, model: context.model)
+        let promptId = Self.promptId(
+            for: request,
+            model: context.model,
+            temperature: context.temperature
+        )
         return Self.makeMockPlugin(promptId: promptId, context: context)
     }
 
@@ -69,11 +73,34 @@ public final class MockAIPluginGenerator: AIPluginGenerator {
     /// Computes the deterministic `promptId` from
     /// `SHA256(request + "|" + model)`. Returns the lowercased hex
     /// digest so it can be safely embedded in a manifest filename.
+    /// Kept for backwards compatibility — every existing call site
+    /// and the M1 v1 test suite build a hash with this signature.
     public static func promptId(for request: String, model: String) -> String {
+        return promptId(for: request, model: model, temperature: nil)
+    }
+
+    /// Temperature-aware overload of `promptId(for:model:)`. When
+    /// `temperature` is `nil` the hash matches the two-argument
+    /// overload exactly (same byte stream: `request + "|" + model`),
+    /// so a re-generate at the default temperature produces the
+    /// same `promptId` as the initial run and overwrites the
+    /// on-disk history entry idempotently. A non-nil `temperature`
+    /// appends `"|t=<value>"` to the hash input, so a
+    /// high-temperature re-generate yields a fresh `promptId` and
+    /// a new history row.
+    public static func promptId(
+        for request: String,
+        model: String,
+        temperature: Double?
+    ) -> String {
         var hasher = SHA256()
         hasher.update(data: Data(request.utf8))
         hasher.update(data: Data("|".utf8))
         hasher.update(data: Data(model.utf8))
+        if let temperature {
+            hasher.update(data: Data("|t=".utf8))
+            hasher.update(data: Data(String(temperature).utf8))
+        }
         let digest = hasher.finalize()
         return digest.map { String(format: "%02x", $0) }.joined()
     }

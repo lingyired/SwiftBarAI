@@ -34,16 +34,28 @@ public struct AIGeneratorContext: Equatable {
     /// explanation text. Defaults to `"en"`.
     public var language: String
 
+    /// Sampling temperature sent to the model. `nil` means "use the
+    /// generator's own default" — for the Mock generator that is
+    /// `0.0` (deterministic echo), for the Remote generator that is
+    /// `0.2` (low-temperature, repeatable). The M2+ "Re-generate"
+    /// button overrides this with `0.8` to deliberately request a
+    /// variation of the previous result. `nil` is the v1 default so
+    /// the existing call sites that build a `AIGeneratorContext`
+    /// without a temperature continue to behave exactly as before.
+    public var temperature: Double?
+
     public init(
         model: String,
         city: String? = nil,
         refreshIntervalSeconds: Int? = nil,
-        language: String = "en"
+        language: String = "en",
+        temperature: Double? = nil
     ) {
         self.model = model
         self.city = city
         self.refreshIntervalSeconds = refreshIntervalSeconds
         self.language = language
+        self.temperature = temperature
     }
 
     /// Default context used by callers that don't carry any pre-filled
