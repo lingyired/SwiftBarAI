@@ -112,6 +112,19 @@ final class MarketplaceBrowserViewModel: ObservableObject {
         _ = NSWorkspace.shared.open(url)
     }
 
+    /// Underlying revealer for `openDataFolder(snapshot:)`.
+    /// The default delegates to
+    /// `NSWorkspace.shared.activateFileViewerSelecting(_:)`
+    /// so Finder pops up with the per-plugin data
+    /// directory pre-selected. Tests inject a recording
+    /// closure to assert the URL the VM computed without
+    /// the xctest host actually launching Finder. The
+    /// `var` (not `let`) follows the same injection
+    /// pattern as `viewSourceOpener` above.
+    var openDataFolderRevealer: ([URL]) -> Void = { urls in
+        NSWorkspace.shared.activateFileViewerSelecting(urls)
+    }
+
     // MARK: - Init
 
     /// Designated init. `client` defaults to
@@ -805,6 +818,89 @@ final class MarketplaceBrowserViewModel: ObservableObject {
         os_log("viewSource: opening manifest at %{public}@",
                log: Log.plugin, type: .info, manifestURL.path)
         viewSourceOpener(manifestURL)
+    }
+
+    // MARK: - Open data folder
+
+    /// Open the per-plugin data directory for the given
+    /// installed plugin snapshot in Finder. The data
+    /// directory is the same
+    /// `<AppShared.dataDirectory>/<plugin-id>/` location
+    /// the running plugin receives as
+    /// `$MENUBAR01_PLUGIN_DATA_PATH` (see `Plugin.dataDirectory`
+    /// and `AppShared.dataDirectory`); the symlink-resolved
+    /// folder path is used as the subfolder key so the
+    /// directory the user reveals matches the directory the
+    /// running plugin writes to. If the directory does not
+    /// exist yet (the user has never run the plugin), it is
+    /// created on-demand so Finder has a target to reveal.
+    ///
+    /// The actual reveal is funnelled through the
+    /// `openDataFolderRevealer` closure (default
+    /// `NSWorkspace.shared.activateFileViewerSelecting(_:)`)
+    /// so tests can intercept the call without the xctest
+    /// host actually launching Finder. The closure is
+    /// `([URL]) -> Void` (matching the `NSWorkspace`
+    /// signature) so a future "reveal both the plugin
+    /// folder and the data folder side-by-side" follow-up
+    /// can be added without breaking the injection seam.
+    ///
+    /// No-op shape:
+    /// - The data directory base (`AppShared.dataDirectory`)
+    ///   is unavailable — the user's `~/Library/Application
+    ///   Support` could not be resolved. Logged at `.info`
+    ///   and the reveal is skipped; the user can still
+    ///   navigate to the plugin folder manually.
+    /// - The directory could not be created (permissions,
+    ///   read-only volume, …). Logged at `.error` and the
+    ///   reveal is skipped. The user is not shown a banner
+    ///   because opening a data folder is a regular in-app
+    ///   action — see the design comment on
+    ///   `viewSource(snapshot:)` for the same reasoning.
+    ///
+    /// The method does not touch the
+    /// `MarketplaceBrowserState` machine — opening a data
+    /// folder is a regular in-app action that does not
+    /// need a banner.
+    func openDataFolder(snapshot: InstalledPluginSnapshot) {
+        guard let dataURL = dataDirectoryURL(for: snapshot) else {
+            os_log("openDataFolder: data directory base unavailable for %{public}@",
+                   log: Log.plugin, type: .info, snapshot.name)
+            return
+        }
+        do {
+            try FileManager.default.createDirectory(
+                at: dataURL,
+                withIntermediateDirectories: true
+            )
+        } catch {
+            os_log("openDataFolder: failed to create data directory %{public}@: %{public}@",
+                   log: Log.plugin, type: .error,
+                   dataURL.path, error.localizedDescription)
+            return
+        }
+        os_log("openDataFolder: revealing data directory %{public}@",
+               log: Log.plugin, type: .info, dataURL.path)
+        openDataFolderRevealer([dataURL])
+    }
+
+    /// Compute the on-disk data directory URL for an
+    /// installed plugin snapshot. Mirrors
+    /// `Plugin.dataDirectory` /
+    /// `FolderPlugin.id` (symlink-resolved folder path) so
+    /// the directory the user reveals is exactly the
+    /// directory the running plugin writes to via
+    /// `$MENUBAR01_PLUGIN_DATA_PATH`. Returns `nil` when
+    /// `AppShared.dataDirectory` cannot be resolved
+    /// (e.g. the test bundle's `CFBundleName` does not
+    /// match the production app name, or
+    /// `~/Library/Application Support` is unwritable).
+    private func dataDirectoryURL(
+        for snapshot: InstalledPluginSnapshot
+    ) -> URL? {
+        guard let base = AppShared.dataDirectory else { return nil }
+        let resolvedPath = snapshot.url.resolvingSymlinksInPath().path
+        return base.appendingPathComponent(resolvedPath, isDirectory: true)
     }
 
     // MARK: - Update

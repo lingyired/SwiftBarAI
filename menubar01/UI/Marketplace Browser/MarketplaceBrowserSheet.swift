@@ -379,6 +379,30 @@ struct MarketplaceBrowserSheet: View {
                 .buttonStyle(.borderless)
                 .controlSize(.mini)
                 .help("View manifest.json for \(snapshot.name)")
+                // Per-row "Open data folder" button.
+                // Reveals the per-plugin data directory
+                // (the same `<AppShared.dataDirectory>/<id>/`
+                // location the running plugin receives
+                // as `$MENUBAR01_PLUGIN_DATA_PATH`) in
+                // Finder via
+                // `viewModel.openDataFolder(snapshot:)`.
+                // The directory is created on-demand if
+                // the user has not yet run the plugin.
+                // Placed immediately after the "View
+                // source" button so the two icon-only
+                // actions cluster on the trailing edge
+                // of the row. Same `.mini` /
+                // `.borderless` shape as the sibling
+                // button to keep the row compact and
+                // the toggle on the right edge.
+                Button {
+                    viewModel.openDataFolder(snapshot: snapshot)
+                } label: {
+                    Image(systemName: "folder")
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.mini)
+                .help("Open data folder for \(snapshot.name)")
                 // Per-row enable / disable toggle. Bound
                 // to a Binding<Bool> that maps through
                 // `viewModel.toggleEnabled(for:)` so the
