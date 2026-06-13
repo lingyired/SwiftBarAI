@@ -67,7 +67,7 @@ For a file like `battery.10s.sh` in the plugin folder. Lifecycle:
 
 ### `StreamablePlugin` — long-running scripts
 
-For plugins that emit content continuously. Construction picks the most recent of the file's `mtime` or a previously stored `lastRefresh` from the plugin's hidden `.swiftbar/state` directory.
+For plugins that emit content continuously. Construction picks the most recent of the file's `mtime` ; there is no on-disk state directory in menubar01 — the file-state snapshot lives in memory inside `PluginManager` and is recomputed on every `loadPlugins()` call.
 
 - `init` is failable (`init?`); returns `nil` if the executable cannot be found.
 - `metadata` requires `type == .streamable`. The protocol guarantees this; assertDebug in `init`.
@@ -142,16 +142,14 @@ Notable fields:
 
 | Field | Notes |
 | --- | --- |
-| `type` | Defaults to `.executable`; the filename-based factory infers `.streamable` from the `*/stream*` token and `.packaged` from the `.swiftbar` extension. |
+| `type` | Defaults to `.executable`; resolved from the `manifest.json` `type` field, or `.executable` when absent. The historical `.streamable` and `.packaged` cases are no longer recognised. |
 | `name` | Base filename without the interval token. |
 | `interval` | Parsed from filename via `parseRefreshInterval(...)`. Supports `10s`, `5m`, `1h`, etc.; falls back to default 10s. |
 | `schedule` | Optional cron expression. If set, the plugin is re-armed via a `Timer` whose `fireDate` is the next matching fire time (`SwifCron.nextFireDate`); after firing, the timer is rescheduled. |
 | `customEnv` | Extra env vars injected when the script runs. |
-| `triggers` | The xbar-style `<swiftbar.triggers>` parsed from script output (an empty array if not used). |
-| `click` | `<swiftbar.click>` config (run script on click, open URL, post notification). |
-| `image` | The `<swiftbar.image>` resolved URL (after `FileFinder` checks the package / data folder). |
-| `forceUpdateInterval` | The minimum interval at which menubar01 is allowed to re-render. |
-| `streamingDisableFailureNotif` | Set by `ExecutablePlugin` as `true` for streamable plugins so they don't double-notify. |
+| `previewImageURL` | The `manifest.json` `image` field resolved against the plugin directory (or the data folder). |
+| `forceUpdateInterval` | Historical: the minimum interval at which menubar01 is allowed to re-render. The `manifest.json` schema no longer exposes a per-plugin override; menubar01 uses the global render cadence. |
+| `streamingDisableFailureNotif` | Historical: set by `ExecutablePlugin` as `true` for streamable plugins so they don't double-notify. The streamable plugin type was removed in `1ccd8ef` and the field is no longer populated. |
 | `lastUpdated` | A counter incremented on every change so the menu bar UI can `Equatable` against it. |
 | `lastError` | Captured during script run; copied here on `lastErrorRefresh`. |
 
@@ -175,7 +173,7 @@ Notable fields:
 
 - `loadPlugins()` — runs the discovery pipeline:
   1. Resets `plugins`.
-  2. Scans the plugin folder (and selected subfolders) for `*.swiftbar` directories, scripts, and Apple Shortcut links.
+  2. Scans the plugin folder (and selected subfolders) for folders containing a `manifest.json`, bare entry scripts that the discovery logic can lift into a folder plugin, and Apple Shortcut links.
   3. Constructs the matching `Plugin` subclass for each.
   4. Picks the `setDefaultPluginsEnabled` / `disableAllPlugins` rules.
   5. Calls `pluginsDidChange()`.

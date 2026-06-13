@@ -54,14 +54,14 @@ public struct MenuLineParameters: Codable, Equatable {
     public var skipLines: Int?                // how many lines of children to ignore
     public var ignored: [String: String] = [:]// extra unknown params preserved
 
-    // swiftbar-specific:
+    // line-level action / behavior params (uniform `key=value`; no tag-based dispatch):
     public var type: String?
     public var scheme: String?                // iTerm/Apple color scheme
     public var shortcutName: String?
     public var key: String?                   // global hotkey
     public var modifiers: [String]?           // ["cmd", "shift"]
     public var hrefInBackground: Bool?
-    public var swiftbarTriggerPreSleep: Bool = false
+    public var preSleepTrigger: Bool = false  // historical: opt-in trigger fired before system sleep
     public var lastUpdated: Int = -1
     public var name: String?                  // override of plugin name
     public var hidden: Bool = false
@@ -100,7 +100,14 @@ public struct MenuLineParameters: Codable, Equatable {
 
 ### `parseAllParameters(_:)` (static)
 
-Used to extract xbar-style metadata. It scans the *output* for a set of marker lines:
+> **Historical only.** The `parseAllParameters` helper used to scan the
+> *output* for a set of marker lines and lift them off the rendered text:
+
+<details>
+<summary>Historical: `<swiftbar.*>` marker tags lifted from script output (no longer parsed)</summary>
+
+The following markers used to appear anywhere in the output, were stripped
+from the rendered text, and were stored on `PluginMetadata`:
 
 - `<swiftbar.refresh>30s</swiftbar.refresh>`
 - `<swiftbar.schedule>* * * * *</swiftbar.schedule>`
@@ -111,7 +118,13 @@ Used to extract xbar-style metadata. It scans the *output* for a set of marker l
 - `<swiftbar.customTrigger>true</swiftbar.customTrigger>`
 - `<swiftbar.triggers><trigger>foo</trigger></swiftbar.triggers>`
 
-These can appear in *any* line; they are stripped from the rendered output but stored on `PluginMetadata`.
+The xbar / SwiftBar upstream equivalent was
+`<xbar.refresh>...</xbar.refresh>` etc. menubar01 does **not** parse any of
+these tags. Configuration that used to live here now lives in
+`manifest.json` (`refreshInterval`, `schedule`, `image`, `type`, `entry`,
+…) or per-line in the `| key=value` suffix parsed by
+`MenuLineParameters.init(line:)`.
+</details>
 
 ### Action encoding
 
@@ -163,4 +176,4 @@ When the user clicks the notification, `AppDelegate.userNotificationCenter(_:did
 
 ## Default behavior
 
-If a line has no `|` and no parameters, `MenuItemNode` still creates a `MenuItemNode` with `title` = the line, `href` = `nil`, no `bash`, etc. The click does nothing unless the plugin has a default `<swiftbar.click>` block.
+If a line has no `|` and no parameters, `MenuItemNode` still creates a `MenuItemNode` with `title` = the line, `href` = `nil`, no `bash`, etc. The click does nothing unless the line carries `href=…` or `bash=…` (see the `MenuLineParameters` keys above).

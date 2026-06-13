@@ -44,7 +44,7 @@ menubar01/
 │   ├── (StreamablePlugin.swift removed in 1ccd8ef)
 │   ├── ShortcutPlugin.swift       # Apple Shortcuts-backed plugins
 │   ├── EphemeralPlugin.swift      # URL-scheme driven short-lived items
-│   ├── (PackagedPlugin.swift / .swiftbar bundle support removed in 1ccd8ef)
+│   ├── (PackagedPlugin.swift / packaged bundle support removed in 1ccd8ef)
 │   ├── PluginMetadata.swift       # ObservableObject data class populated by FolderPlugin
 │   ├── PluginManger.swift         # Manager (typo preserved; contains FolderPlugin loader)
 │   ├── PluginDebugInfo.swift      # Debug event log
