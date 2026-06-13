@@ -89,7 +89,7 @@ struct Menubar01Tests {
     }
 
     @Test func testShouldShowDefaultBarItem_hidesFallbackWhenPluginIsVisible() async throws {
-        #expect(!shouldShowDefaultBarItem(hasVisiblePlugins: true, stealthMode: false, alwaysShowMenubar01Menu: true))
+        #expect(!shouldShowDefaultBarItem(hasVisiblePlugins: true, stealthMode: false, alwaysShowMenubar01Menu: false))
     }
 
     @Test func testShouldShowDefaultBarItem_hidesFallbackInStealthMode() async throws {
@@ -121,7 +121,6 @@ struct Menubar01Tests {
           "name": "Test Plugin",
           "version": "1.2.3",
           "description": "A test",
-          "type": "streamable",
           "entry": "run.sh",
           "refreshInterval": 42,
           "environment": { "API_KEY": "abc" },
@@ -159,7 +158,6 @@ struct Menubar01Tests {
           "author": "Alice",
           "aboutUrl": "https://example.com/plugin",
           "dependencies": "bash, curl, jq",
-          "type": "streamable",
           "entry": "run.sh",
           "refreshInterval": 42,
           "environment": { "API_KEY": "abc" },
@@ -755,7 +753,9 @@ struct Menubar01IntegrationTests {
     @MainActor @Test func testPluginItemHideCallbackRestoresDefaultBarItem() async throws {
         let manager = PluginManager()
         let originalStealthMode = manager.prefs.stealthMode
+        let originalAlwaysShow = manager.prefs.alwaysShowMenubar01Menu
         manager.prefs.stealthMode = false
+        manager.prefs.alwaysShowMenubar01Menu = false
 
         defer {
             manager.plugins.removeAll()
@@ -763,6 +763,7 @@ struct Menubar01IntegrationTests {
             manager.directoryObserver = nil
             manager.barItem.show()
             manager.prefs.stealthMode = originalStealthMode
+            manager.prefs.alwaysShowMenubar01Menu = originalAlwaysShow
         }
 
         let plugin = TestPlugin(id: "test-plugin", file: "/tmp/test-plugin.5s.sh")
@@ -893,10 +894,10 @@ struct Menubar01IntegrationTests {
     }
 
     @Test func testMergePluginsPreservingOrder_replacesModifiedPluginsInPlace() async throws {
-        let firstPlugin = TestPlugin(id: "first", file: "/tmp/first.5s.sh")
-        let modifiedPlugin = TestPlugin(id: "modified", file: "/tmp/modified.5s.sh")
-        let thirdPlugin = TestPlugin(id: "third", file: "/tmp/third.5s.sh")
-        let replacementPlugin = TestPlugin(id: "modified", file: "/tmp/modified.5s.sh", content: "updated")
+        let firstPlugin = TestPlugin(id: "first", file: "/tmp/first.5s.test")
+        let modifiedPlugin = TestPlugin(id: "modified", file: "/tmp/modified.5s.test")
+        let thirdPlugin = TestPlugin(id: "third", file: "/tmp/third.5s.test")
+        let replacementPlugin = TestPlugin(id: "modified", file: "/tmp/modified.5s.test", content: "updated")
 
         let mergedPlugins = mergePluginsPreservingOrder(
             existingPlugins: [firstPlugin, modifiedPlugin, thirdPlugin],
@@ -944,8 +945,8 @@ struct Menubar01IntegrationTests {
     }
 
     @Test func testMergePluginsPreservingOrder_appendsNewFilePluginAndShortcuts() async throws {
-        let existing = TestPlugin(id: "existing", file: "/tmp/existing.5s.sh")
-        let brandNew = TestPlugin(id: "brand-new", file: "/tmp/brand-new.5s.sh")
+        let existing = TestPlugin(id: "existing", file: "/tmp/existing.5s.test")
+        let brandNew = TestPlugin(id: "brand-new", file: "/tmp/brand-new.5s.test")
         let shortcut = ShortcutPlugin(PersistentShortcutPlugin(id: "shortcut", name: "shortcut", shortcut: "test", repeatString: "", cronString: ""))
 
         let merged = mergePluginsPreservingOrder(
@@ -966,7 +967,7 @@ struct Menubar01IntegrationTests {
         let originalDisabledPlugins = manager.prefs.disabledPlugins
         defer { manager.prefs.disabledPlugins = originalDisabledPlugins }
 
-        let plugin = TestPlugin(id: "disabled-plugin", file: "/tmp/disabled-plugin.5s.sh", enabled: false, lastState: .Disabled)
+        let plugin = TestPlugin(id: "disabled-plugin", file: "/tmp/disabled-plugin.5s.test", enabled: false, lastState: .Disabled)
         manager.prefs.disabledPlugins = [plugin.id]
         manager.plugins = [plugin]
 
@@ -982,7 +983,7 @@ struct Menubar01IntegrationTests {
         let originalDisabledPlugins = manager.prefs.disabledPlugins
         defer { manager.prefs.disabledPlugins = originalDisabledPlugins }
 
-        let plugin = TestPlugin(id: "removed-plugin", file: "/tmp/removed-plugin.5s.sh", enabled: false, lastState: .Disabled)
+        let plugin = TestPlugin(id: "removed-plugin", file: "/tmp/removed-plugin.5s.test", enabled: false, lastState: .Disabled)
         manager.prefs.disabledPlugins = [plugin.id]
         manager.plugins = [plugin]
 
@@ -1104,7 +1105,7 @@ struct Menubar01IntegrationTests {
 
 @Suite(.serialized)
 struct EnvironmentVariableTests {
-    // Issue #473: SWIFTBAR_PLUGINS_PATH should reflect the current plugin directory,
+    // Issue #473: MENUBAR01_PLUGINS_PATH should reflect the current plugin directory,
     // not a stale value captured at Environment init time.
     @Test func testPluginsPathReflectsCurrentPreference() throws {
         let env = Environment.shared
@@ -1116,14 +1117,14 @@ struct EnvironmentVariableTests {
         // Set a known path
         PreferencesStore.shared.pluginDirectoryPath = "/tmp/test-plugins-path"
         let envStr = env.systemEnvStr
-        #expect(envStr["SWIFTBAR_PLUGINS_PATH"] == "/tmp/test-plugins-path",
-                "SWIFTBAR_PLUGINS_PATH should reflect the current pluginDirectoryPath")
+        #expect(envStr["MENUBAR01_PLUGINS_PATH"] == "/tmp/test-plugins-path",
+                "MENUBAR01_PLUGINS_PATH should reflect the current pluginDirectoryPath")
 
         // Change the path and verify it updates dynamically
         PreferencesStore.shared.pluginDirectoryPath = "/tmp/other-plugins-path"
         let envStr2 = env.systemEnvStr
-        #expect(envStr2["SWIFTBAR_PLUGINS_PATH"] == "/tmp/other-plugins-path",
-                "SWIFTBAR_PLUGINS_PATH should update when pluginDirectoryPath changes")
+        #expect(envStr2["MENUBAR01_PLUGINS_PATH"] == "/tmp/other-plugins-path",
+                "MENUBAR01_PLUGINS_PATH should update when pluginDirectoryPath changes")
 
     }
 
@@ -1135,8 +1136,8 @@ struct EnvironmentVariableTests {
 
         PreferencesStore.shared.pluginDirectoryPath = nil
         let envStr = env.systemEnvStr
-        #expect(envStr["SWIFTBAR_PLUGINS_PATH"] == "",
-                "SWIFTBAR_PLUGINS_PATH should be empty string when directory is nil")
+        #expect(envStr["MENUBAR01_PLUGINS_PATH"] == "",
+                "MENUBAR01_PLUGINS_PATH should be empty string when directory is nil")
     }
 }
 
