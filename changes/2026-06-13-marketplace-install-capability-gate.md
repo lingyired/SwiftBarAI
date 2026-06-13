@@ -131,4 +131,4 @@ auto-grants capabilities the gate considers implicitly granted (e.g.
   `PluginCapabilityTests` cases updated for the new
   `isGrantedByDefault` policy).
 
-Status: pending (SHA + final status backfilled after commit)
+Status: done (fc169b7)
