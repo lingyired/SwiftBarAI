@@ -3,7 +3,7 @@
 - **Type:** refactor
 - **Scope:** Localization + Plugin + Utility + UI/Debug
 - **Author(s):** Trae AI
-- **Commit(s):** 55c7732
+- **Commit(s):** 8e608b2
 - **Status:** done
 
 ## Summary
