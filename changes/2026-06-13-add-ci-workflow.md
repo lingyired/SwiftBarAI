@@ -1,8 +1,8 @@
 # Add GitHub Actions CI workflow
 
 **Date:** 2026-06-13
-**Status:** pending
-**Commit:** _fill in after commit_
+**Status:** done
+**Commit:** 28019a2
 
 ## Summary
 - Added `.github/workflows/test.yml` that runs `xcodebuild test` on
