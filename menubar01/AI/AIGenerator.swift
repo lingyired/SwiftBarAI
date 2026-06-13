@@ -140,11 +140,32 @@ public struct GeneratedPlugin {
     private static let log = OSLog(subsystem: "com.lingyi.menubar01", category: "AIGenerator")
 }
 
+extension GeneratedPlugin: Equatable {
+    /// Manual `==` because `PluginManifest` is not `Equatable`.
+    /// Compares the manifest by re-encoding both sides with
+    /// `[.sortedKeys]` so the comparison is byte-stable.
+    public static func == (lhs: GeneratedPlugin, rhs: GeneratedPlugin) -> Bool {
+        guard
+            lhs.entryScript == rhs.entryScript,
+            lhs.explanation == rhs.explanation,
+            lhs.promptId == rhs.promptId,
+            lhs.promptVersion == rhs.promptVersion
+        else { return false }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard
+            let l = try? encoder.encode(lhs.manifest),
+            let r = try? encoder.encode(rhs.manifest)
+        else { return false }
+        return l == r
+    }
+}
+
 // MARK: - Errors
 
 /// Errors thrown by `AIPluginGenerator` implementations. The cases
 /// mirror §1.5 of `AI_PLUGIN_ARCHITECTURE.md`.
-public enum AIGeneratorError: Error, Equatable {
+public enum AIGeneratorError: Error, Equatable, LocalizedError {
     /// The model produced a manifest that declares capabilities it
     /// does not have. v1 has no capability-gate enforcement; this
     /// case is reserved for M3.
@@ -158,6 +179,19 @@ public enum AIGeneratorError: Error, Equatable {
     /// The provider returned an error that we should surface to the
     /// user verbatim.
     case providerFailure(reason: String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .unsafeRequest:
+            return "The generator produced a plugin that requests capabilities it cannot prove it needs."
+        case .unrenderableMenu:
+            return "The generator produced a script that could not be rendered into a menu tree."
+        case .rateLimited:
+            return "The provider rate-limited the request. Please wait a moment and try again."
+        case .providerFailure(let reason):
+            return "Provider error: \(reason)"
+        }
+    }
 }
 
 // MARK: - Protocol

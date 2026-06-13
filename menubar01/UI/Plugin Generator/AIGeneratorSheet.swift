@@ -1,0 +1,249 @@
+// AIGeneratorSheet.swift
+// menubar01 — AI Plugin Generator (M2)
+//
+// SwiftUI sheet that lets the user type a natural-language plugin
+// request and preview the generator's output. The actual "live
+// preview" — running the generated script in a sandbox — is out of
+// scope for M2 (it's M3 capability-gate territory). M2 just renders
+// the manifest JSON, the entry script body, the model's
+// explanation, and the `promptId` as text so the user can accept
+// or reject the result.
+//
+// Driven by `AIGeneratorViewModel`. The view never holds generator
+// state of its own — every state transition goes through the VM.
+
+import SwiftUI
+
+/// Modal sheet that hosts the AI plugin generator workflow.
+///
+/// v1 (M2) surface:
+/// - A multi-line `TextEditor` for the request.
+/// - A "Generate" button that calls `viewModel.generate()`.
+/// - When `.success(...)`: the manifest JSON, the entry script,
+///   the explanation, the `promptId`, and a "Re-generate" / "Save
+///   to Plugin Folder" / "Cancel" trio.
+/// - When `.failure(reason)`: a red error banner with a
+///   "Re-generate" retry button.
+@MainActor
+struct AIGeneratorSheet: View {
+    @StateObject private var viewModel: AIGeneratorViewModel
+
+    /// Designated initializer. Tests pass a hand-built view model
+    /// that wraps a `MockAIPluginGenerator`; the production call
+    /// site (`PluginGeneratorMenuCommand.presentSheet`) constructs
+    /// the default `AIGeneratorViewModel` explicitly on the main
+    /// actor. We do **not** use a default-value parameter here
+    /// because a default of `AIGeneratorViewModel()` would force
+    /// the call site to invoke a `@MainActor` initializer from a
+    /// nonisolated context.
+    init(viewModel: AIGeneratorViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    requestEditor
+                    errorBanner
+                    if let plugin = viewModel.latestPlugin {
+                        resultSection(for: plugin)
+                    }
+                }
+                .padding(20)
+            }
+            Divider()
+            footer
+        }
+        .frame(minWidth: 560, idealWidth: 640, minHeight: 480, idealHeight: 600)
+        .alert(
+            "Save to Plugin Folder",
+            isPresented: $viewModel.didRequestSave,
+            actions: {
+                Button("OK", role: .cancel) {}
+            },
+            message: {
+                Text("M3 will wire this to PluginManager.importPlugin. For now the generated manifest + script are visible in the preview above.")
+            }
+        )
+    }
+
+    // MARK: - Sections
+
+    private var header: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Generate plugin with AI…")
+                    .font(.title3.weight(.semibold))
+                Text("Describe what the plugin should show. The generator returns a manifest, a script, and a short explanation.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(20)
+    }
+
+    private var requestEditor: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Request")
+                .font(.headline)
+            TextEditor(text: $viewModel.request)
+                .font(.body.monospaced())
+                .frame(minHeight: 80, maxHeight: 140)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                )
+            HStack {
+                Text("Tip: be specific. e.g. “show today's weather in Beijing, refresh every 30 minutes”.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var errorBanner: some View {
+        if case .failure(let reason) = viewModel.state {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Generator failed")
+                        .font(.subheadline.weight(.semibold))
+                    Text(reason)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.red.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+    }
+
+    @ViewBuilder
+    private func resultSection(for plugin: GeneratedPlugin) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            explanationSection(for: plugin)
+            promptIdSection(for: plugin)
+            manifestSection
+            entryScriptSection(for: plugin)
+        }
+    }
+
+    private func explanationSection(for plugin: GeneratedPlugin) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Explanation")
+                .font(.headline)
+            Text(plugin.explanation)
+                .font(.body)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
+                .background(Color.secondary.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+    }
+
+    private func promptIdSection(for plugin: GeneratedPlugin) -> some View {
+        HStack(spacing: 6) {
+            Text("promptId:")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(plugin.promptId)
+                .font(.caption.monospaced())
+                .textSelection(.enabled)
+            Spacer()
+            Text("promptVersion: \(plugin.promptVersion)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var manifestSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("manifest.json")
+                .font(.headline)
+            if let json = viewModel.manifestJSON {
+                ScrollView(.horizontal, showsIndicators: true) {
+                    Text(json)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 180)
+                .background(Color.secondary.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            } else {
+                Text("(manifest is not yet encodable)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func entryScriptSection(for plugin: GeneratedPlugin) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Entry script")
+                .font(.headline)
+            ScrollView(.horizontal, showsIndicators: true) {
+                Text(plugin.entryScript)
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 180)
+            .background(Color.secondary.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+    }
+
+    private var footer: some View {
+        HStack(spacing: 8) {
+            if viewModel.isLoading {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Generating…")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Cancel", role: .cancel) {
+                // M2's sheet is hosted in a standalone `NSWindow`
+                // (not a SwiftUI `.sheet`), so there is no
+                // `\.dismiss` environment to call. Close the
+                // key window instead. The
+                // `PluginGeneratorMenuCommand` keeps the
+                // window controller alive for the next click.
+                NSApp.keyWindow?.close()
+            }
+            .keyboardShortcut(.cancelAction)
+            if viewModel.latestPlugin != nil {
+                Button("Re-generate") {
+                    Task { await viewModel.generate() }
+                }
+                .disabled(!viewModel.canGenerate)
+                Button("Save to Plugin Folder") {
+                    viewModel.requestSaveToPluginFolder()
+                }
+                .keyboardShortcut(.defaultAction)
+            } else {
+                Button("Generate") {
+                    Task { await viewModel.generate() }
+                }
+                .disabled(!viewModel.canGenerate)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+    }
+}

@@ -1,5 +1,6 @@
 import Cocoa
 
+@MainActor
 class AppMenu: NSMenu {
     private lazy var applicationName = ProcessInfo.processInfo.processName
     let preferencesItem = NSMenuItem(title: Localizable.MenuBar.Preferences.localized, action: #selector(openPreferences), keyEquivalent: ",")
@@ -15,6 +16,7 @@ class AppMenu: NSMenu {
             item.target = self
         }
         items = [menuItemOne]
+        PluginGeneratorMenuCommand.install(into: self)
     }
 
     required init(coder: NSCoder) {
@@ -23,6 +25,10 @@ class AppMenu: NSMenu {
 
     @objc func openPreferences() {
         AppShared.openPreferences()
+    }
+
+    @objc func openAIGenerator() {
+        PluginGeneratorMenuCommand.presentSheet()
     }
 
     @objc func sendFeedback() {

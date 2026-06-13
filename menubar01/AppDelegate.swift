@@ -65,6 +65,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUStandardUserDriverDelegat
         }
     }
 
+    /// Window that hosts the AI plugin generator sheet (M2). Held
+    /// on the `AppDelegate` so the sheet can be reopened without
+    /// losing in-flight input. Lazily created by
+    /// `PluginGeneratorMenuCommand.ensureWindowController(...)`.
+    var aiGeneratorWindowController: NSWindowController?
+
     lazy var preferencesWindowController = PreferencesWindowController(
         panes: preferencePanes,
         style: .toolbarItems,
