@@ -44,6 +44,19 @@ import SwiftUI
 struct MarketplaceBrowserSheet: View {
     @StateObject private var viewModel: MarketplaceBrowserViewModel
 
+    /// Backing state for the install-prompt sub-sheet. The
+    /// `MarketplaceInstallPromptSheet` is presented as a
+    /// SwiftUI `.sheet(...)` modal so it stacks cleanly on top
+    /// of this sheet and dismisses independently. Mirrors the
+    /// pattern in `AIGeneratorSheet.showingInstallPrompt`.
+    @State private var showingInstallPrompt: Bool = false
+
+    /// Cached prompt context built when the user clicks
+    /// Install. `nil` until the first Install click; the parent
+    /// rebuilds it on every presentation via
+    /// `viewModel.requestInstallPrompt(overwriteExisting:)`.
+    @State private var pendingPromptContext: MarketplaceInstallPromptContext?
+
     /// Designated init. Production callers (the menu command)
     /// construct a `MarketplaceBrowserViewModel` with the
     /// default dependencies; tests pass a hand-built VM that
@@ -70,6 +83,46 @@ struct MarketplaceBrowserSheet: View {
             // automatically if the view is dismissed.
             if viewModel.entries.isEmpty && viewModel.state == .idle {
                 await viewModel.loadCatalogue()
+            }
+        }
+        .sheet(isPresented: $showingInstallPrompt) {
+            if let context = pendingPromptContext {
+                MarketplaceInstallPromptSheet(
+                    context: context,
+                    viewModel: viewModel
+                ) { result in
+                    // The sub-sheet's completion handler is
+                    // the only path back into view-model
+                    // state. Toggle the presentation binding
+                    // first so the SwiftUI sheet dismisses,
+                    // then drop the cached context.
+                    showingInstallPrompt = false
+                    pendingPromptContext = nil
+                    switch result {
+                    case .success:
+                        // The VM's `.installed(URL)` state
+                        // already drives the success alert in
+                        // `.alert(...)`; nothing extra to do.
+                        break
+                    case .failure(let error):
+                        switch error {
+                        case .noSelectedPackage:
+                            // User cancelled — roll the VM
+                            // state back so a stale
+                            // `.error(reason)` from a previous
+                            // attempt does not linger in the
+                            // error banner.
+                            if case .error = viewModel.state {
+                                viewModel.state = .loaded
+                            }
+                        case .installFailed:
+                            // The VM state already carries
+                            // `.error(reason)`; the banner
+                            // is rendered by `stateBanner`.
+                            break
+                        }
+                    }
+                }
             }
         }
         .alert(
@@ -270,13 +323,23 @@ struct MarketplaceBrowserSheet: View {
     private func installControls(for _: MarketplaceEntry) -> some View {
         HStack(spacing: 12) {
             Button("Install") {
-                Task { await viewModel.installSelected(overwriteExisting: false) }
+                // M5 install-prompt: opening the prompt sheet
+                // here, not in the view model. The sub-sheet
+                // reads `viewModel.installPromptCapabilities`
+                // and `viewModel.installPromptIsPreApproved`,
+                // grants the user-enabled capabilities via
+                // `gate.grant(_:for:)`, and then calls
+                // `viewModel._installSelectedAfterGrants(...)`
+                // for the actual install. Mirrors the
+                // `AIGeneratorSheet` "Save to Plugin Folder"
+                // button flow.
+                presentInstallPrompt(overwriteExisting: false)
             }
             .keyboardShortcut(.defaultAction)
             .disabled(!canInstall)
 
             Button("Install (overwrite)") {
-                Task { await viewModel.installSelected(overwriteExisting: true) }
+                presentInstallPrompt(overwriteExisting: true)
             }
             .disabled(!canInstall)
 
@@ -288,6 +351,19 @@ struct MarketplaceBrowserSheet: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    /// Build a fresh `MarketplaceInstallPromptContext` and
+    /// present the install-prompt sub-sheet. No-op when no
+    /// package is loaded (the Install button is already
+    /// disabled in that state but a programmatic call would
+    /// also be a defensive no-op).
+    private func presentInstallPrompt(overwriteExisting: Bool) {
+        guard let context = viewModel.requestInstallPrompt(
+            overwriteExisting: overwriteExisting
+        ) else { return }
+        pendingPromptContext = context
+        showingInstallPrompt = true
     }
 
     @ViewBuilder

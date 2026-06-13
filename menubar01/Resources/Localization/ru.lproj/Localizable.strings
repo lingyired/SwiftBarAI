@@ -25,6 +25,7 @@
 "PF_PREFERENCES" = "Настройки";
 "PF_GENERAL" = "Общие";
 "PF_ADVANCED" = "Advanced";
+"PF_AI" = "ИИ";
 "PF_PLUGINS" = "Плагины";
 "PF_SHORTCUT_PLUGINS" = "Shortcut Plugins";
 "PF_ABOUT" = "About";

@@ -51,6 +51,20 @@ public enum AIPluginGeneratorProvider: String, Codable, Equatable, Sendable, Cas
     /// `RemoteAIPluginGenerator` (URLSession-backed) lands in a
     /// follow-up.
     case remote
+
+    /// User-facing label the Preferences → AI pane renders in
+    /// the provider picker. The wording is deliberately short
+    /// (one to three words) so a segmented picker on a narrow
+    /// preferences pane stays readable; the explanatory copy
+    /// that follows each picker segment is what tells the user
+    /// *what* each provider actually does.
+    public var displayName: String {
+        switch self {
+        case .mock:   return "Mock (offline)"
+        case .local:  return "Local model"
+        case .remote: return "Remote model"
+        }
+    }
 }
 
 // MARK: - Factory

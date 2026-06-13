@@ -41,6 +41,7 @@ enum Localizable {
         case Preferences = "PF_PREFERENCES"
         case General = "PF_GENERAL"
         case Advanced = "PF_ADVANCED"
+        case AI = "PF_AI"
         case Plugins = "PF_PLUGINS"
         case ShortcutPlugins = "PF_SHORTCUT_PLUGINS"
         case About = "PF_ABOUT"

@@ -51,6 +51,14 @@ public enum AIGeneratorHistoryError: Error, Equatable {
 /// traversal in `listAll` scales linearly with the number of runs,
 /// but each run is a single `response.json` of a few hundred bytes).
 public protocol AIGeneratorHistoryStore {
+    /// Root directory the store reads from / writes to. Exposed
+    /// so the M5 history sheet can build an "Export this entry as
+    /// .zip" command (the sheet's export helper zips the
+    /// `{rootDirectory}/{promptId}/` subdirectory). In-memory
+    /// stores and the `AIGeneratorHistoryStoreFactory.makeDefault()`
+    /// factory can rely on the protocol's default implementation.
+    var rootDirectory: URL { get }
+
     /// Persist `entry` to disk. Idempotent w.r.t. `promptId`: a
     /// second `record(...)` with the same id overwrites the previous
     /// directory atomically.
@@ -64,6 +72,17 @@ public protocol AIGeneratorHistoryStore {
 
     /// Remove every entry under the store's root directory.
     func deleteAll() throws
+}
+
+public extension AIGeneratorHistoryStore {
+    /// Default `rootDirectory` for stores that don't carry their own
+    /// on-disk root — falls through to the default factory's
+    /// `~/Library/Application Support/menubar01/AIGenerator/`.
+    /// `FileSystemAIGeneratorHistoryStore` overrides this with the
+    /// path it was actually constructed with.
+    var rootDirectory: URL {
+        AIGeneratorHistoryStoreFactory.makeDefault().rootDirectory
+    }
 }
 
 // MARK: - File-system implementation
@@ -98,10 +117,16 @@ public final class FileSystemAIGeneratorHistoryStore: AIGeneratorHistoryStore {
     /// `requestFilename`.
     public static let menuFilename = "menu.json"
 
-    private let rootDirectory: URL
+    private let _rootDirectory: URL
     private let fileManager: FileManager
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
+
+    /// Root directory the store reads from / writes to. Exposes the
+    /// path used at construction time so the M5 history sheet's
+    /// "Export…" helper can build `{rootDirectory}/{promptId}/`
+    /// before invoking `/usr/bin/zip`.
+    public var rootDirectory: URL { _rootDirectory }
 
     /// - Parameters:
     ///   - rootDirectory: Parent directory under which one
@@ -123,7 +148,7 @@ public final class FileSystemAIGeneratorHistoryStore: AIGeneratorHistoryStore {
         encoder: JSONEncoder = FileSystemAIGeneratorHistoryStore.defaultEncoder(),
         decoder: JSONDecoder = FileSystemAIGeneratorHistoryStore.defaultDecoder()
     ) {
-        self.rootDirectory = rootDirectory
+        self._rootDirectory = rootDirectory
         self.fileManager = fileManager
         self.encoder = encoder
         self.decoder = decoder
@@ -168,7 +193,7 @@ public final class FileSystemAIGeneratorHistoryStore: AIGeneratorHistoryStore {
         let contents: [URL]
         do {
             contents = try fileManager.contentsOfDirectory(
-                at: rootDirectory,
+                at: _rootDirectory,
                 includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]
             )
@@ -185,7 +210,7 @@ public final class FileSystemAIGeneratorHistoryStore: AIGeneratorHistoryStore {
             return []
         } catch {
             throw AIGeneratorHistoryError.ioFailure(
-                reason: "Failed to enumerate \(rootDirectory.path): \(error.localizedDescription)"
+                reason: "Failed to enumerate \(_rootDirectory.path): \(error.localizedDescription)"
             )
         }
 
@@ -229,14 +254,14 @@ public final class FileSystemAIGeneratorHistoryStore: AIGeneratorHistoryStore {
     }
 
     public func deleteAll() throws {
-        guard fileManager.fileExists(atPath: rootDirectory.path) else { return }
+        guard fileManager.fileExists(atPath: _rootDirectory.path) else { return }
         do {
             // `contentsOfDirectory` is read-only — enumerate first
             // and remove each child individually so a stray
             // non-directory file (e.g. a `README.md` the user dropped
             // in by mistake) does not block the wipe.
             let children = try fileManager.contentsOfDirectory(
-                at: rootDirectory,
+                at: _rootDirectory,
                 includingPropertiesForKeys: nil,
                 options: [.skipsHiddenFiles]
             )
@@ -245,7 +270,7 @@ public final class FileSystemAIGeneratorHistoryStore: AIGeneratorHistoryStore {
             }
         } catch {
             throw AIGeneratorHistoryError.ioFailure(
-                reason: "Failed to wipe \(rootDirectory.path): \(error.localizedDescription)"
+                reason: "Failed to wipe \(_rootDirectory.path): \(error.localizedDescription)"
             )
         }
     }
@@ -254,7 +279,7 @@ public final class FileSystemAIGeneratorHistoryStore: AIGeneratorHistoryStore {
 
     /// Returns the `{rootDirectory}/{promptId}/` subdirectory URL.
     private func entryDirectory(for promptId: String) -> URL {
-        return rootDirectory.appendingPathComponent(promptId, isDirectory: true)
+        return _rootDirectory.appendingPathComponent(promptId, isDirectory: true)
     }
 
     private func isDirectory(_ url: URL) -> Bool {

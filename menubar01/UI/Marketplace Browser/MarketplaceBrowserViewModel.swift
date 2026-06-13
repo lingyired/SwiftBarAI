@@ -80,6 +80,16 @@ final class MarketplaceBrowserViewModel: ObservableObject {
     /// per-test temp-dir-backed instance.
     let pluginManager: PluginManager?
 
+    /// M3 capability gate used by the install-prompt sheet to read
+    /// / grant the per-plugin capability set. Default points at
+    /// `PluginManager.shared.pluginCapabilityGate` so the
+    /// production sheet uses the same store the loader reads
+    /// from on next refresh. Tests inject a fresh instance
+    /// backed by an isolated `UserDefaults(suiteName:)` via
+    /// the `internal(set)` setter, mirroring the DI pattern in
+    /// `AIGeneratorViewModel.pluginCapabilityGate`.
+    var pluginCapabilityGate: PluginCapabilityGate = PluginManager.shared.pluginCapabilityGate
+
     // MARK: - Init
 
     /// Designated init. `client` defaults to
@@ -119,6 +129,57 @@ final class MarketplaceBrowserViewModel: ObservableObject {
               let string = String(data: data, encoding: .utf8)
         else { return nil }
         return string
+    }
+
+    /// Capabilities the currently loaded package's manifest
+    /// declares. Empty when no package is loaded (e.g. the user
+    /// has not yet selected an entry, or the package fetch is
+    /// in flight). Mirrors `AIGeneratorViewModel.installPromptCapabilities`
+    /// so both install flows expose the same shape and the
+    /// `MarketplaceInstallPromptSheet` can render the same
+    /// "list of toggles" UI the M2+ install-prompt sheet uses.
+    var installPromptCapabilities: [PluginCapability] {
+        package?.manifest.resolvedCapabilities ?? []
+    }
+
+    /// Pre-flight check: `true` when every declared capability
+    /// is already granted (no prompt needed), `false` when at
+    /// least one capability is ungranted. Used by the parent
+    /// sheet to skip the prompt when the user has already
+    /// accepted everything in a previous round-trip. Mirrors
+    /// `AIGeneratorViewModel.installPromptIsPreApproved`.
+    var installPromptIsPreApproved: Bool {
+        let pluginName = package?.manifest.name ?? selectedEntry?.name ?? ""
+        guard !pluginName.isEmpty else { return true }
+        let granted = pluginCapabilityGate.granted(for: pluginName)
+        return installPromptCapabilities.allSatisfy { capability in
+            granted.contains(capability)
+        }
+    }
+
+    /// Build the `MarketplaceInstallPromptContext` the parent
+    /// sheet hands to the install-prompt sub-sheet. Returns
+    /// `nil` when no package is loaded (e.g. the user has not
+    /// yet selected an entry, or the package fetch is in
+    /// flight) — the view should treat `nil` as "the install
+    /// button stays disabled, do not present the prompt".
+    ///
+    /// Bundling the snapshot into a value type means the prompt
+    /// sheet cannot accidentally read stale state if the user
+    /// clicks around between the prompt being shown and the
+    /// Install button being pressed. The view re-fetches the
+    /// context on every presentation via
+    /// `requestInstallPrompt(overwriteExisting:)`.
+    func requestInstallPrompt(overwriteExisting: Bool) -> MarketplaceInstallPromptContext? {
+        guard let package else { return nil }
+        let pluginName = package.manifest.name ?? selectedEntry?.name ?? ""
+        return MarketplaceInstallPromptContext(
+            pluginName: pluginName,
+            capabilities: installPromptCapabilities,
+            isPreApproved: installPromptIsPreApproved,
+            package: package,
+            overwriteExisting: overwriteExisting
+        )
     }
 
     // MARK: - Actions
@@ -168,6 +229,18 @@ final class MarketplaceBrowserViewModel: ObservableObject {
     /// pure plan with the new `PluginManager.installMarketplacePlugin(...)`
     /// I/O helper.
     ///
+    /// This is the **install primitive** the
+    /// `MarketplaceInstallPromptSheet` calls after the user has
+    /// ticked capabilities and the sheet has called
+    /// `gate.grant(_:for:)`. It is intentionally renamed from
+    /// the M5-first-cut `installSelected(...)` so the contract
+    /// is clear: the sheet drives the flow, the VM does the
+    /// install. The M5-first-cut `installSelected(...)` is
+    /// kept as a thin wrapper for the existing
+    /// `MarketplaceBrowserViewModelTests` assertions and for
+    /// any future programmatic caller that has already
+    /// pre-approved capabilities.
+    ///
     /// Transitions:
     /// - `no entry selected` → returns without state change
     ///   (defensive — the Install button is disabled in this
@@ -180,7 +253,7 @@ final class MarketplaceBrowserViewModel: ObservableObject {
     /// `package` — the user may want to install the same
     /// plugin again, or click "Install (overwrite)". Call
     /// `reset()` for a clean sheet.
-    func installSelected(overwriteExisting: Bool) async {
+    func _installSelectedAfterGrants(overwriteExisting: Bool) async {
         guard let entry = selectedEntry, let package else {
             return
         }
@@ -212,6 +285,20 @@ final class MarketplaceBrowserViewModel: ObservableObject {
         case .failure(let error):
             state = .error(humanReadable(error))
         }
+    }
+
+    /// Install the currently selected entry. M5 install-prompt
+    /// follow-up: this method is now a **no-op** — the
+    /// `MarketplaceInstallPromptSheet` (presented by the parent
+    /// `MarketplaceBrowserSheet`) drives the flow, grants the
+    /// user-enabled capabilities, and then calls
+    /// `_installSelectedAfterGrants(overwriteExisting:)`. Kept
+    /// as a thin forwarder so the existing
+    /// `MarketplaceBrowserViewModelTests` assertions and any
+    /// future programmatic caller continue to compile without
+    /// modification.
+    func installSelected(overwriteExisting: Bool) async {
+        await _installSelectedAfterGrants(overwriteExisting: overwriteExisting)
     }
 
     /// Reset the sheet back to its initial state. Clears
@@ -258,5 +345,55 @@ private struct EncodedManifest: Encodable {
     let manifest: PluginManifest
     func encode(to encoder: Encoder) throws {
         try manifest.encode(to: encoder)
+    }
+}
+
+// MARK: - Install Prompt Context
+
+/// Snapshot of the data `MarketplaceInstallPromptSheet` needs
+/// to render and run an install. Built by
+/// `MarketplaceBrowserViewModel.requestInstallPrompt(overwriteExisting:)`
+/// so the prompt sheet does not have to reach into the view
+/// model mid-flow. Value type so the prompt sheet cannot
+/// accidentally mutate the parent state — the install itself
+/// still goes through `_installSelectedAfterGrants(...)` on
+/// the VM.
+///
+/// `Equatable` is hand-rolled rather than synthesized because
+/// `MarketplacePackage` is intentionally not `Equatable` (its
+/// embedded `PluginManifest` is not). The context treats the
+/// package as an opaque payload and compares by `id` only —
+/// callers that need full package equality should compare the
+/// inner `package` separately.
+struct MarketplaceInstallPromptContext: Equatable {
+    /// Plugin name used as the gate key (`granted(for:)` /
+    /// `grant(_:for:)`). Falls back to the catalogue entry's
+    /// name when the manifest omits one.
+    let pluginName: String
+    /// Resolved capability list, in declaration order. Drives
+    /// the toggles the prompt sheet renders.
+    let capabilities: [PluginCapability]
+    /// `true` when every capability is already granted. The
+    /// prompt sheet uses this to decide whether to skip
+    /// rendering the toggle list (none to grant) or just
+    /// surface an informational "already approved" hint.
+    let isPreApproved: Bool
+    /// The package the user has selected. Held by the prompt
+    /// sheet so the success-path completion handler can read
+    /// the on-disk path directly off the result without going
+    /// back through the VM. Not part of `==` (see type-level
+    /// doc).
+    let package: MarketplacePackage
+    /// Whether the user asked to overwrite an existing install.
+    /// The prompt sheet forwards this to
+    /// `_installSelectedAfterGrants(overwriteExisting:)`.
+    let overwriteExisting: Bool
+
+    static func == (lhs: MarketplaceInstallPromptContext, rhs: MarketplaceInstallPromptContext) -> Bool {
+        lhs.pluginName == rhs.pluginName
+            && lhs.capabilities == rhs.capabilities
+            && lhs.isPreApproved == rhs.isPreApproved
+            && lhs.package.id == rhs.package.id
+            && lhs.overwriteExisting == rhs.overwriteExisting
     }
 }

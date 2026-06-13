@@ -6,6 +6,7 @@ extension Preferences.PaneIdentifier {
     static let plugins = Self("plugins")
     static let shortcutPlugins = Self("shortcutPlugins")
     static let advanced = Self("advanced")
+    static let ai = Self("ai")
     static let about = Self("about")
 
     var image: NSImage {
@@ -31,6 +32,17 @@ extension Preferences.PaneIdentifier {
         case .advanced:
             if #available(OSX 11.0, *) {
                 NSImage(systemSymbolName: "gearshape.2", accessibilityDescription: nil)!
+            } else {
+                NSImage(named: "AppIcon")!
+            }
+        case .ai:
+            // The AI pane gets a wand-and-stars icon on macOS
+            // 11+ (where SF Symbols supports it). On the
+            // pre-Big-Sur fallback we degrade to the app icon
+            // — there is no SF Symbol we can safely ship on
+            // 10.15.
+            if #available(OSX 11.0, *) {
+                NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: "AI")!
             } else {
                 NSImage(named: "AppIcon")!
             }
@@ -76,6 +88,14 @@ var preferencePanes: [PreferencePaneConvertible] = {
             title: Localizable.Preferences.Advanced.localized,
             toolbarIcon: Preferences.PaneIdentifier.advanced.image
         ) { AdvancedPreferencesView().environmentObject(PreferencesStore.shared) }
+    )
+
+    panes.append(
+        Preferences.Pane(
+            identifier: .ai,
+            title: Localizable.Preferences.AI.localized,
+            toolbarIcon: Preferences.PaneIdentifier.ai.image
+        ) { AIPreferencesView() }
     )
 
     panes.append(

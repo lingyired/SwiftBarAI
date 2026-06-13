@@ -25,6 +25,7 @@
 "PF_PREFERENCES" = "Voorkeuren";
 "PF_GENERAL" = "Algemeen";
 "PF_ADVANCED" = "Advanced";
+"PF_AI" = "AI";
 "PF_PLUGINS" = "Plug-ins";
 "PF_SHORTCUT_PLUGINS" = "Shortcut Plugins";
 "PF_ABOUT" = "About";

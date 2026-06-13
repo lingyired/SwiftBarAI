@@ -368,6 +368,20 @@ struct GeneratorHistorySheet: View {
                 }
             }
             .disabled(viewModel.selectedEntry == nil || isMutating)
+            // M5 history follow-up: surface the audit log as a
+            // zip so the user can share a single run with
+            // support. The button opens an `NSSavePanel` and
+            // hands the chosen destination to `exportEntry(_:)`,
+            // which shells out to `/usr/bin/zip` (macOS 12+
+            // ships with it). Disabled when the selected entry's
+            // directory does not exist on disk (a stale entry
+            // from a deleted store, for example).
+            Button("Export…") {
+                if let entry = viewModel.selectedEntry {
+                    exportEntry(entry)
+                }
+            }
+            .disabled(viewModel.selectedEntry == nil || isMutating)
             Button("Close", action: closeWindow)
                 .keyboardShortcut(.cancelAction)
         }
@@ -390,6 +404,48 @@ struct GeneratorHistorySheet: View {
     /// environment to call.
     private func closeWindow() {
         NSApp.keyWindow?.close()
+    }
+
+    /// Bundle the selected entry's on-disk audit log into a
+    /// `.zip` and save it to the user-chosen destination. The
+    /// `AIGeneratorHistoryStore` writes one subdirectory per
+    /// `promptId` containing `request.txt`, `response.json`, and
+    /// (when populated) `menu.json` — we zip the whole
+    /// subdirectory so the bundle is self-describing without
+    /// having to re-derive the on-disk shape. The actual
+    /// `/usr/bin/zip` invocation lives in
+    /// `GeneratorHistoryExporter` so the test bundle can drive
+    /// the same code path without an `NSSavePanel`.
+    private func exportEntry(_ entry: AIGeneratorHistoryEntry) {
+        switch GeneratorHistoryExporter.exportEntry(entry, store: viewModel.store) {
+        case .success(let destination):
+            showAlert(
+                title: "Exported",
+                message: "Saved to \(destination.path)"
+            )
+        case .cancelled:
+            break
+        case .missingDirectory(let reason):
+            showAlert(
+                title: "Export failed",
+                message: "The entry \"\(entry.promptId)\" has no on-disk directory at \(reason)."
+            )
+        case .zipFailed(let reason), .launchFailed(let reason):
+            showAlert(title: "Export failed", message: reason)
+        }
+    }
+
+    /// Surface a success / failure alert on the main run loop.
+    /// The sheet is hosted in a standalone `NSWindow`, so an
+    /// `NSAlert` is the right tool — it stacks on top of the
+    /// key window and the user can dismiss with Return / Escape.
+    private func showAlert(title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = title == "Exported" ? .informational : .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     /// Pretty-printed JSON body of `entry.plugin.manifest`. Mirrors

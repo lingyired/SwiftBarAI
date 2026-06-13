@@ -173,3 +173,44 @@ surfaces a "Wiped N entries." / "Wipe failed: …" toast inline.
 - **Audit-log export.** A future "Export history as JSON"
   button in the sheet's footer would let users send the audit
   trail to support.
+
+## 6. Follow-up items landed
+
+All three follow-ups from §5 are now landed in a follow-up
+change, documented in
+[`changes/2026-06-13-m5-history-followups.md`](../changes/2026-06-13-m5-history-followups.md).
+Executive summary:
+
+- **Re-generate wiring.** A new optional
+  `prefillRequest: String? = nil` parameter on
+  `PluginGeneratorMenuCommand.presentSheet(...)` accepts a
+  prefilled `request` and rebuilds the window's
+  `NSHostingController` so the M2 sheet lands with the text
+  pre-populated. `GeneratorHistoryMenuCommand.presentSheet(...)`'s
+  `onRegenerate` closure now passes
+  `entry.request` through, replacing the v1
+  "copy / paste from the detail pane" workaround.
+- **`menuTreeJSON` population.** A new
+  `public struct AIGeneratorMenuNode: Codable, Equatable, Sendable`
+  plus a synthetic `static func parseEntryScript(_:) -> [AIGeneratorMenuNode]?`
+  parser populate `AIGeneratorHistoryEntry.menuTreeJSON` for
+  every successful `AIGeneratorViewModel.generate()`. The
+  parser is line-by-line (strips `echo "..."` wrappers,
+  extracts an optional `href=…` parameter) and returns `nil`
+  for unparseable input. v1's synthetic tree mirrors what
+  the M2 sheet's "result section" displays; a future round
+  can replace it with a real sandboxed dry-run of the entry
+  script.
+- **Audit-log export.** A new "Export…" button in the sheet's
+  footer (next to "Delete All" / "Delete" / "Re-generate" /
+  "Close") opens an `NSSavePanel` and hands the chosen
+  destination to a new `GeneratorHistoryExporter` helper.
+  The helper shells out to `/usr/bin/zip -r <destination> .`
+  in the selected entry's `{rootDirectory}/{promptId}/`
+  subdirectory and surfaces the result via an `NSAlert`.
+
+The re-generated `M2` sheet starts on top of the existing
+window stack rather than spawning a new one; the implementation
+reuses the existing `PluginGeneratorMenuCommand` window
+controller, so the user does not see two `Generator` windows
+side-by-side.

@@ -79,8 +79,20 @@ enum PluginGeneratorMenuCommand {
     /// `GeneratorHistoryMenuCommand`'s "Re-generate" hook uses the
     /// same window controller so the history → generator → history
     /// round-trip reuses the in-flight VM state.
+    ///
+    /// The `prefillRequest:` parameter is the M5 history
+    /// follow-up: when non-nil, the M2 sheet is constructed with
+    /// `viewModel.request` pre-populated with the selected
+    /// history entry's request, so the user does not have to
+    /// copy / paste from the detail pane. The window is reset
+    /// (replacing any previous content view controller) so the
+    /// pre-filled text shows up immediately rather than being
+    /// clobbered by a stale `viewModel`.
     @MainActor
-    static func presentSheet(appDelegate: AppDelegate? = nil) {
+    static func presentSheet(
+        appDelegate: AppDelegate? = nil,
+        prefillRequest: String? = nil
+    ) {
         let resolvedDelegate: AppDelegate
         if let appDelegate {
             resolvedDelegate = appDelegate
@@ -90,8 +102,14 @@ enum PluginGeneratorMenuCommand {
             return
         }
         let windowController = ensureWindowController(appDelegate: resolvedDelegate)
-        if windowController.contentViewController == nil {
+        // When a prefill is supplied we always rebuild the hosting
+        // controller so a stale `viewModel.request` from a prior
+        // click cannot clobber the new value. Without a prefill we
+        // keep the existing controller so the user does not lose
+        // any in-flight input.
+        if prefillRequest != nil || windowController.contentViewController == nil {
             let viewModel = AIGeneratorViewModel()
+            viewModel.request = prefillRequest ?? ""
             windowController.contentViewController = NSHostingController(
                 rootView: AIGeneratorSheet(viewModel: viewModel)
             )

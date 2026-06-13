@@ -172,6 +172,15 @@ final class AIGeneratorViewModel: ObservableObject {
             let plugin = try await generator.generate(request: trimmed, context: context)
             latestPlugin = plugin
             state = .success(plugin)
+            // Build a synthetic menu tree from the entry script.
+            // v1 is intentionally lightweight: a real sandboxed
+            // dry-run would replace `parseEntryScript(_:)` with a
+            // stdout-capture-and-rebuild step. The result feeds
+            // straight into `AIGeneratorHistoryEntry.menuTreeJSON`
+            // so the M5 history sheet can decode and render it.
+            let menuTreeJSON = AIGeneratorViewModel.encodeMenuTree(
+                from: plugin.entryScript
+            )
             // Persist the result so the user can audit, re-generate, or
             // downgrade a generated plugin later (AI_PLUGIN_ARCHITECTURE.md §4).
             do {
@@ -181,8 +190,7 @@ final class AIGeneratorViewModel: ObservableObject {
                     request: trimmed,
                     model: context.model,
                     plugin: plugin,
-                    menuTreeJSON: nil  // M5+; the generator's sandboxed dry-run
-                                       // will populate this in a follow-up.
+                    menuTreeJSON: menuTreeJSON
                 ))
             } catch {
                 os_log("AIGenerator: failed to record history entry: %{public}@",
@@ -268,6 +276,34 @@ final class AIGeneratorViewModel: ObservableObject {
         latestPlugin = nil
         didRequestSave = false
         installedPluginURL = nil
+    }
+}
+
+// MARK: - Menu Tree Encoding
+
+extension AIGeneratorViewModel {
+
+    /// Encode the generator's `entryScript` as a JSON byte payload
+    /// suitable for `AIGeneratorHistoryEntry.menuTreeJSON`.
+    ///
+    /// v1 path: a *synthetic* parse that walks the entry script
+    /// line-by-line and builds a flat tree of `AIGeneratorMenuNode`s
+    /// (see `AIGeneratorMenuNode.parseEntryScript(_:)`). Returns
+    /// `nil` when the script is empty or only contains blank lines
+    /// / comments — the caller treats `nil` as "unparseable" and
+    /// leaves the history entry's `menuTreeJSON` at its default
+    /// `nil` value, matching the M5 v1 contract.
+    ///
+    /// The encoder uses pretty-printed, sorted-key output with
+    /// `withoutEscapingSlashes` so the `menu.json` file is
+    /// human-readable when the user opens it in an editor.
+    static func encodeMenuTree(from entryScript: String) -> Data? {
+        guard let nodes = AIGeneratorMenuNode.parseEntryScript(entryScript),
+              !nodes.isEmpty
+        else { return nil }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        return try? encoder.encode(nodes)
     }
 }
 

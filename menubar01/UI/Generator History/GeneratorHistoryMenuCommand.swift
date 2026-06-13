@@ -105,19 +105,19 @@ enum GeneratorHistoryMenuCommand {
                 rootView: GeneratorHistorySheet(
                     viewModel: viewModel,
                     onRegenerate: { entry in
-                        // v1 follow-up: open the M2 sheet with
-                        // `entry.request` pre-filled. The M2 sheet
-                        // does not yet accept a pre-filled
-                        // request, so for now we just close the
-                        // history window and re-open the
-                        // generator; the user can copy / paste
-                        // the request from the detail pane.
-                        _ = entry
-                        if let appDelegate = NSApp.delegate as? AppDelegate {
-                            PluginGeneratorMenuCommand.presentSheet(
-                                appDelegate: appDelegate
-                            )
-                        }
+                        // M5 history follow-up: open the M2 sheet
+                        // with `entry.request` pre-filled. The
+                        // `PluginGeneratorMenuCommand.presentSheet(...)`
+                        // overload accepts a `prefillRequest:`
+                        // argument and rebuilds the hosting
+                        // controller so the pre-filled text is
+                        // visible immediately, replacing the v1
+                        // workaround of "user copies / pastes
+                        // from the detail pane".
+                        PluginGeneratorMenuCommand.presentSheet(
+                            appDelegate: appDelegate,
+                            prefillRequest: entry.request
+                        )
                     }
                 )
             )

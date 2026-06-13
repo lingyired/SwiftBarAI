@@ -25,6 +25,7 @@
 "PF_PREFERENCES" = "Postavke";
 "PF_GENERAL" = "Opće";
 "PF_ADVANCED" = "Advanced";
+"PF_AI" = "AI";
 "PF_PLUGINS" = "Dodatci";
 "PF_SHORTCUT_PLUGINS" = "Shortcut Plugins";
 "PF_ABOUT" = "About";
