@@ -3,7 +3,7 @@
 - **Type:** feat
 - **Scope:** `menubar01/Marketplace/`, `menubar01Tests/`, `docs/`
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
+- **Commit(s):** 996e97b (pbxproj), b84a075 (M4 code+test+docs+record)
 - **Status:** in-progress
 
 ## Summary
