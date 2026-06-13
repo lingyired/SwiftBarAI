@@ -196,7 +196,7 @@ Notable fields:
 - `startStreamablePlugin(_:)` / `terminateStreamablePlugin(_:)` — convenience for streamable lifecycle.
 - `applyEphemeral(...)` — create or update the active `EphemeralPlugin`; clear when `content` is nil.
 - `setPluginsEnabled(_:pluginIDs:)` / `disableAllPlugins()`.
-- `setEphemeralPlugin(...)` — entry point for the `swiftbar://setephemeralplugin` handler.
+- `setEphemeralPlugin(...)` — entry point for the `menubar01://setephemeralplugin` handler.
 
 ### Subsystem updates
 

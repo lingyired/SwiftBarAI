@@ -2,7 +2,7 @@
 
 > Structured technical documentation for the menubar01 macOS application.
 
-menubar01 is a macOS menu-bar app that lets users add custom menu bar items by writing small executable scripts packaged as a folder containing a `manifest.json` and an entry script. It is an independent fork of [SwiftBar](https://github.com/swiftbar/SwiftBar) with the legacy SwiftBar plugin format removed; only the folder-based `manifest.json` format is supported (see [`README-MANIFEST-PLUGINS.md`](../README-MANIFEST-PLUGINS.md)).
+menubar01 is a macOS menu-bar app that lets users add custom menu bar items by writing small executable scripts packaged as a folder containing a `manifest.json` and an entry script. It is an independent fork of [SwiftBar](https://github.com/swiftbar/SwiftBar) with the legacy single-file plugin format removed; only the folder-based `manifest.json` format is supported (see [`README-MANIFEST-PLUGINS.md`](../README-MANIFEST-PLUGINS.md)).
 
 ## Table of Contents
 
