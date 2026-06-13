@@ -30,7 +30,7 @@ The Xcode project defines two targets:
 
 | Target | Build flavor | Purpose |
 | --- | --- | --- |
-| `menubar01` | Direct distribution | Includes Sparkle. Uses [Resources/Info.plist](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Resources/Info.plist) and `menubar01.entitlements`. |
+| `menubar01` | Direct distribution | Includes Sparkle. Uses [Resources/Info.plist](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Resources/Info.plist) and `menubar01.entitlements`. |
 | `menubar01 MAS` | Mac App Store | No Sparkle. Uses `menubar01 MAS.entitlements`. Compiled with the `MAC_APP_STORE` Swift flag. |
 
 ## How to build and run
@@ -66,7 +66,7 @@ The two targets use different code-signing identities. The default for local dev
 
 ## Dependencies
 
-Dependencies are resolved automatically by SwiftPM through [Package.resolved](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved). They are:
+Dependencies are resolved automatically by SwiftPM through [Package.resolved](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved). They are:
 
 - `HotKey` (forked under `swiftbar/`) — 0.1.3
 - `LaunchAtLogin` (sindresorhus) — 5.0.0

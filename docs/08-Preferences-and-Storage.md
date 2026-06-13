@@ -4,7 +4,7 @@ menubar01 stores all user preferences in `UserDefaults` (a single `PreferencesSt
 
 ## `PreferencesStore`
 
-[PreferencesStore.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/PreferencesStore.swift) is a single class:
+[PreferencesStore.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/PreferencesStore.swift) is a single class:
 
 ```swift
 final class PreferencesStore: ObservableObject {
@@ -21,7 +21,7 @@ It uses a custom `UserDefaults` suite so the data lives in `~/Library/Preference
 | `PassthroughSubject` | When fired |
 | --- | --- |
 | `disabledPlugins` | When `disabledPlugins` set. |
-| `swiftBarIconIsHidden` | When `hideIcon` set. |
+| `menubar01IconIsHidden` | When `hideIcon` set. |
 | `pluginDirectoryPath` | When `pluginDirectoryPath` set. |
 | `preferredTerminalApp` | When the preferred terminal changes. |
 | `showDefaultMenuBar` | When the dock-menu default is toggled. |

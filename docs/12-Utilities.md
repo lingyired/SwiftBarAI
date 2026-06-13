@@ -1,10 +1,10 @@
 # Utilities
 
-This document is a reference for the small, single-purpose helpers and extensions that don't have a natural home in the main subsystems. Most live under [menubar01/Utility/](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Utility).
+This document is a reference for the small, single-purpose helpers and extensions that don't have a natural home in the main subsystems. Most live under [menubar01/Utility/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility).
 
 ## `String+Escaped.swift`
 
-[Utility/String+Escaped.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Utility/String+Escaped.swift) — string helpers for shell and URL handling.
+[Utility/String+Escaped.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/String+Escaped.swift) — string helpers for shell and URL handling.
 
 | Method | Notes |
 | --- | --- |
@@ -20,7 +20,7 @@ Used by `RunScript.runScript` and the AppleScript builders in `AppShared`.
 
 ## `URL+Extension.swift`
 
-[Utility/URL+Extension.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Utility/URL+Extension.swift) — query-parameter parsing and **extended file attributes**.
+[Utility/URL+Extension.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/URL+Extension.swift) — query-parameter parsing and **extended file attributes**.
 
 | Method | Notes |
 | --- | --- |
@@ -34,17 +34,17 @@ Used by `RunScript.runScript` and the AppleScript builders in `AppShared`.
 
 ## `DirectoryObserver`
 
-[Utility/DirectoryObserver.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Utility/DirectoryObserver.swift) — `NSObject` wrapper around `DispatchSource.makeFileSystemObjectSource`. menubar01 instantiates one per watched directory; the source's event handler calls a debounced `directoryChanged` callback.
+[Utility/DirectoryObserver.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/DirectoryObserver.swift) — `NSObject` wrapper around `DispatchSource.makeFileSystemObjectSource`. menubar01 instantiates one per watched directory; the source's event handler calls a debounced `directoryChanged` callback.
 
 - The MAS build does not use `DirectoryObserver` directly (it relies on the user clicking "Refresh" in the menu bar), but the file remains in the MAS build for source compatibility.
 
 ## `LaunchAtLogin`
 
-[Utility/LaunchAtLogin.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Utility/LaunchAtLogin.swift) — a thin wrapper over the `sindresorhus/LaunchAtLogin` SwiftPM package. Exposes `LaunchAtLogin.shared.isEnabled` and `LaunchAtLogin.shared.toggle()`. The General preferences pane binds to this.
+[Utility/LaunchAtLogin.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/LaunchAtLogin.swift) — a thin wrapper over the `sindresorhus/LaunchAtLogin` SwiftPM package. Exposes `LaunchAtLogin.shared.isEnabled` and `LaunchAtLogin.shared.toggle()`. The General preferences pane binds to this.
 
 ## `Color+Extension.swift`, `NSColor+Extension.swift`, `NSImage+Extension.swift`
 
-Helper files under [Utility/](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Utility). They:
+Helper files under [Utility/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility). They:
 
 - Parse hex/Apple/iTerm color strings into `NSColor` (used by `MenuLineParameters.color` / `barColor`).
 - Compose `NSImage`s for menu items (running-app dot, rounded corner).
@@ -53,11 +53,11 @@ Helper files under [Utility/](file:///Users/lingsmbp/Documents/aiwork/menubar01A
 
 ## `EmojiManager`
 
-[Utility/EmojiManager.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Utility/EmojiManager.swift) — a Swift wrapper around `NSSpellChecker`-style emoji substitution. menubar01 supports the `:smile:` and `:[smile]:` syntax; this file does the substitution.
+[Utility/EmojiManager.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/EmojiManager.swift) — a Swift wrapper around `NSSpellChecker`-style emoji substitution. menubar01 supports the `:smile:` and `:[smile]:` syntax; this file does the substitution.
 
 ## `FileFinder`
 
-[Utility/FileFinder.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Utility/FileFinder.swift) — given a relative path and a `Plugin`, looks for the file in:
+[Utility/FileFinder.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/FileFinder.swift) — given a relative path and a `Plugin`, looks for the file in:
 
 1. The plugin's package (cache or live directory).
 2. The plugin's data directory.
@@ -98,15 +98,15 @@ defaults write com.lingyi.menubar01 StreamablePluginDebugOutput -bool YES
 
 ## `SystemNotification`
 
-[Utility/SystemNotification.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Utility/SystemNotification.swift) — the `Codable` struct used by the `notify=` and `alert=` line parameters.
+[Utility/SystemNotification.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/SystemNotification.swift) — the `Codable` struct used by the `notify=` and `alert=` line parameters.
 
 ## `PluginError`
 
-[Utility/PluginError.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Utility/PluginError.swift) — `Error` types thrown during plugin lifecycle. Used to drive the error markers in `MenuItemNode` (the "❌ <name>" line).
+[Utility/PluginError.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/PluginError.swift) — `Error` types thrown during plugin lifecycle. Used to drive the error markers in `MenuItemNode` (the "❌ <name>" line).
 
 ## Tests
 
-[menubar01Tests/](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01Tests) is a minimal XCTest target. Currently a small handful of tests cover `String+Escaped`, the `URL+Extension` query parameter parser, and a smoke test of `runScript` with `/bin/echo hello`. The tests are an obvious place to grow coverage; the test target re-uses the same source files via the menubar01 target's `Members` set.
+[menubar01Tests/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01Tests) is a minimal XCTest target. Currently a small handful of tests cover `String+Escaped`, the `URL+Extension` query parameter parser, and a smoke test of `runScript` with `/bin/echo hello`. The tests are an obvious place to grow coverage; the test target re-uses the same source files via the menubar01 target's `Members` set.
 
 ## Compile-time guards
 
