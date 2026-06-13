@@ -4,7 +4,7 @@ The MenuBar subsystem takes a plugin's `content: String?` and renders it as an `
 
 ## `MenubarItem` — per-plugin renderer
 
-[MenuBarItem.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/MenuBar/MenuBarItem.swift) is the only file that talks to `NSStatusItem` for a given plugin.
+[MenuBarItem.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/MenuBar/MenuBarItem.swift) is the only file that talks to `NSStatusItem` for a given plugin.
 
 ### Owned state
 
@@ -62,9 +62,9 @@ private func refreshMenuItems(force: Bool) {
 
 ### Status item title/icon
 
-`setStatusBarItemTitle(...)` consumes the `MenuItemNode.title` (the script's first non-empty line). SwiftBar preserves a few glyphs as-is but may prepend `\u{200B}` (zero-width space) to control alignment when the user has enabled the option to override left padding. The `bash` colored span support is handled by the parser, not the renderer.
+`setStatusBarItemTitle(...)` consumes the `MenuItemNode.title` (the script's first non-empty line). menubar01 preserves a few glyphs as-is but may prepend `\u{200B}` (zero-width space) to control alignment when the user has enabled the option to override left padding. The `bash` colored span support is handled by the parser, not the renderer.
 
-`setStatusBarItemIcon(...)` resolves `<swiftbar.image>` (relative path → `FileFinder` → package / cache / data folder) and sets `statusItem.button?.image`. If absent, the title is used instead.
+`setStatusBarItemIcon(...)` resolves `<menubar01.image>` (relative path → `FileFinder` → package / cache / data folder) and sets `statusItem.button?.image`. If absent, the title is used instead.
 
 ### Visibility
 
@@ -72,7 +72,7 @@ private func refreshMenuItems(force: Bool) {
 
 - If `plugin.showInMenuBar` is `true`, `statusItem.isVisible = true`.
 - If `false`, the item is hidden but kept around so its `NSStatusItem.button.image` survives between renders.
-- It also reconciles the **default bar item** (SwiftBar's own status bar logo), which is the rightmost status item and toggled via `prefs.hideIcon`.
+- It also reconciles the **default bar item** (menubar01's own status bar logo), which is the rightmost status item and toggled via `prefs.hideIcon`.
 
 ### Plugin change / invalidation
 
@@ -80,7 +80,7 @@ private func refreshMenuItems(force: Bool) {
 
 ## `MenuItemNode` — the rendered tree
 
-[MenuItemNode.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/MenuBar/MenuItemNode.swift) is a recursive `Equatable` tree that mirrors a single `Plugin`'s output.
+[MenuItemNode.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/MenuBar/MenuItemNode.swift) is a recursive `Equatable` tree that mirrors a single `Plugin`'s output.
 
 ### Top-level structure
 
@@ -137,7 +137,7 @@ A click on an `NSMenuItem` triggers the matched `MenuItemNode.performAction(_:)`
 4. If `params.notify` is set, `PluginManager.shared.showNotification(plugin:)` is called with the decoded `SystemNotification`.
 5. If `params.alert` is set, `PluginManager.shared.showAlert(plugin:)` shows a modal.
 6. If `params.dropdown` is `true`, open a child SwiftUI popover (`FoldableMenuItemView`) for the matching submenu.
-7. As a last resort, run the metadata's `click` config (legacy `<swiftbar.click>`).
+7. As a last resort, run the metadata's `click` config (legacy `<menubar01.click>`).
 
 ### `init(menuItem:params:title:)`
 
@@ -150,11 +150,11 @@ This is the bridge from `MenuItemNode` → `NSMenuItem`:
 
 ## `MenuDiff`
 
-[MenuDiff.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/MenuBar/MenuDiff.swift) provides the structural diff for **shape** changes (insert/remove/move). It is used by `MenuItemNode.update(menu:previous:)` and by the menu in cases where structural diffs are not enough (e.g. adding an item into a new position, where a rebuild is preferred). The diff is hash-based: each `MenuItemNode` is hashed via a string that concatenates its kind, key fields, and a hash of its children.
+[MenuDiff.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/MenuBar/MenuDiff.swift) provides the structural diff for **shape** changes (insert/remove/move). It is used by `MenuItemNode.update(menu:previous:)` and by the menu in cases where structural diffs are not enough (e.g. adding an item into a new position, where a rebuild is preferred). The diff is hash-based: each `MenuItemNode` is hashed via a string that concatenates its kind, key fields, and a hash of its children.
 
 ## `FoldableMenuItemView`
 
-[FoldableMenuItemView.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/MenuBar/FoldableMenuItemView.swift) is a SwiftUI view used to render popover-style sub-menus that are *not* real `NSMenuItem` submenus. It's used when `dropdown=true` and the plugin author wants a SwiftUI panel instead of a traditional `NSMenu`. The view handles:
+[FoldableMenuItemView.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/MenuBar/FoldableMenuItemView.swift) is a SwiftUI view used to render popover-style sub-menus that are *not* real `NSMenuItem` submenus. It's used when `dropdown=true` and the plugin author wants a SwiftUI panel instead of a traditional `NSMenu`. The view handles:
 
 - A top-level button (the title of the node).
 - An accordion-style child list that animates open/close.

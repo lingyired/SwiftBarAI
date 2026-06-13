@@ -1,10 +1,10 @@
 # Preferences and Storage
 
-SwiftBar stores all user preferences in `UserDefaults` (a single `PreferencesStore` singleton acts as the typed facade) and in a few on-disk files (plugin-folder state, the system report, and the launcher data folder).
+menubar01 stores all user preferences in `UserDefaults` (a single `PreferencesStore` singleton acts as the typed facade) and in a few on-disk files (plugin-folder state, the system report, and the launcher data folder).
 
 ## `PreferencesStore`
 
-[PreferencesStore.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/PreferencesStore.swift) is a single class:
+[PreferencesStore.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/PreferencesStore.swift) is a single class:
 
 ```swift
 final class PreferencesStore: ObservableObject {
@@ -37,7 +37,7 @@ Most of these have a UI in `menubar01/UI/Preferences/`. The full list (with type
 | --- | --- | --- | --- |
 | `pluginDirectoryPath` | `String?` | `nil` | `PluginDirectoryPath` |
 | `showDefaultMenuBar` | `Bool` | `false` | `ShowDefaultMenuBar` |
-| `hideIcon` | `Bool` | `false` | `HideSwiftBarDefaultIcon` |
+| `hideIcon` | `Bool` | `false` | `Hidemenubar01DefaultIcon` |
 | `disabledPlugins` | `Set<String>` | `[]` | `DisabledPlugins` |
 | `setDefaultPluginsEnabled` | `Bool` | `false` | `SetDefaultPluginsEnabled` |
 | `disableAllPlugins` | `Bool` | `false` | `DisableAllPlugins` |
@@ -79,7 +79,7 @@ These are not in the UI. They are useful for debugging and for power users.
 | Setting | Key | Default | Purpose |
 | --- | --- | --- | --- |
 | Enable verbose logging | `Debug` (also `Verbose` shortcuts) | `false` | `os_log` at `.debug` level. |
-| Streamable plugin STDOUT | `StreamablePluginDebugOutput` | `false` | Write streamable plugin stdout to `os_log`. |
+| (removed in 1ccd8ef) | `StreamablePluginDebugOutput` | n/a | Streamable plugin type was removed; the preference key is harmless to leave in user state. |
 | Use a debug cache dir | `DebugCacheDirectory` | `false` | Routes package caches to `/tmp`. |
 | Bundle-id override | `BundleIdentifier` | `com.lingyi.menubar01` | For development builds. |
 | Date formatter | `DateFormat` | system locale | |
@@ -87,19 +87,19 @@ These are not in the UI. They are useful for debugging and for power users.
 | `AppDelegate.firstRun` | `FirstRun` | `true` | Show the plugin-folder picker again. |
 | `isFirstRun` | `isFirstRun` | `true` | Internal: prevent Sparkle from running on first launch. |
 | `ForceDarkMode` | `ForceDarkMode` | `false` | Force the SwiftUI repository window into dark mode. |
-| `StreamablePluginDebugOutput` | (see above) | `false` | |
+| `StreamablePluginDebugOutput` | (see above; removed in 1ccd8ef) | n/a | |
 | `OS_LAST_SLEEP_TIME`, `OS_LAST_WAKE_TIME`, `OS_START_TIME` | (set at runtime) | `nil` | Updated in `AppDelegate`. |
 | Status item visible overrides | `NSStatusItem Visible <bundle-id>.<key>` | `true` | AppKit's autosave; removed by `AppDelegate.cleanupStatusItemVisibility`. |
 
 ## On-disk state
 
-- `~/Library/Application Support/SwiftBar/`
+- `~/Library/Application Support/menubar01/`
   - `Diagnostics/latest-system-report.txt` — most recent system report, refreshed on every plugin change or refresh.
   - `PluginRepository.json` — the cached plugin list, refreshed on every "Get Plugins…" launch.
   - `PluginRepositoryData/` — git checkout of [swiftbar/swiftbar-plugins](https://github.com/swiftbar/swiftbar-plugins).
-- `<plugin folder>/<plugin>.swiftbar/`
+- `<plugin folder>/<plugin>/`
   - `state/<plugin-id>/state` — last successful refresh, last error refresh, etc., used by streamable plugins.
-- `<plugin folder>/<plugin>.swiftbar/`
+- `<plugin folder>/<plugin>/`
   - `state/<plugin-id>/log` — debug entries, loaded by `PluginDebugInfo.init(plugin:)`.
 
 ## `Defaults.plist`-style keys (compiled in)

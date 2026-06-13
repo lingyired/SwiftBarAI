@@ -1,13 +1,13 @@
 # Project Overview
 
-## What SwiftBar is
+## What menubar01 is
 
-SwiftBar is a **macOS menu-bar customization tool** that turns small executable scripts into live items in the system menu bar. It is the official successor to BitBar/xbar for macOS, written natively in Swift.
+menubar01 is a **macOS menu-bar customization tool** that turns small executable scripts into live items in the system menu bar. It is the official successor to BitBar/xbar for macOS, written natively in Swift.
 
 User workflow:
 
 1. Drop an executable script (any language) into a chosen "Plugin Folder".
-2. SwiftBar runs the script, parses the output, and renders the result in the menu bar and a dropdown menu.
+2. menubar01 runs the script, parses the output, and renders the result in the menu bar and a dropdown menu.
 3. The script can be re-run on a schedule, on click, on sleep/wake, or via the `menubar01://` URL scheme, and can also be backed by Apple Shortcuts.
 
 > Repository default branch: `main`. Minimum macOS: 10.15 (Catalina). The app's own UI is built with a mix of AppKit (NSStatusItem, NSMenu) and SwiftUI (preferences, repository, popovers).
@@ -39,7 +39,7 @@ User workflow:
 
 ## Third-party SwiftPM dependencies
 
-Defined in [Package.resolved](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved):
+Defined in [Package.resolved](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved):
 
 | Package | Version | Why |
 | --- | --- | --- |
@@ -55,8 +55,8 @@ Forks live under the `swiftbar/` GitHub org specifically to "freeze and secure d
 
 The Xcode project defines two schemes:
 
-- `SwiftBar` — direct distribution, Sparkle updater, full file-system access.
-- `SwiftBar MAS` — Mac App Store build, no Sparkle, sandbox-friendly, with a different entitlements file (`menubar01 MAS.entitlements`).
+- `menubar01` — direct distribution, Sparkle updater, full file-system access.
+- `menubar01 MAS` — Mac App Store build, no Sparkle, sandbox-friendly, with a different entitlements file (`menubar01 MAS.entitlements`).
 
 Switching is done with the `MAC_APP_STORE` Swift compile flag. Most code uses `#if !MAC_APP_STORE` to omit Sparkle and certain file-system observers.
 
@@ -64,19 +64,19 @@ Switching is done with the `MAC_APP_STORE` Swift compile flag. Most code uses `#
 
 | Folder | Purpose |
 | --- | --- |
-| [menubar01/main.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/main.swift) | NSApplication bootstrap. |
-| [SwiftBar/AppDelegate*.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/AppDelegate.swift) | App lifecycle, URL routing, toolbar, intents. |
-| [menubar01/Plugin/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin) | Plugin model and all concrete types. |
-| [menubar01/MenuBar/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/MenuBar) | NSStatusItem / NSMenu rendering pipeline. |
-| [menubar01/Intents/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Intents) | Siri/Shortcuts intent handlers. |
-| [menubar01/Utility/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility) | Process launching, env, helpers, extensions. |
-| [menubar01/UI/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/UI) | SwiftUI windows and panes. |
-| [menubar01/Resources/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Resources) | Info.plist, Assets, Localizable.strings, Intents.intentdefinition. |
-| [menubar01Tests/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/SwiftBarTests) | Minimal unit-test bundle. |
+| [menubar01/main.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/main.swift) | NSApplication bootstrap. |
+| [menubar01/AppDelegate*.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/AppDelegate.swift) | App lifecycle, URL routing, toolbar, intents. |
+| [menubar01/Plugin/](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Plugin) | Plugin model and all concrete types. |
+| [menubar01/MenuBar/](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/MenuBar) | NSStatusItem / NSMenu rendering pipeline. |
+| [menubar01/Intents/](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Intents) | Siri/Shortcuts intent handlers. |
+| [menubar01/Utility/](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Utility) | Process launching, env, helpers, extensions. |
+| [menubar01/UI/](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/UI) | SwiftUI windows and panes. |
+| [menubar01/Resources/](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Resources) | Info.plist, Assets, Localizable.strings, Intents.intentdefinition. |
+| [menubar01Tests/](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01Tests) | Minimal unit-test bundle. |
 
 ## External plugin contract
 
-A SwiftBar plugin is a plain executable file with a name following the convention:
+A menubar01 plugin is a plain executable file with a name following the convention:
 
 ```
 {name}.{refresh-interval}.{ext}
@@ -88,4 +88,4 @@ For example: `battery.10s.py` — refresh every 10 seconds. The output of the sc
 <Item Title> | param1=value1 param2="value 2" ...
 ```
 
-Full grammar and parameters are documented in [06-Plugin-Output-Parsing.md](./06-Plugin-Output-Parsing.md) and the [project README](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/README.md).
+Full grammar and parameters are documented in [06-Plugin-Output-Parsing.md](./06-Plugin-Output-Parsing.md) and the [project README](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/README.md).

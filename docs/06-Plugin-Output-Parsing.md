@@ -1,6 +1,6 @@
 # Plugin Output Parsing
 
-Every executable SwiftBar plugin produces plain text. That text is parsed line-by-line into a tree of `MenuItemNode`s. The grammar is centralized in `MenuLineParameters` and consumed by `MenuItemNode`.
+Every executable menubar01 plugin produces plain text. That text is parsed line-by-line into a tree of `MenuItemNode`s. The grammar is centralized in `MenuLineParameters` and consumed by `MenuItemNode`.
 
 ## Output structure
 
@@ -20,7 +20,7 @@ Submenu item 2 | href=... bash=...
 
 ## `MenuLineParameters` — the line parser
 
-[MenuLineParameters.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/MenuBar/MenuLineParameters.swift) is a value type (struct) and `Codable`. It supports both the SwiftBar style (`key=value`) and the xbar style (`key=value` with quoted values).
+[MenuLineParameters.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/MenuBar/MenuLineParameters.swift) is a value type (struct) and `Codable`. It supports both the menubar01 style (`key=value`) and the xbar style (`key=value` with quoted values).
 
 ```swift
 public struct MenuLineParameters: Codable, Equatable {
@@ -128,7 +128,7 @@ actions=[{"name":"Refresh","shellCommand":"refresh","closeWindowOnAction":true}]
 ```json
 {
   "title": "Build done",
-  "subtitle": "SwiftBar",
+  "subtitle": "menubar01",
   "body": "All tests passed",
   "href": "https://example.com",
   "silent": false,

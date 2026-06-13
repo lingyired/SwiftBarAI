@@ -4,7 +4,7 @@ The plugin system is the heart of menubar01. Every "menu bar item" is a `Plugin`
 
 ## `Plugin` — the protocol
 
-[Plugin.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin/Plugin.swift) defines `Plugin` as a class-only protocol that extends `ObservableObject`. It is intentionally lightweight so each concrete type can be cheap to construct.
+[Plugin.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Plugin/Plugin.swift) defines `Plugin` as a class-only protocol that extends `ObservableObject`. It is intentionally lightweight so each concrete type can be cheap to construct.
 
 ### Identity
 
@@ -44,7 +44,7 @@ The `disabled` property in `PluginMetadata` (synced into `prefs.disabledPlugins`
 
 ## Concrete types
 
-All five concrete `Plugin` types are constructed by `PluginManager`. They live in [menubar01/Plugin/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin).
+All five concrete `Plugin` types are constructed by `PluginManager`. They live in [menubar01/Plugin/](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Plugin).
 
 ### `ExecutablePlugin` — finite scripts
 
@@ -56,7 +56,7 @@ For a file like `battery.10s.sh` in the plugin folder. Lifecycle:
    - The interval encoded in the filename (e.g. `.10s.`).
 3. When the timer fires, `RunPluginOperation(self, refreshEnv:)` is enqueued on `pluginInvokeQueue`. The operation:
    - Cancels in-flight work.
-   - Calls `runScript(to:args:runInBash:env:)` from [RunScript.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Utility/RunScript.swift).
+   - Calls `runScript(to:args:runInBash:env:)` from [RunScript.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Utility/RunScript.swift).
    - Sets `self.content` to the script's `out` (truncating on errors).
    - On error, prepends a marker line and updates `lastError` / `lastErrorRefresh`.
    - Re-arms the timer.
@@ -91,7 +91,7 @@ The "Instant Run" feature (`runShortcuts(named:input:)` with `runInBackground: t
 
 ### `EphemeralPlugin` — URL-scheme items
 
-Created at runtime by `swiftbar://setephemeralplugin?...`. The plugin is rendered in the menu bar and removed when the URL is invoked again (or when `lastSet` is older than the configured TTL). Parameters:
+Created at runtime by `menubar01://setephemeralplugin?...`. The plugin is rendered in the menu bar and removed when the URL is invoked again (or when `lastSet` is older than the configured TTL). Parameters:
 
 - `name=…` — display name.
 - `content=…` — the textual body to render. First line is the menu-bar title, everything after `---` is the dropdown.
@@ -102,14 +102,19 @@ Created at runtime by `swiftbar://setephemeralplugin?...`. The plugin is rendere
 
 If no content is provided, the menu-bar item is removed. Ephemeral plugins never go to disk.
 
-### `PackagedPlugin` — `.swiftbar` bundles
+### `PackagedPlugin` (deleted in `1ccd8ef`)
 
-A `.swiftbar` package is a directory whose name ends in `.swiftbar`, recognized as a `com.lingyi.menubar01.PluginPackage` UTI. Inside:
+The historical `.swiftbar` packaged-plugin format is no longer recognised by the discovery pipeline. Folder plugins are the only supported shape: a directory containing a `manifest.json` and an entry script (see [`README-MANIFEST-PLUGINS.md`](../README-MANIFEST-PLUGINS.md)). The `PackagedPlugin` source file was removed in commit `1ccd8ef` along with the `.swiftbarignore` ignore-file mechanism, the binary-plugin xattr cache, and the `URL.isSwiftBarPackage` extension. The historical docs that described the legacy `myplugin.swiftbar/` directory layout and the `<swiftbar.var>` parameter-tag grammar are left below as historical context — the tags are no longer parsed and the directory layout is no longer recognised.
+
+<details>
+<summary>Historical: `.swiftbar` bundled-plugin layout (no longer supported)</summary>
+
+A `.swiftbar` package was a directory whose name ended in `.swiftbar`. The layout was:
 
 ```
 myplugin.swiftbar/
 ├── plugin.sh           # required: the entry executable
-├── metadata.json       # optional, takes precedence over filename
+├── metadata.json       # optional, took precedence over filename
 ├── icon.png            # optional
 ├── app.icns            # optional
 ├── AppIcon.icns        # optional
@@ -119,18 +124,14 @@ myplugin.swiftbar/
 └── …                   # additional files referenced via relative URL
 ```
 
-`init(directory: env:)` recursively scans for a child directory matching `<name>.swiftbar` (or treats the path itself as the package directory). It computes a stable cache path under `cacheDirectory/package/<id>/` (where `id = SHA256(dir.path)`):
+`init(directory: env:)` recursively scanned for a child directory matching `<name>.swiftbar` (or treated the path itself as the package directory). It computed a stable cache path under `cacheDirectory/package/<id>/` (where `id = SHA256(dir.path)`) and copied every file into the cache, preserving relative structure.
 
-- Copies every file into the cache, preserving relative structure.
-- Reads `metadata.json` if present and uses it as `PluginMetadata`. This file lets plugins ship structured metadata (name, refresh interval, dependencies, triggers) without relying on the filename convention.
-- Looks for `app.icns` / `AppIcon.icns` and uses the first one found as the menu-bar icon (NSImage).
-- Returns a `PackagedPlugin` whose `executableURL` is `<cache>/plugin.sh`. The package is then exec'd like a regular `ExecutablePlugin`.
-
-On macOS, `.swiftbar` packages are also `FilePackage` document bundles; opening one of them with the default app opens SwiftBar with a new plugin in the folder.
+On macOS, `.swiftbar` packages were also `FilePackage` document bundles; opening one with the default app opened SwiftBar with a new plugin in the folder.
+</details>
 
 ## `PluginMetadata`
 
-[PluginMetadata.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin/PluginMetadata.swift) holds the resolved configuration. Two factories:
+[PluginMetadata.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Plugin/PluginMetadata.swift) holds the resolved configuration. Two factories:
 
 - `PluginMetadata(filename:)` — parses `<name>.<interval>.<ext>`.
 - `PluginMetadata(file:)` — delegates to the filename factory.
@@ -149,14 +150,14 @@ Notable fields:
 | `triggers` | The xbar-style `<swiftbar.triggers>` parsed from script output (an empty array if not used). |
 | `click` | `<swiftbar.click>` config (run script on click, open URL, post notification). |
 | `image` | The `<swiftbar.image>` resolved URL (after `FileFinder` checks the package / data folder). |
-| `forceUpdateInterval` | The minimum interval at which SwiftBar is allowed to re-render. |
+| `forceUpdateInterval` | The minimum interval at which menubar01 is allowed to re-render. |
 | `streamingDisableFailureNotif` | Set by `ExecutablePlugin` as `true` for streamable plugins so they don't double-notify. |
 | `lastUpdated` | A counter incremented on every change so the menu bar UI can `Equatable` against it. |
 | `lastError` | Captured during script run; copied here on `lastErrorRefresh`. |
 
 ## `PluginManager`
 
-[PluginManger.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin/PluginManger.swift) (typo preserved for git-blame stability). Singleton (`PluginManager.shared`).
+[PluginManger.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Plugin/PluginManger.swift) (typo preserved for git-blame stability). Singleton (`PluginManager.shared`).
 
 ### Owned state
 
@@ -186,7 +187,7 @@ Notable fields:
 - `startAllPlugins()` / `terminateAllPlugins()` — used on wake/sleep.
 - `refreshAllPlugins(reason:)` — used on click and URL scheme.
 - `refreshAllMenus()` / `refreshMenu(pluginID:)` — re-apply NSMenu diffing for one or all.
-- `importPlugin(from:)` / `importPlugin(named:from:)` / `importPlugin(url:)` — install a plugin, marking the source with an `xattr` (`.SwiftBar.SourceURL`) to remember where it came from.
+- `importPlugin(from:)` / `importPlugin(named:from:)` / `importPlugin(url:)` — install a plugin, marking the source with an `xattr` (`.menubar01.SourceURL`) to remember where it came from.
 - `showNotification(plugin: SystemNotification)` — used by `notify=` lines.
 - `showAlert(plugin: SystemNotification)` — modal alert variant.
 - `currentSystemReport(reason:)` — see [02-Architecture.md](./02-Architecture.md#diagnostics).
@@ -203,7 +204,7 @@ Notable fields:
 
 `PluginManager` also subscribes to `NSWorkspace`'s sleep/wake notifications (forwarded by `AppDelegate`) and to its own `DirectoryObserver`:
 
-- The directory observer watches the plugin folder and `~/Library/Application Support/SwiftBar/ephemeral/` (used by tests).
+- The directory observer watches the plugin folder and `~/Library/Application Support/menubar01/ephemeral/` (used by tests).
 - On change, it calls `loadPlugins()` and updates the directory watcher's list of known paths.
 
 ### Threading
@@ -214,7 +215,7 @@ Notable fields:
 
 ## `PluginDebugInfo` — per-plugin debug event log
 
-[PluginDebugInfo.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin/PluginDebugInfo.swift) keeps a rolling `maxEntries`-bounded `entries` array of `PluginDebugInfo.Entry { timestamp, content }`. The debug popover (`AppShared.showPluginDebug(plugin:)`) shows this list and offers a copy / clear action. It is shared across runs and re-read on `init` from `Application Support/<AppName>/Plugins/<plugin-id>.log` if it exists, so past events persist across restarts.
+[PluginDebugInfo.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Plugin/PluginDebugInfo.swift) keeps a rolling `maxEntries`-bounded `entries` array of `PluginDebugInfo.Entry { timestamp, content }`. The debug popover (`AppShared.showPluginDebug(plugin:)`) shows this list and offers a copy / clear action. It is shared across runs and re-read on `init` from `Application Support/<AppName>/Plugins/<plugin-id>.log` if it exists, so past events persist across restarts.
 
 ## Putting it together — an item's full lifecycle
 

@@ -28,7 +28,7 @@ menubar01 is a macOS menu-bar app that lets users add custom menu bar items by w
 ## Repository Layout (at a glance)
 
 ```
-SwiftBar/
+menubar01/
 ├── main.swift                     # App entry point
 ├── AppDelegate.swift              # Top-level NSApplicationDelegate
 ├── AppShared.swift                # Cross-window utility actions
@@ -38,16 +38,17 @@ SwiftBar/
 ├── PreferencesStore.swift         # UserDefaults-backed settings
 ├── Log.swift                      # os.Logger categories
 │
-├── Plugin/                        # The plugin model
+├── Plugin/                        # The plugin model (3 active concrete types after 1ccd8ef)
 │   ├── Plugin.swift               # Protocol + base behavior
-│   ├── ExecutablePlugin.swift     # Standard finite scripts
-│   ├── StreamablePlugin.swift     # Long-running streaming scripts
+│   ├── (ExecutablePlugin.swift removed in 1ccd8ef)
+│   ├── (StreamablePlugin.swift removed in 1ccd8ef)
 │   ├── ShortcutPlugin.swift       # Apple Shortcuts-backed plugins
 │   ├── EphemeralPlugin.swift      # URL-scheme driven short-lived items
-│   ├── PackagedPlugin.swift       # .swiftbar bundle plugins
-│   ├── PluginMetadata.swift       # xbar-style metadata parser
-│   ├── PluginManger.swift         # Manager (typo preserved)
-│   └── PluginDebugInfo.swift      # Debug event log
+│   ├── (PackagedPlugin.swift / .swiftbar bundle support removed in 1ccd8ef)
+│   ├── PluginMetadata.swift       # ObservableObject data class populated by FolderPlugin
+│   ├── PluginManger.swift         # Manager (typo preserved; contains FolderPlugin loader)
+│   ├── PluginDebugInfo.swift      # Debug event log
+│   └── FolderPlugin.swift         # Folder-based manifest.json plugin loader (the only active plugin class)
 │
 ├── MenuBar/                       # NSStatusItem & NSMenu plumbing
 │   ├── MenuBarItem.swift          # The big one
@@ -81,4 +82,4 @@ SwiftBar/
 ## Naming notes
 
 - The file `PluginManger.swift` keeps its original typo for git-blame stability; the type it defines is `PluginManager`.
-- Build flavors: the same source tree compiles to **SwiftBar** (Sparkle-enabled) and **SwiftBar MAS** (Mac App Store, no Sparkle, sandbox-friendly). The two are switched via the `MAC_APP_STORE` compile flag.
+- Build flavors: the same source tree compiles to **menubar01** (Sparkle-enabled) and **menubar01 MAS** (Mac App Store, no Sparkle, sandbox-friendly). The two are switched via the `MAC_APP_STORE` compile flag.

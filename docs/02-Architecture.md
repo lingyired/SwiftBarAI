@@ -1,6 +1,6 @@
 # Architecture
 
-SwiftBar is structured around **three coordinated layers**: the **App layer** (NSApplication lifecycle, URL routing, intents, repository browser), the **Plugin layer** (model + execution), and the **MenuBar layer** (NSStatusItem rendering and incremental updates). All three layers share a single source of truth — `PreferencesStore` — which is also the only `ObservableObject` that the SwiftUI panes observe.
+menubar01 is structured around **three coordinated layers**: the **App layer** (NSApplication lifecycle, URL routing, intents, repository browser), the **Plugin layer** (model + execution), and the **MenuBar layer** (NSStatusItem rendering and incremental updates). All three layers share a single source of truth — `PreferencesStore` — which is also the only `ObservableObject` that the SwiftUI panes observe.
 
 ## Layered diagram
 
@@ -14,7 +14,7 @@ SwiftBar is structured around **three coordinated layers**: the **App layer** (N
               ┌──────────────────────────────────────────────────┐
               │                   AppDelegate                     │
               │  • applicationDidFinishLaunching                  │
-              │  • application(_, open:) — swiftbar:// URL scheme │
+              │  • application(_, open:) — menubar01:// URL scheme │
               │  • userNotificationCenter(_:didReceive:)          │
               │  • Sparkle / AppDelegate+Intents / +Toolbar / +Menu│
               └──────┬─────────────────┬──────────────────┬───────┘
@@ -33,7 +33,7 @@ SwiftBar is structured around **three coordinated layers**: the **App layer** (N
   │  ├ ShortcutPlugin       │  │  Shortcuts.app   │  └──────────────────┘
   │  ├ EphemeralPlugin      │  └──────────────────┘
   │  └ PackagedPlugin       │
-  │     (.swiftbar bundles) │
+  │     (folder-based, manifest.json) │
   └────────┬─────────────────┘
            │ content (String?) published via Combine
            ▼
@@ -46,16 +46,16 @@ SwiftBar is structured around **three coordinated layers**: the **App layer** (N
 
 ## Bootstrapping flow
 
-1. [main.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/main.swift) creates an `AppDelegate` and calls `NSApplicationMain`. There is no `@main` attribute; the `main.swift` file is the entry.
+1. [main.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/main.swift) creates an `AppDelegate` and calls `NSApplicationMain`. There is no `@main` attribute; the `main.swift` file is the entry.
 2. `AppDelegate.applicationDidFinishLaunching`:
    1. Configures the preferences window and toolbar.
    2. Removes stray `NSStatusItem Visible` keys from `UserDefaults` (these can hide items incorrectly when plugins emit no output).
    3. Starts the Sparkle updater (non-MAS only).
    4. Determines the user's login shell (env `SHELL`, fallback to `dscl`).
    5. Prompts for a plugin folder on first launch.
-   6. Constructs [`PluginManager.shared`](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Plugin/PluginManger.swift) and calls `loadPlugins()`.
+   6. Constructs [`PluginManager.shared`](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Plugin/PluginManger.swift) and calls `loadPlugins()`.
    7. Subscribes to `NSWorkspace.willSleep` / `didWake` to terminate / start plugins and refresh the env time stamps.
-3. Each discovered file becomes an `ExecutablePlugin` or `StreamablePlugin`; each persisted Shortcut becomes a `ShortcutPlugin`; each `.swiftbar` directory becomes a `PackagedPlugin`. URL-scheme-driven plugins become `EphemeralPlugin` on demand.
+3. Each folder containing a `manifest.json` becomes a `FolderPlugin` wrapping a `PluginType`-tagged concrete type (default `.executable`, plus `.shortcut` and `.ephemeral`). Persisted Apple Shortcuts become `ShortcutPlugin` instances. URL-scheme-driven plugins become `EphemeralPlugin` on demand.
 4. For every enabled plugin, a `MenubarItem` is created (`PluginManager.pluginsDidChange`).
 
 ## Threading model
@@ -91,15 +91,15 @@ SwiftBar is structured around **three coordinated layers**: the **App layer** (N
 | `PreferencesStore.swiftBarIconIsHidden` | `@Published` | `AppShared.rebuildAllMenus()` via `didSet` |
 | `NSWorkspace` sleep/wake | `NotificationCenter` (main queue) | `AppDelegate` → `Environment` & `PluginManager` |
 | `DirectoryObserver` | Dispatch source event | `PluginManager.directoryChanged` → debounced `loadPlugins` |
-| `swiftbar://…` URL | `application(_:open:)` | `AppDelegate` switch by host |
+| `menubar01://…` URL | `application(_:open:)` | `AppDelegate` switch by host |
 | `AppDelegate.repositoryToolbarSearchItem` text change | `NotificationCenter` → `.repositoirySearchUpdate` | `PluginRepository` → debounced search |
 
 ## URL / Intent / Notification surfaces
 
-SwiftBar exposes three external entry points:
+menubar01 exposes three external entry points:
 
 1. **`menubar01://` URL scheme** — see [10-Intents-and-URL-Scheme.md](./10-Intents-and-URL-Scheme.md). Hosts include `refreshplugin`, `enableplugin`, `addplugin`, `setephemeralplugin`, `notify`, `copysystemreport`, etc.
-2. **Siri/Shortcuts Intents** — `GetPluginsIntent`, `EnablePluginIntent`, `DisablePluginIntent`, `ReloadPluginIntent`, `SetEphemeralPluginIntent`. Routed via `AppDelegate.application(_:handlerFor:)` to handlers in [menubar01/Intents/](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Intents).
+2. **Siri/Shortcuts Intents** — `GetPluginsIntent`, `EnablePluginIntent`, `DisablePluginIntent`, `ReloadPluginIntent`, `SetEphemeralPluginIntent`. Routed via `AppDelegate.application(_:handlerFor:)` to handlers in [menubar01/Intents/](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Intents).
 3. **Plugin-driven notifications** — plugins can post `UNNotificationRequest` through `PluginManager.showNotification(...)`; the delegate re-acts on click via `userNotificationCenter(_:didReceive:withCompletionHandler:)`.
 
 ## Diagnostics
@@ -111,4 +111,4 @@ SwiftBar exposes three external entry points:
 - `copyLatestSystemReportToPasteboard()` — copies to clipboard
 - `openLatestSystemReport()` — opens the file with default app
 
-This is reachable from the menu bar via the `CopySystemReport` / `OpenSystemReport` items and from the URL scheme (`swiftbar://copysystemreport`, `swiftbar://opensystemreport`).
+This is reachable from the menu bar via the `CopySystemReport` / `OpenSystemReport` items and from the URL scheme (`menubar01://copysystemreport`, `menubar01://opensystemreport`).

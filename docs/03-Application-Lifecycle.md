@@ -76,7 +76,7 @@ os_log("Failed to determine user login shell, using default: %{public}@", log: L
 
 ### URL scheme — `application(_:open:)`
 
-The bundle declares `CFBundleURLSchemes = ["swiftbar"]` in `Info.plist`. The delegate's `application(_:open:)` switch dispatches on `url.host?.lowercased()`:
+The bundle declares `CFBundleURLSchemes = ["menubar01"]` in `Info.plist`. The delegate's `application(_:open:)` switch dispatches on `url.host?.lowercased()`:
 
 | Host | Behavior |
 | --- | --- |
@@ -90,7 +90,7 @@ The bundle declares `CFBundleURLSchemes = ["swiftbar"]` in `Info.plist`. The del
 | `opensystemreport` | Opens the report file in the default app. |
 | (default) | Logs an unsupported-URL error. |
 
-If the URL is a local file URL that looks like a plugin (or a `.swiftbar` package), it's imported via `pluginManager.importPlugin(from:)` first.
+If the URL is a local file URL that looks like a plugin script, it's imported via `pluginManager.importPlugin(from:)` first.
 
 ### Notification click handling — `userNotificationCenter(_:didReceive:withCompletionHandler:)`
 
@@ -116,13 +116,13 @@ return "https://lingyi.github.io/menubar01/appcast.xml"
 `changePresentationType()` toggles `NSApp.setActivationPolicy(.regular)` ↔ `.accessory`:
 
 - A regular activation policy is needed while the preferences or repository window is visible (so the app gets a Dock icon / main menu).
-- An accessory policy is used the rest of the time, keeping SwiftBar out of the Dock and the Cmd-Tab switcher.
+- An accessory policy is used the rest of the time, keeping menubar01 out of the Dock and the Cmd-Tab switcher.
 
 `windowWillClose(_:)` defers `changePresentationType()` by 0.5 s to allow the window's first responder to fully tear down.
 
 ## `AppShared` (static facade)
 
-[AppShared.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/AppShared.swift) is a class of `static` methods that any menu item or SwiftUI pane can call. It is the only place outside the delegate that can perform cross-window actions.
+[AppShared.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/AppShared.swift) is a class of `static` methods that any menu item or SwiftUI pane can call. It is the only place outside the delegate that can perform cross-window actions.
 
 | Method | Purpose |
 | --- | --- |
@@ -147,7 +147,7 @@ The terminal-launching functions in this file (`buildTerminalAppleScript`, `buil
 
 ## `AppDelegate+Menu.swift` — `AppMenu`
 
-Defines the minimal `NSMenu` that appears in the Dock / application menu when SwiftBar briefly switches to `.regular` activation policy. Contains: About, Send Feedback, Preferences (Cmd-,), Quit (Cmd-Q).
+Defines the minimal `NSMenu` that appears in the Dock / application menu when menubar01 briefly switches to `.regular` activation policy. Contains: About, Send Feedback, Preferences (Cmd-,), Quit (Cmd-Q).
 
 ## `AppDelegate+Toolbar.swift` — repository toolbar
 
@@ -160,7 +160,7 @@ Implements `NSToolbarDelegate` for the plugin repository window. The toolbar inc
 
 ## `AppDelegate+Intents.swift` — Siri/Shortcuts routing
 
-`application(_:handlerFor:)` returns the correct intent handler for each `INIntent` defined in [Intents.intentdefinition](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Resources/Intents.intentdefinition). See [10-Intents-and-URL-Scheme.md](./10-Intents-and-URL-Scheme.md).
+`application(_:handlerFor:)` returns the correct intent handler for each `INIntent` defined in [Intents.intentdefinition](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Resources/Intents.intentdefinition). See [10-Intents-and-URL-Scheme.md](./10-Intents-and-URL-Scheme.md).
 
 ## `Log.swift` — observability
 

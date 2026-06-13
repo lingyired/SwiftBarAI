@@ -1,25 +1,25 @@
 # Plugin Repository
 
-The "Get Plugins…" window is a SwiftUI in-app browser for community-contributed plugins. The backing data is the [swiftbar/swiftbar-plugins](https://github.com/swiftbar/swiftbar-plugins) repository. SwiftBar fetches the list, then downloads individual plugin files into the user's plugin folder on install.
+The "Get Plugins…" window is a SwiftUI in-app browser for community-contributed plugins. The backing data is the [swiftbar/swiftbar-plugins](https://github.com/swiftbar/swiftbar-plugins) repository. menubar01 fetches the list, then downloads individual plugin files into the user's plugin folder on install.
 
 ## `PluginRepository` — the data layer
 
-[PluginRepository.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/UI/Plugin%20Repository/PluginRepository.swift) is a `NSObject` that acts as the source of truth for the plugin browser.
+[PluginRepository.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/UI/Plugin%20Repository/PluginRepository.swift) is a `NSObject` that acts as the source of truth for the plugin browser.
 
 ### Singleton + persistence
 
 - `static let shared = PluginRepository()`.
 - On `init`, the manager reads `pluginRepositoryJSONPath` and loads any cached `JSON`-encoded `RepositoryPlugin` list. This is what the user sees immediately on launch.
-- The file is at `~/Library/Application Support/SwiftBar/PluginRepository.json`.
+- The file is at `~/Library/Application Support/menubar01/PluginRepository.json`.
 
 ### Git checkouts for the plugin repository
 
-The repository can also be checked out to `dataDirectory/PluginRepositoryData/`. This is the only way SwiftBar can read the README/description of each plugin without bundling the data. The data folder is used by:
+The repository can also be checked out to `dataDirectory/PluginRepositoryData/`. This is the only way menubar01 can read the README/description of each plugin without bundling the data. The data folder is used by:
 
 - `PluginRepositoryView` — to display README excerpts (markdown).
 - `PluginEntryModalView` — to display long descriptions.
 
-A `git fetch` happens on `refresh()` if the data folder exists; otherwise SwiftBar creates it with a shallow clone. The status of the clone is exposed via `isCloned` and `cloningStatus`.
+A `git fetch` happens on `refresh()` if the data folder exists; otherwise menubar01 creates it with a shallow clone. The status of the clone is exposed via `isCloned` and `cloningStatus`.
 
 ### Refreshing
 
@@ -27,7 +27,7 @@ A `git fetch` happens on `refresh()` if the data folder exists; otherwise SwiftB
 
 - `AppShared.getPlugins()` — the user clicks "Get Plugins…".
 - `AppDelegate.repositoryToolbar` refresh button.
-- `AppDelegate.application(_:open:)` for `swiftbar://refreshrepositorydata`.
+- `AppDelegate.application(_:open:)` for `menubar01://refreshrepositorydata`.
 
 Steps:
 
@@ -52,11 +52,11 @@ The result is `repositoryPlugins.filter { … }`.
 
 `install(plugin:)` calls `delegate.pluginManager.importPlugin(from: sourceFileURL) { … }` and lets the PluginManager copy the file to the user's plugin folder.
 
-`uninstall(plugin:)` removes the file using the `xattr`-encoded source URL (`.SwiftBar.SourceURL`); it is a no-op if the file wasn't installed from the repository.
+`uninstall(plugin:)` removes the file using the `xattr`-encoded source URL (`.menubar01.SourceURL`); it is a no-op if the file wasn't installed from the repository.
 
 ## `PluginRepositoryAPI` — the request layer
 
-[PluginRepositoryAPI.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/UI/Plugin%20Repository/PluginRepositoryAPI.swift) is a `NSObject` that performs HTTP requests. It uses `URLSession` and a `Result`-based completion style. All endpoints are POSTs to `https://api.github.com/repos/swiftbar/swiftbar-plugins/...`.
+[PluginRepositoryAPI.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/UI/Plugin%20Repository/PluginRepositoryAPI.swift) is a `NSObject` that performs HTTP requests. It uses `URLSession` and a `Result`-based completion style. All endpoints are POSTs to `https://api.github.com/repos/swiftbar/swiftbar-plugins/...`.
 
 ### Endpoints
 
@@ -87,7 +87,7 @@ The model `RepositoryPlugin` mirrors the JSON:
 
 ## `PluginRepositoryView` — the SwiftUI pane
 
-[PluginRepositoryView.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/UI/Plugin%20Repository/PluginRepositoryView.swift) wraps the data in a `NavigationSplitView` (sidebar with categories, detail with the plugin list). It uses:
+[PluginRepositoryView.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/UI/Plugin%20Repository/PluginRepositoryView.swift) wraps the data in a `NavigationSplitView` (sidebar with categories, detail with the plugin list). It uses:
 
 - `PluginListView` — main list with `PluginEntryView` cells.
 - `PluginEntryModalView` — the install modal.
@@ -98,11 +98,11 @@ The view listens for `.repositoirySearchUpdate` notifications and updates the se
 
 ## `PluginEntryView` — the cell
 
-[PluginEntryView.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/UI/Plugin%20Repository/PluginEntryView.swift) is a rounded-rectangle card with title, author (linking to GitHub if available), image, description, and footer with links to "Plugin Source" and "About Plugin". Tapping the card opens `PluginEntryModalView`.
+[PluginEntryView.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/UI/Plugin%20Repository/PluginEntryView.swift) is a rounded-rectangle card with title, author (linking to GitHub if available), image, description, and footer with links to "Plugin Source" and "About Plugin". Tapping the card opens `PluginEntryModalView`.
 
 ## `PluginEntryModalView` — the install modal
 
-Also in [PluginEntryView.swift](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/UI/Plugin%20Repository/PluginEntryView.swift). The modal shows:
+Also in [PluginEntryView.swift](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/UI/Plugin%20Repository/PluginEntryView.swift). The modal shows:
 
 - Title and author.
 - Image.

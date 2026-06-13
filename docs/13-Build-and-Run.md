@@ -1,6 +1,6 @@
 # Build and Run
 
-This document explains how SwiftBar is built, how to run it from Xcode, and how the various deployment flavors are switched.
+This document explains how menubar01 is built, how to run it from Xcode, and how the various deployment flavors are switched.
 
 ## Requirements
 
@@ -15,7 +15,7 @@ This document explains how SwiftBar is built, how to run it from Xcode, and how 
 menubar01.xcodeproj/
 └── project.pbxproj         # Two targets, two schemes
 
-SwiftBar/
+menubar01/
 ├── main.swift              # Entry point
 ├── AppDelegate.swift       # App delegate
 ├── AppDelegate+*.swift     # Toolbar, Menu, Intents
@@ -30,19 +30,19 @@ The Xcode project defines two targets:
 
 | Target | Build flavor | Purpose |
 | --- | --- | --- |
-| `SwiftBar` | Direct distribution | Includes Sparkle. Uses [Resources/Info.plist](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01/Resources/Info.plist) and `menubar01.entitlements`. |
-| `SwiftBar MAS` | Mac App Store | No Sparkle. Uses `menubar01 MAS.entitlements`. Compiled with the `MAC_APP_STORE` Swift flag. |
+| `menubar01` | Direct distribution | Includes Sparkle. Uses [Resources/Info.plist](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01/Resources/Info.plist) and `menubar01.entitlements`. |
+| `menubar01 MAS` | Mac App Store | No Sparkle. Uses `menubar01 MAS.entitlements`. Compiled with the `MAC_APP_STORE` Swift flag. |
 
 ## How to build and run
 
 ### From Xcode
 
 1. Open `menubar01.xcodeproj`.
-2. Select the `SwiftBar` scheme (top toolbar).
+2. Select the `menubar01` scheme (top toolbar).
 3. Pick **My Mac** as the destination.
 4. **Product → Run** (⌘R). Xcode will resolve packages and build.
 
-For the MAS build, switch the scheme to `SwiftBar MAS` before running.
+For the MAS build, switch the scheme to `menubar01 MAS` before running.
 
 ### From the command line
 
@@ -57,7 +57,7 @@ xcodebuild -project menubar01.xcodeproj -scheme "menubar01 MAS" -configuration R
 To open the built `.app` and launch it:
 
 ```bash
-open ./build/Release/SwiftBar.app
+open ./build/Release/menubar01.app
 ```
 
 ### Code signing
@@ -66,7 +66,7 @@ The two targets use different code-signing identities. The default for local dev
 
 ## Dependencies
 
-Dependencies are resolved automatically by SwiftPM through [Package.resolved](file:///Users/lingsmbp/Documents/aiwork/SwiftBarAI/menubar01.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved). They are:
+Dependencies are resolved automatically by SwiftPM through [Package.resolved](file:///Users/lingsmbp/Documents/aiwork/menubar01AI/menubar01.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved). They are:
 
 - `HotKey` (forked under `swiftbar/`) — 0.1.3
 - `LaunchAtLogin` (sindresorhus) — 5.0.0
@@ -88,7 +88,7 @@ When defined:
 - The "Use beta updates" toggle is hidden.
 - The "Sparkle" log category is omitted.
 
-When undefined (the default `SwiftBar` target):
+When undefined (the default `menubar01` target):
 
 - `SPUUpdater` updates are enabled, with the feed URL controlled by `prefs.includeBetaUpdates`:
   - `https://lingyi.github.io/menubar01/appcast.xml`
@@ -139,19 +139,19 @@ The current test target is light; consider it a starting point for unit-testing 
 
 ### Direct distribution (Sparkle)
 
-- Build the `SwiftBar` Release configuration.
+- Build the `menubar01` Release configuration.
 - The `.app` is uploaded to GitHub Releases with a Sparkle `appcast.xml` entry. The `appcast.xml` is published at `https://lingyi.github.io/menubar01/appcast.xml` (and a `*-beta.xml` variant for pre-releases).
 
 ### Mac App Store
 
-- Build the `SwiftBar MAS` Release configuration.
+- Build the `menubar01 MAS` Release configuration.
 - Codesign with the App Store distribution identity.
 - Submit via App Store Connect.
 
 ## Common pitfalls
 
-- **Plugin folder permission** — On the first run, the user must pick the plugin folder via the GUI. SwiftBar stores a security-scoped bookmark for the directory in MAS builds, so simply changing `PluginDirectoryPath` in `defaults` may not work in MAS.
-- **Apple Events / Automation** — The first time a user runs a script in Terminal/iTerm, macOS prompts for permission. SwiftBar launches `osascript` (via `ShortcutsManager`), which the user must allow.
+- **Plugin folder permission** — On the first run, the user must pick the plugin folder via the GUI. menubar01 stores a security-scoped bookmark for the directory in MAS builds, so simply changing `PluginDirectoryPath` in `defaults` may not work in MAS.
+- **Apple Events / Automation** — The first time a user runs a script in Terminal/iTerm, macOS prompts for permission. menubar01 launches `osascript` (via `ShortcutsManager`), which the user must allow.
 - **Plugin output order** — Plugins are sorted by `metadata.priority` (descending) and then by file name. The `DisablePluginReordering` default forces the file-name sort.
 - **Sparkle updates** — On a development build, `SPUUpdater.start()` is called and will hit the production `appcast.xml`. To prevent updates during local development, set the bundle id to something unique (e.g. `com.lingyi.menubar01-dev`):
 
