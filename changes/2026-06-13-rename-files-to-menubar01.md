@@ -3,8 +3,8 @@
 - **Type:** refactor
 - **Scope:** `SwiftBar.xcodeproj/`, `SwiftBar/`, `SwiftBarTests/`, plus 7 living docs
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** _pending_
-- **Status:** in-progress
+- **Commit(s):** b85da2a
+- **Status:** done
 
 ## Summary
 
