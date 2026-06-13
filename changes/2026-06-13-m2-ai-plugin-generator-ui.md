@@ -1,10 +1,10 @@
 # 2026-06-13: AIPluginGenerator M2 live preview UI
 
 - **Type:** feat
-- **Scope:** `menubar01/UI/Plugin Generator/`, `menubar01Tests/`, `docs/`
+- **Scope:** `menubar01/UI/Plugin Generator/`, `menubar01/AI/`, `menubar01/AppDelegate+Menu.swift`, `menubar01/AppDelegate.swift`, `menubar01Tests/`, `docs/`
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** 23d5cd4 (pbxproj), 8f11372 (M2 code+test+docs+record)
+- **Status:** done
 
 ## Summary
 

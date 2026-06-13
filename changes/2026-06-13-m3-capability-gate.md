@@ -3,8 +3,8 @@
 - **Type:** feat
 - **Scope:** `menubar01/Plugin/`, `menubar01Tests/`, `docs/`
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** 23d5cd4 (pbxproj), 9755129 (M3 code+test+docs+record)
+- **Status:** done
 
 ## Summary
 

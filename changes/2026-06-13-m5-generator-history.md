@@ -3,8 +3,8 @@
 - **Type:** feat
 - **Scope:** `menubar01/AI/`, `menubar01Tests/`, `docs/`
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** 23d5cd4 (pbxproj), f2a1cf4 (M5 code+test+docs+record)
+- **Status:** done
 
 ## Summary
 
