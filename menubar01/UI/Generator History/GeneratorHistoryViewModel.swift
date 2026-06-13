@@ -13,7 +13,8 @@
 //   .idle      — initial state, nothing loaded yet.
 //   .loading   — `reload()` is in flight.
 //   .loaded    — `entries` is up-to-date.
-//   .deleting  — `deleteSelected()` / `deleteAll()` in flight.
+//   .deleting  — `deleteSelected()` / `deleteEntry(promptId:)` /
+//                `deleteAll()` in flight.
 //   .error(M)  — last operation failed; the sheet shows the banner.
 
 import Foundation
@@ -55,6 +56,70 @@ final class GeneratorHistoryViewModel: ObservableObject {
         return entries.first { $0.promptId == selectedPromptId }
     }
 
+    /// Current filter applied to the sidebar list. The M5
+    /// history sheet's "Filter:" menu writes here and the
+    /// SwiftUI list reads `filteredEntries` (not `entries`).
+    /// `.all` is the default; the other cases narrow to a
+    /// single provider name or a single endpoint host so the
+    /// user can drill into a noisy history without losing
+    /// their on-disk `response.json` files. The filter is
+    /// in-memory only — a fresh sheet starts at `.all`.
+    @Published var filter: HistoryFilter = .all
+
+    /// Sidebar entries after the current `filter` is applied.
+    /// Mirrors the on-disk ordering from `entries` (newest
+    /// first) and applies the match rule from
+    /// `HistoryFilter.matches(_:)`. The SwiftUI list binds
+    /// to this computed property, so changing `filter` causes
+    /// a re-render without a store round-trip.
+    var filteredEntries: [AIGeneratorHistoryEntry] {
+        entries.filter { filter.matches($0) }
+    }
+
+    /// Distinct provider names present in `entries`, in
+    /// stable insertion order (so "Mock" / "Local" / "Remote"
+    /// appear in the order they were first recorded). `nil`
+    /// values (older entries written before the field was
+    /// added) surface as `"Unknown"`. The sheet's "Filter:"
+    /// menu iterates this to build the "by provider" options.
+    var availableProviderNames: [String] {
+        var seen: Set<String> = []
+        var ordered: [String] = []
+        for entry in entries {
+            let label = entry.providerName ?? "Unknown"
+            if seen.insert(label).inserted {
+                ordered.append(label)
+            }
+        }
+        return ordered
+    }
+
+    /// Distinct non-nil `endpointHost` values present in
+    /// `entries`, in stable insertion order. The sheet's
+    /// "Filter:" menu iterates this to build the
+    /// "by endpoint host" options. Hosts are returned as-is
+    /// (no grouping / no truncation) so the user can tell
+    /// `api.openai.com` apart from `api.anthropic.com` at
+    /// a glance.
+    var availableEndpointHosts: [String] {
+        var seen: Set<String> = []
+        var ordered: [String] = []
+        for entry in entries {
+            guard let host = entry.endpointHost, !host.isEmpty else { continue }
+            if seen.insert(host).inserted {
+                ordered.append(host)
+            }
+        }
+        return ordered
+    }
+
+    /// Count of entries visible under the current `filter`.
+    /// Surfaced in the sheet header so the user can see "12
+    /// of 47" at a glance without reading the list.
+    var filteredCount: Int {
+        filteredEntries.count
+    }
+
     // MARK: - Dependencies
 
     /// The history store. Defaults to
@@ -77,6 +142,51 @@ final class GeneratorHistoryViewModel: ObservableObject {
         case loaded
         case deleting
         case error(String)
+    }
+
+    // MARK: - Filter Type
+
+    /// Filter applied to the sidebar list.
+    ///
+    /// The three cases mirror the three branches the M5 history
+    /// UI's "Filter:" picker surfaces:
+    /// - `.all` — every entry (the default)
+    /// - `.provider(String)` — only entries whose
+    ///   `entry.providerName == p`. The `String` is one of the
+    ///   `availableProviderNames` values (e.g. `"Mock"`,
+    ///   `"Local"`, `"Remote"`, or a custom label a future
+    ///   generator reports).
+    /// - `.host(String)` — only entries whose
+    ///   `entry.endpointHost == h`. The `String` is one of the
+    ///   `availableEndpointHosts` values (e.g.
+    ///   `"api.openai.com"`).
+    ///
+    /// The `Equatable` conformance is hand-rolled (Swift derives
+    /// it for `String`-bearing enums automatically, but pinning
+    /// the conformance here makes the contract explicit and
+    /// matches the style of the surrounding `HistoryState` /
+    /// `HistoryEntry` types).
+    enum HistoryFilter: Equatable {
+        case all
+        case provider(String)
+        case host(String)
+
+        /// Returns `true` when `entry` should be visible under
+        /// this filter. `.all` is unconditional; the
+        /// provider / host cases are exact string matches so
+        /// the picker does not have to be lossy (e.g.
+        /// substring matching would conflate `api.openai.com`
+        /// with `api.openai.com.evil.example`).
+        func matches(_ entry: AIGeneratorHistoryEntry) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .provider(let name):
+                return entry.providerName == name
+            case .host(let host):
+                return entry.endpointHost == host
+            }
+        }
     }
 
     // MARK: - Init
@@ -114,6 +224,17 @@ final class GeneratorHistoryViewModel: ObservableObject {
     /// disables the destructive buttons.
     func deleteSelected() async {
         guard let promptId = selectedPromptId else { return }
+        await deleteEntry(promptId: promptId)
+    }
+
+    /// Remove a single entry from the store and reload. The
+    /// M5 history sheet's per-row context-menu / swipe-to-delete
+    /// actions call into this method with the row's
+    /// `promptId`. No-op when `promptId` is empty. The deletion
+    /// runs in `.deleting` state so the sheet disables the
+    /// other destructive buttons until the reload finishes.
+    func deleteEntry(promptId: String) async {
+        guard !promptId.isEmpty else { return }
         state = .deleting
         do {
             try store.delete(promptId: promptId)
@@ -157,6 +278,7 @@ final class GeneratorHistoryViewModel: ObservableObject {
         state = .idle
         entries = []
         selectedPromptId = nil
+        filter = .all
     }
 }
 

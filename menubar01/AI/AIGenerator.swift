@@ -231,6 +231,15 @@ public protocol AIPluginGenerator {
     /// is the only v1 provider that overrides it.
     var endpointHost: String? { get }
 
+    /// Human-readable name of the provider that produced
+    /// `plugin` — e.g. `"Mock"`, `"Local"`, `"Remote"`. The M5
+    /// history UI uses this to populate the "by provider" filter
+    /// picker so the user can narrow the sidebar to a single
+    /// provider without losing the on-disk `response.json` to a
+    /// rewrite. The default implementation returns `nil` (i.e.
+    /// "unknown"); the v1 generators override it.
+    var providerName: String? { get }
+
     /// Build a plugin from a natural-language request.
     ///
     /// - Parameters:
@@ -250,6 +259,12 @@ public extension AIPluginGenerator {
     /// remote endpoint (Mock, Local, Echo, …). `RemoteAIPluginGenerator`
     /// is the only v1 provider that overrides it.
     var endpointHost: String? { nil }
+
+    /// Default `providerName` for generators that do not opt in
+    /// to the M5 history filter. The v1 generators override it
+    /// with a stable label (e.g. `"Mock"`, `"Local"`, `"Remote"`)
+    /// so the filter picker can group their entries.
+    var providerName: String? { nil }
 
     /// Convenience overload that fills `context` with `.empty`.
     /// Mirrors the default-parameter sketch in

@@ -191,7 +191,8 @@ final class AIGeneratorViewModel: ObservableObject {
                     model: context.model,
                     plugin: plugin,
                     menuTreeJSON: menuTreeJSON,
-                    endpointHost: generator.endpointHost
+                    endpointHost: generator.endpointHost,
+                    providerName: generator.providerName
                 ))
             } catch {
                 os_log("AIGenerator: failed to record history entry: %{public}@",

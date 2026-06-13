@@ -65,6 +65,17 @@ public struct AIGeneratorHistoryEntry: Codable, Identifiable, Equatable {
     /// leaking the full URL or the apiKey.
     public let endpointHost: String?
 
+    /// Name of the provider that produced `plugin` — one of
+    /// `"Mock"`, `"Local"`, `"Remote"`, or any custom label an
+    /// `AIPluginGenerator` implementation chooses to report
+    /// (e.g. future provider-specific names). The M5 history
+    /// sheet uses this to derive the "by provider" filter
+    /// options; older entries written before the field was
+    /// added (or any entry whose generator did not report a
+    /// name) carry `nil` and surface through the filter as
+    /// "Unknown".
+    public let providerName: String?
+
     public init(
         promptId: String,
         createdAt: Date,
@@ -72,7 +83,8 @@ public struct AIGeneratorHistoryEntry: Codable, Identifiable, Equatable {
         model: String,
         plugin: GeneratedPlugin,
         menuTreeJSON: Data? = nil,
-        endpointHost: String? = nil
+        endpointHost: String? = nil,
+        providerName: String? = nil
     ) {
         self.promptId = promptId
         self.createdAt = createdAt
@@ -81,6 +93,7 @@ public struct AIGeneratorHistoryEntry: Codable, Identifiable, Equatable {
         self.plugin = plugin
         self.menuTreeJSON = menuTreeJSON
         self.endpointHost = endpointHost
+        self.providerName = providerName
     }
 
     // MARK: - Codable
@@ -100,6 +113,7 @@ public struct AIGeneratorHistoryEntry: Codable, Identifiable, Equatable {
         case pluginPromptVersion
         case menuTreeJSON
         case endpointHost
+        case providerName
     }
 
     public init(from decoder: Decoder) throws {
@@ -117,6 +131,10 @@ public struct AIGeneratorHistoryEntry: Codable, Identifiable, Equatable {
         // on-disk format shipped; older `response.json` files
         // predate the key and must still decode cleanly.
         let endpointHost = try c.decodeIfPresent(String.self, forKey: .endpointHost)
+        // `providerName` was added together with the
+        // history-UI filter feature; older `response.json`
+        // files predate the key and decode to `nil`.
+        let providerName = try c.decodeIfPresent(String.self, forKey: .providerName)
 
         self.promptId = promptId
         self.createdAt = createdAt
@@ -131,6 +149,7 @@ public struct AIGeneratorHistoryEntry: Codable, Identifiable, Equatable {
         )
         self.menuTreeJSON = menuTreeJSON
         self.endpointHost = endpointHost
+        self.providerName = providerName
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -145,6 +164,7 @@ public struct AIGeneratorHistoryEntry: Codable, Identifiable, Equatable {
         try c.encode(plugin.promptVersion, forKey: .pluginPromptVersion)
         try c.encodeIfPresent(menuTreeJSON, forKey: .menuTreeJSON)
         try c.encodeIfPresent(endpointHost, forKey: .endpointHost)
+        try c.encodeIfPresent(providerName, forKey: .providerName)
     }
 
     // MARK: - Equatable
@@ -160,7 +180,8 @@ public struct AIGeneratorHistoryEntry: Codable, Identifiable, Equatable {
               lhs.request == rhs.request,
               lhs.model == rhs.model,
               lhs.menuTreeJSON == rhs.menuTreeJSON,
-              lhs.endpointHost == rhs.endpointHost else {
+              lhs.endpointHost == rhs.endpointHost,
+              lhs.providerName == rhs.providerName else {
             return false
         }
         guard lhs.plugin.entryScript == rhs.plugin.entryScript,

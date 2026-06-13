@@ -124,7 +124,7 @@ struct GeneratorHistorySheet: View {
     }
 
     private var header: some View {
-        HStack {
+        HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Generator History")
                     .font(.title3.weight(.semibold))
@@ -133,8 +133,104 @@ struct GeneratorHistorySheet: View {
                     .foregroundColor(.secondary)
             }
             Spacer()
+            // M5 history filter picker. Pinned to the header so
+            // it stays visible while the sidebar list scrolls.
+            // Driven by a `Menu` (not a `Picker`) because the
+            // available options are derived from the entries
+            // themselves, and `Menu` makes the dynamic set of
+            // "by provider" / "by host" options easier to
+            // group under dividers than `Picker`'s flat
+            // `ForEach` would.
+            filterMenu
+                .disabled(viewModel.entries.isEmpty || isMutating)
+            // M5 history "Delete All" sits in the top-of-sheet
+            // header (not the footer) so it stays reachable
+            // when the user has scrolled the sidebar to the
+            // bottom and the footer is off-screen. The footer
+            // also exposes a "Delete All" so the two
+            // surfaces (top / footer) both have a one-click
+            // destructive action without forcing the user to
+            // scroll. Both wire into the same confirmation
+            // dialog so the destructive UX is consistent.
+            Button(role: .destructive) {
+                showingDeleteAllConfirmation = true
+            } label: {
+                Label("Delete All", systemImage: "trash")
+            }
+            .controlSize(.small)
+            .disabled(viewModel.entries.isEmpty || isMutating)
         }
         .padding(20)
+    }
+
+    /// "Filter:" picker. The default item is "All" (resets
+    /// `viewModel.filter` to `.all`); the next section groups
+    /// one "Provider: <name>" item per distinct
+    /// `entry.providerName` actually present, and the final
+    /// section groups one "Host: <host>" item per distinct
+    /// `entry.endpointHost` actually present. The visible
+    /// summary line ("3 of 12") sits beneath the menu so the
+    /// user can see how many entries the current filter
+    /// admits without counting rows in the sidebar.
+    @ViewBuilder
+    private var filterMenu: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            Menu {
+                Button {
+                    viewModel.filter = .all
+                } label: {
+                    Label("All", systemImage: viewModel.filter == .all ? "checkmark" : "")
+                }
+                if !viewModel.availableProviderNames.isEmpty {
+                    Divider()
+                    ForEach(viewModel.availableProviderNames, id: \.self) { name in
+                        let active: Bool = viewModel.filter == .provider(name)
+                        Button {
+                            viewModel.filter = .provider(name)
+                        } label: {
+                            Label("Provider: \(name)", systemImage: active ? "checkmark" : "")
+                        }
+                    }
+                }
+                if !viewModel.availableEndpointHosts.isEmpty {
+                    Divider()
+                    ForEach(viewModel.availableEndpointHosts, id: \.self) { host in
+                        let active: Bool = viewModel.filter == .host(host)
+                        Button {
+                            viewModel.filter = .host(host)
+                        } label: {
+                            Label("Host: \(host)", systemImage: active ? "checkmark" : "")
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                    Text(filterMenuTitle)
+                }
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+
+            Text("\(viewModel.filteredCount) of \(viewModel.entries.count)")
+                .font(.caption2.monospacedDigit())
+                .foregroundColor(.secondary)
+        }
+    }
+
+    /// Visible label for the filter menu. Pinned to "All" when
+    /// `filter == .all`, otherwise echoes the active provider /
+    /// host so the user can see at a glance which filter is in
+    /// effect (matters when the menu is collapsed).
+    private var filterMenuTitle: String {
+        switch viewModel.filter {
+        case .all:
+            return "Filter: All"
+        case .provider(let name):
+            return "Filter: \(name)"
+        case .host(let host):
+            return "Filter: \(host)"
+        }
     }
 
     // MARK: - Sidebar
@@ -164,11 +260,41 @@ struct GeneratorHistorySheet: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.filteredEntries.isEmpty {
+            // The user has narrowed the sidebar to a filter
+            // (e.g. "Provider: Remote") that no longer
+            // matches any entries. Show a small empty-state
+            // rather than an empty list.
+            VStack(spacing: 8) {
+                Spacer()
+                Text("No entries match this filter.")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                Button("Show all") {
+                    viewModel.filter = .all
+                }
+                .controlSize(.small)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             List(selection: $viewModel.selectedPromptId) {
-                ForEach(viewModel.entries) { entry in
+                ForEach(viewModel.filteredEntries) { entry in
                     row(for: entry)
                         .tag(entry.promptId)
+                        // M5 history per-row delete: the
+                        // context menu is the natural fit
+                        // for a `.sidebar` `List` style
+                        // (`.swipeActions` is unreliable on
+                        // macOS sidebars), and mirrors the
+                        // standard "right-click → Delete"
+                        // pattern Finder / Mail use for
+                        // the same operation.
+                        .contextMenu {
+                            Button("Delete", role: .destructive) {
+                                Task { await viewModel.deleteEntry(promptId: entry.promptId) }
+                            }
+                        }
                 }
             }
             .listStyle(.sidebar)

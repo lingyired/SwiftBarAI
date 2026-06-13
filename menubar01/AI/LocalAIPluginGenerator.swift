@@ -56,6 +56,12 @@ public final class LocalAIPluginGenerator: AIPluginGenerator {
     /// implementation's semver tag.
     public static let localPromptVersion = "v1.0-local-stub"
 
+    /// Stable label the M5 history-UI filter picker groups
+    /// local-model entries under. Surfaced through
+    /// `AIPluginGenerator.providerName` so the user can narrow
+    /// the sidebar to "Local" runs only.
+    public static let providerDisplayName = "Local"
+
     /// The on-disk model path the user picked in the Preferences →
     /// AI pane. Stored verbatim so the future real local-inference
     /// v2 can adopt the same `init` and start loading from the
@@ -88,6 +94,12 @@ public final class LocalAIPluginGenerator: AIPluginGenerator {
                    log: Self.log, type: .error, modelPath.path, error.localizedDescription)
         }
     }
+
+    /// `providerName` for the local generator. Mirrors the
+    /// static `providerDisplayName` so the M5 history filter
+    /// picker can group local-model entries together
+    /// independent of the on-disk `modelPath`.
+    public var providerName: String? { Self.providerDisplayName }
 
     public func generate(
         request: String,

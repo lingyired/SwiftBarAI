@@ -45,7 +45,9 @@ private func makeTestEntry(
     request: String,
     model: String = "gpt-4o-mini",
     createdAt: Date = Date(timeIntervalSince1970: 1_700_000_000),
-    menuTreeJSON: Data? = nil
+    menuTreeJSON: Data? = nil,
+    endpointHost: String? = nil,
+    providerName: String? = nil
 ) -> AIGeneratorHistoryEntry {
     AIGeneratorHistoryEntry(
         promptId: promptId,
@@ -53,7 +55,9 @@ private func makeTestEntry(
         request: request,
         model: model,
         plugin: makeTestPlugin(promptId: promptId),
-        menuTreeJSON: menuTreeJSON
+        menuTreeJSON: menuTreeJSON,
+        endpointHost: endpointHost,
+        providerName: providerName
     )
 }
 
@@ -426,6 +430,65 @@ final class AIGeneratorHistoryStoreRoundTripTests {
         let recovered = try #require(loaded.first)
 
         #expect(recovered.menuTreeJSON == menu)
+    }
+
+    @Test func testRecord_thenListAll_roundTripsProviderName() throws {
+        // `providerName` was added together with the M5
+        // history filter feature. The on-disk format must
+        // round-trip the field through `response.json` so
+        // the filter can read it back after a restart.
+        let original = makeTestEntry(
+            promptId: "provider-rt",
+            request: "show weather",
+            providerName: "Mock"
+        )
+
+        try store.record(original)
+        let loaded = try store.listAll()
+        let recovered = try #require(loaded.first)
+
+        #expect(recovered.providerName == "Mock")
+        #expect(recovered == original)
+    }
+
+    @Test func testListAll_decodesLegacyResponseJsonWithoutProviderName() throws {
+        // Older `response.json` files predate the
+        // `providerName` key. The store must still decode
+        // them cleanly, with `providerName == nil`, so
+        // upgrading from a pre-M5-history-filter build
+        // does not crash `listAll()`.
+        let legacyDir = rootDirectory
+            .appendingPathComponent("legacy", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: legacyDir,
+            withIntermediateDirectories: true
+        )
+        let legacyJSON = """
+        {
+          "promptId" : "legacy",
+          "createdAt" : "2023-11-14T22:13:20Z",
+          "request" : "echo me",
+          "model" : "gpt-4o-mini",
+          "pluginManifest" : {
+            "name" : "Echo",
+            "version" : "1.0.0",
+            "type" : "Executable",
+            "entry" : "echo.sh",
+            "refreshInterval" : 5
+          },
+          "pluginEntryScript" : "#!/bin/zsh\\necho legacy\\n",
+          "pluginExplanation" : "legacy",
+          "pluginPromptVersion" : "v1.0-test"
+        }
+        """
+        try Data(legacyJSON.utf8).write(
+            to: legacyDir.appendingPathComponent("response.json")
+        )
+
+        let entries = try store.listAll()
+        let recovered = try #require(entries.first)
+        #expect(recovered.promptId == "legacy")
+        #expect(recovered.providerName == nil)
     }
 }
 

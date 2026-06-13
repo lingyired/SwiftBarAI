@@ -25,7 +25,18 @@ public final class MockAIPluginGenerator: AIPluginGenerator {
     /// generator's template or generation logic has changed.
     public static let mockPromptVersion = "v1.0-mock"
 
+    /// Stable label the M5 history-UI filter picker groups this
+    /// generator's entries under. Surfaced through
+    /// `AIPluginGenerator.providerName` so the user can narrow
+    /// the sidebar to "Mock" runs only.
+    public static let providerDisplayName = "Mock"
+
     public init() {}
+
+    /// `providerName` for the mock generator. Mirrors the
+    /// static `providerDisplayName` so call sites can read
+    /// either the static or the instance form interchangeably.
+    public var providerName: String? { Self.providerDisplayName }
 
     public func generate(
         request: String,

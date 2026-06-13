@@ -55,6 +55,12 @@ public final class LocalEchoAIPluginGenerator: AIPluginGenerator {
     /// real local-inference provider's semver tag.
     public static let localEchoPromptVersion = "v1.0-echo-local"
 
+    /// Stable label the M5 history-UI filter picker groups
+    /// local-model placeholder entries under. Mirrors
+    /// `LocalAIPluginGenerator.providerDisplayName` so the
+    /// picker treats both implementations the same way.
+    public static let providerDisplayName = "Local"
+
     /// The on-disk model path the user picked in the Preferences →
     /// AI pane. Stored verbatim so a follow-up real local-inference
     /// provider can adopt the same `init` and start loading from
@@ -70,6 +76,12 @@ public final class LocalEchoAIPluginGenerator: AIPluginGenerator {
             log: Self.log, type: .info, modelPath.path
         )
     }
+
+    /// `providerName` for the local-echo placeholder. Mirrors
+    /// the static `providerDisplayName` so the M5 history
+    /// filter picker groups these entries under the same
+    /// "Local" bucket as real `LocalAIPluginGenerator` runs.
+    public var providerName: String? { Self.providerDisplayName }
 
     public func generate(
         request: String,
@@ -116,6 +128,12 @@ public final class RemoteEchoAIPluginGenerator: AIPluginGenerator {
     /// Version string reported in `GeneratedPlugin.promptVersion`.
     public static let remoteEchoPromptVersion = "v1.0-echo-remote"
 
+    /// Stable label the M5 history-UI filter picker groups
+    /// remote-placeholder entries under. Mirrors the real
+    /// `RemoteAIPluginGenerator`'s label so the picker
+    /// treats both implementations the same way.
+    public static let providerDisplayName = "Remote"
+
     /// The remote endpoint URL the user picked in the Preferences →
     /// AI pane. Stored verbatim so the future real HTTP client can
     /// adopt the same `init` and start sending requests to the
@@ -145,6 +163,12 @@ public final class RemoteEchoAIPluginGenerator: AIPluginGenerator {
             log: Self.log, type: .info, host, redactedKey
         )
     }
+
+    /// `providerName` for the remote-echo placeholder. Mirrors
+    /// the static `providerDisplayName` so the M5 history
+    /// filter picker groups these entries under the same
+    /// "Remote" bucket as real `RemoteAIPluginGenerator` runs.
+    public var providerName: String? { Self.providerDisplayName }
 
     public func generate(
         request: String,

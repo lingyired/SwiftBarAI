@@ -132,7 +132,8 @@ private func makeTestEntry(
     request: String = "show weather",
     createdAt: Date = Date(timeIntervalSince1970: 1_700_000_000),
     model: String = "gpt-4o-mini",
-    endpointHost: String? = nil
+    endpointHost: String? = nil,
+    providerName: String? = nil
 ) -> AIGeneratorHistoryEntry {
     var manifest = PluginManifest()
     manifest.name = "Echo"
@@ -153,7 +154,8 @@ private func makeTestEntry(
         model: model,
         plugin: plugin,
         menuTreeJSON: nil,
-        endpointHost: endpointHost
+        endpointHost: endpointHost,
+        providerName: providerName
     )
 }
 
@@ -407,5 +409,285 @@ struct GeneratorHistoryViewModelSelectedEntryExposesModelAndHostTests {
         viewModel.selectedPromptId = viewModel.entries.first?.promptId
 
         #expect(viewModel.selectedEntry?.endpointHost == nil)
+    }
+}
+
+// MARK: - filter / filteredEntries
+
+/// The M5 history sheet's "Filter:" picker narrows the sidebar
+/// to a single provider, a single endpoint host, or keeps it
+/// at "all". These tests pin the view-model's `filter` /
+/// `filteredEntries` contract so the SwiftUI sheet can bind
+/// `ForEach(viewModel.filteredEntries)` without growing its
+/// own selector logic.
+@MainActor
+struct GeneratorHistoryViewModelFilterTests {
+
+    @Test func testFilterByProvider_returnsOnlyMatchingEntries() async throws {
+        // 2 Mock + 1 Remote. Filter `.provider("Mock")` must
+        // return exactly the two Mock entries.
+        let temp = try HistoryTempDir()
+        try temp.store.record(
+            makeTestEntry(promptId: "m1", providerName: "Mock")
+        )
+        try temp.store.record(
+            makeTestEntry(
+                promptId: "r1",
+                endpointHost: "api.openai.com",
+                providerName: "Remote"
+            )
+        )
+        try temp.store.record(
+            makeTestEntry(promptId: "m2", providerName: "Mock")
+        )
+        let viewModel = GeneratorHistoryViewModel(store: temp.store)
+        await viewModel.reload()
+
+        viewModel.filter = .provider("Mock")
+
+        #expect(viewModel.filteredEntries.count == 2)
+        #expect(Set(viewModel.filteredEntries.map(\.promptId)) == ["m1", "m2"])
+        // The full entry list is untouched by filtering.
+        #expect(viewModel.entries.count == 3)
+    }
+
+    @Test func testFilterByHost_returnsOnlyMatchingEntries() async throws {
+        // 2 different endpoint hosts. Filter
+        // `.host("api.example.com")` must return the single
+        // entry that came from that host.
+        let temp = try HistoryTempDir()
+        try temp.store.record(
+            makeTestEntry(
+                promptId: "h1",
+                endpointHost: "api.openai.com",
+                providerName: "Remote"
+            )
+        )
+        try temp.store.record(
+            makeTestEntry(
+                promptId: "h2",
+                endpointHost: "api.example.com",
+                providerName: "Remote"
+            )
+        )
+        let viewModel = GeneratorHistoryViewModel(store: temp.store)
+        await viewModel.reload()
+
+        viewModel.filter = .host("api.example.com")
+
+        #expect(viewModel.filteredEntries.count == 1)
+        #expect(viewModel.filteredEntries.first?.promptId == "h2")
+    }
+
+    @Test func testFilterAll_returnsAllEntries() async throws {
+        // Three entries from two providers + one local. The
+        // `.all` filter must surface every entry regardless
+        // of provider / host.
+        let temp = try HistoryTempDir()
+        try temp.store.record(
+            makeTestEntry(promptId: "a", providerName: "Mock")
+        )
+        try temp.store.record(
+            makeTestEntry(
+                promptId: "b",
+                endpointHost: "api.openai.com",
+                providerName: "Remote"
+            )
+        )
+        try temp.store.record(
+            makeTestEntry(promptId: "c", providerName: "Local")
+        )
+        let viewModel = GeneratorHistoryViewModel(store: temp.store)
+        await viewModel.reload()
+
+        viewModel.filter = .all
+
+        #expect(viewModel.filteredEntries.count == 3)
+        #expect(Set(viewModel.filteredEntries.map(\.promptId)) == ["a", "b", "c"])
+    }
+
+    @Test func testFilterByProvider_doesNotMatchNilProviderName() async throws {
+        // An entry written before the `providerName` field
+        // existed carries `nil` for that field. The
+        // `.provider("Mock")` filter must NOT match it —
+        // exact equality is the contract (substring matching
+        // would be lossy and conflate labels).
+        let temp = try HistoryTempDir()
+        try temp.store.record(
+            makeTestEntry(promptId: "mock", providerName: "Mock")
+        )
+        try temp.store.record(
+            makeTestEntry(promptId: "legacy", providerName: nil)
+        )
+        let viewModel = GeneratorHistoryViewModel(store: temp.store)
+        await viewModel.reload()
+
+        viewModel.filter = .provider("Mock")
+
+        #expect(viewModel.filteredEntries.count == 1)
+        #expect(viewModel.filteredEntries.first?.promptId == "mock")
+    }
+
+    @Test func testAvailableProviderNames_dedupesAndPreservesOrder() async throws {
+        // Two Mock entries should produce a single "Mock"
+        // entry in `availableProviderNames`, in the order it
+        // was first observed in `entries`. The Remote entry
+        // shows up in its own position.
+        let temp = try HistoryTempDir()
+        try temp.store.record(
+            makeTestEntry(promptId: "m1", providerName: "Mock")
+        )
+        try temp.store.record(
+            makeTestEntry(
+                promptId: "r1",
+                endpointHost: "api.openai.com",
+                providerName: "Remote"
+            )
+        )
+        try temp.store.record(
+            makeTestEntry(promptId: "m2", providerName: "Mock")
+        )
+        let viewModel = GeneratorHistoryViewModel(store: temp.store)
+        await viewModel.reload()
+
+        #expect(viewModel.availableProviderNames == ["Mock", "Remote"])
+    }
+
+    @Test func testAvailableEndpointHosts_dedupesAndSkipsNil() async throws {
+        // Two distinct hosts + one nil-host entry. The
+        // `availableEndpointHosts` should return the two
+        // distinct hosts and skip the nil one. The store
+        // returns entries newest-first, so the observed
+        // order in the picker follows the same newest-first
+        // rule (and stays stable across loads).
+        let temp = try HistoryTempDir()
+        try temp.store.record(
+            makeTestEntry(
+                promptId: "h1",
+                endpointHost: "api.openai.com",
+                providerName: "Remote"
+            )
+        )
+        try temp.store.record(
+            makeTestEntry(promptId: "local", providerName: "Mock")
+        )
+        try temp.store.record(
+            makeTestEntry(
+                promptId: "h2",
+                endpointHost: "api.example.com",
+                providerName: "Remote"
+            )
+        )
+        let viewModel = GeneratorHistoryViewModel(store: temp.store)
+        await viewModel.reload()
+
+        #expect(viewModel.availableEndpointHosts == ["api.example.com", "api.openai.com"])
+    }
+}
+
+// MARK: - deleteEntry(promptId:)
+
+/// The M5 history sheet's per-row context menu / swipe-to-delete
+/// action calls `viewModel.deleteEntry(promptId:)`. These tests
+/// pin the view-model's contract that the method removes a
+/// single entry from the underlying store without touching
+/// the other entries, and that it goes through the same
+/// `.deleting` → `.loaded` state machine the existing
+/// `deleteSelected()` uses.
+@MainActor
+struct GeneratorHistoryViewModelDeleteEntryTests {
+
+    @Test func testDeleteSingleEntry_removesItFromStore() async throws {
+        let temp = try HistoryTempDir()
+        try temp.store.record(
+            makeTestEntry(promptId: "a", providerName: "Mock")
+        )
+        try temp.store.record(
+            makeTestEntry(promptId: "b", providerName: "Mock")
+        )
+        try temp.store.record(
+            makeTestEntry(promptId: "c", providerName: "Remote")
+        )
+        let viewModel = GeneratorHistoryViewModel(store: temp.store)
+        await viewModel.reload()
+
+        await viewModel.deleteEntry(promptId: "b")
+
+        let remaining = try temp.store.listAll()
+        #expect(Set(remaining.map(\.promptId)) == ["a", "c"])
+        #expect(viewModel.entries.count == 2)
+        #expect(Set(viewModel.entries.map(\.promptId)) == ["a", "c"])
+        #expect(viewModel.state == .loaded)
+    }
+
+    @Test func testDeleteSingleEntry_unknownPromptIdIsNoOp() async throws {
+        // The store's `delete(promptId:)` is a no-op for
+        // unknown ids, so the view-model's wrapper must
+        // stay non-throwing and not mutate state when the
+        // id is not in the store.
+        let temp = try HistoryTempDir()
+        try temp.store.record(
+            makeTestEntry(promptId: "a", providerName: "Mock")
+        )
+        let viewModel = GeneratorHistoryViewModel(store: temp.store)
+        await viewModel.reload()
+        let countBefore = viewModel.entries.count
+
+        await viewModel.deleteEntry(promptId: "does-not-exist")
+
+        #expect(viewModel.entries.count == countBefore)
+        #expect(viewModel.state == .loaded)
+    }
+
+    @Test func testDeleteSingleEntry_emptyPromptIdIsNoOp() async throws {
+        // `deleteEntry(promptId: "")` must short-circuit
+        // before touching the store — empty promptId is
+        // never a valid id, and the store would otherwise
+        // log an error for a malformed entry directory.
+        let temp = try HistoryTempDir()
+        try temp.store.record(
+            makeTestEntry(promptId: "a", providerName: "Mock")
+        )
+        let viewModel = GeneratorHistoryViewModel(store: temp.store)
+        await viewModel.reload()
+        let countBefore = viewModel.entries.count
+
+        await viewModel.deleteEntry(promptId: "")
+
+        #expect(viewModel.entries.count == countBefore)
+    }
+}
+
+// MARK: - deleteAll() (re-test with providerName coverage)
+
+/// Re-tests `deleteAll()` to cover the new "by provider"
+/// filter: a filter set to a provider whose entries are all
+/// gone should produce an empty `filteredEntries`.
+@MainActor
+struct GeneratorHistoryViewModelDeleteAllWithFilterTests {
+
+    @Test func testDeleteAllEntries_clearsStore() async throws {
+        let temp = try HistoryTempDir()
+        try temp.store.record(
+            makeTestEntry(promptId: "a", providerName: "Mock")
+        )
+        try temp.store.record(
+            makeTestEntry(promptId: "b", providerName: "Mock")
+        )
+        try temp.store.record(
+            makeTestEntry(promptId: "c", providerName: "Remote")
+        )
+        let viewModel = GeneratorHistoryViewModel(store: temp.store)
+        await viewModel.reload()
+        viewModel.filter = .provider("Mock")
+        #expect(viewModel.filteredEntries.count == 2)
+
+        await viewModel.deleteAll()
+
+        let remaining = try temp.store.listAll()
+        #expect(remaining.isEmpty)
+        #expect(viewModel.entries.isEmpty)
+        #expect(viewModel.filteredEntries.isEmpty)
+        #expect(viewModel.state == .loaded)
     }
 }

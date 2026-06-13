@@ -153,6 +153,18 @@ public final class RemoteAIPluginGenerator: AIPluginGenerator {
     /// `URL.host`'s contract).
     public var endpointHost: String? { endpoint.host }
 
+    /// Stable label the M5 history-UI filter picker groups
+    /// remote entries under. Mirrors the placeholder
+    /// `RemoteEchoAIPluginGenerator`'s label so the picker
+    /// treats both implementations the same way.
+    public static let providerDisplayName = "Remote"
+
+    /// `providerName` for the remote generator. Mirrors the
+    /// static `providerDisplayName` so the M5 history filter
+    /// picker can group remote entries together independent
+    /// of the actual `endpoint.host`.
+    public var providerName: String? { Self.providerDisplayName }
+
     private static let log = OSLog(subsystem: "com.lingyi.menubar01", category: "AIGenerator")
 
     /// Build a real remote-provider generator.
