@@ -3,7 +3,7 @@
 - **Type:** feat
 - **Scope:** menubar01/UI/Marketplace Browser
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
+- **Commit(s):** 38b976d
 - **Status:** partial
 
 > **Status: partial** — the 3 new tests pass cleanly in

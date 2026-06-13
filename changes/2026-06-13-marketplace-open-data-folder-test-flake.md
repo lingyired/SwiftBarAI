@@ -4,7 +4,7 @@
 - **Scope:** test-only follow-up to
   [`2026-06-13-marketplace-open-data-folder.md`](2026-06-13-marketplace-open-data-folder.md)
 - **Author(s):** Trae AI
-- **Commit(s):** TBD
+- **Commit(s):** 38b976d
 - **Status:** open
 
 ## Summary
