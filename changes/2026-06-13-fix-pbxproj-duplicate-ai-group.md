@@ -3,8 +3,8 @@
 - **Type:** chore
 - **Scope:** `menubar01.xcodeproj/project.pbxproj`
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** TBD
-- **Status:** in-progress
+- **Commit(s):** 97d5815
+- **Status:** done
 
 ## Summary
 
