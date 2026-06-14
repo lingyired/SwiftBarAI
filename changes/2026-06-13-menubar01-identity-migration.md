@@ -18,8 +18,10 @@
 > Follow-ups (out of scope for the original record, tracked separately):
 > - The 14 `docs/00-README.md` … `docs/13-Build-and-Run.md` headers still reference `SwiftBar/...` hyperlinks and inline `swiftbar` tokens (separate sweep; partial progress in `docs-sweep-partial` + `docs-prose-rewrite-batch-1..4` + `docs-final-polish`).
 > - The test file `menubar01Tests/SwiftBarTests.swift` was moved into the new directory but not renamed — its `@Suite("SwiftBarTests")` declaration is a stable identifier used by `xcodebuild -only-testing:` invocations, so a rename would also require updating the test-runner filter. Cosmetic.
-> - An orphan `SwiftBar.xcodeproj/project.xcworkspace/contents.xcworkspacedata` is still tracked in git (one file, byte-identical to the `menubar01.xcodeproj` copy). Should be removed in a follow-up cleanup commit.
 > - In-code `// legacy .swiftbar` comments in `menubar01/Plugin/FolderPlugin.swift`, `menubar01/Plugin/PluginManger.swift`, and `menubar01/AppDelegate.swift` are intentional historical context (they explain why a non-`.swiftbar` filter or a `manifest.json` parser exists) and stay as-is.
+>
+> Resolved since this record was first drafted:
+> - ~~The orphan `SwiftBar.xcodeproj/project.xcworkspace/contents.xcworkspacedata`~~ — removed in [`2026-06-14-remove-orphan-swiftbar-xcodeproj.md`](2026-06-14-remove-orphan-swiftbar-xcodeproj.md).
 
 ## Summary
 
