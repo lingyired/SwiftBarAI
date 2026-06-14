@@ -3,8 +3,23 @@
 - **Type:** chore
 - **Scope:** project identity, bundle identifier, user-facing strings, signing, iconography
 - **Author(s):** Trae AI
-- **Commit(s):** _pending_
-- **Status:** in-progress
+- **Commit(s):** 1acb6d0
+- **Status:** done
+
+> **Status: done** — verified by
+> [`MIGRATION_PLAN.md`](../MIGRATION_PLAN.md) § 1, which
+> marks all 6 migration phases complete. Three landing
+> commits make up the work:
+> - `1acb6d0` — `chore: migrate SwiftBar fork to standalone menubar01 product` (identity strings, bundle ID, xcode target/scheme names)
+> - `99248b7` — `refactor(plugin): drop legacy SwiftBar plugin compatibility` (drops `swiftbar://` URL scheme, `.swiftbar` UTI, `SWIFTBAR_*` env vars, `.swiftbarignore`)
+> - `b85da2a` — `refactor: rename SwiftBar project files to menubar01` (renames on-disk directories, .entitlements, .xcconfig)
+> - `1ccd8ef` — `refactor(plugin): delete the three orphan SwiftBar plugin files` (deletes `PackagedPlugin`, `ExecutablePlugin`, `StreamablePlugin`)
+>
+> Follow-ups (out of scope for the original record, tracked separately):
+> - The 14 `docs/00-README.md` … `docs/13-Build-and-Run.md` headers still reference `SwiftBar/...` hyperlinks and inline `swiftbar` tokens (separate sweep; partial progress in `docs-sweep-partial` + `docs-prose-rewrite-batch-1..4` + `docs-final-polish`).
+> - The test file `menubar01Tests/SwiftBarTests.swift` was moved into the new directory but not renamed — its `@Suite("SwiftBarTests")` declaration is a stable identifier used by `xcodebuild -only-testing:` invocations, so a rename would also require updating the test-runner filter. Cosmetic.
+> - An orphan `SwiftBar.xcodeproj/project.xcworkspace/contents.xcworkspacedata` is still tracked in git (one file, byte-identical to the `menubar01.xcodeproj` copy). Should be removed in a follow-up cleanup commit.
+> - In-code `// legacy .swiftbar` comments in `menubar01/Plugin/FolderPlugin.swift`, `menubar01/Plugin/PluginManger.swift`, and `menubar01/AppDelegate.swift` are intentional historical context (they explain why a non-`.swiftbar` filter or a `manifest.json` parser exists) and stay as-is.
 
 ## Summary
 

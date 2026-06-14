@@ -1,6 +1,10 @@
 # 2026-06-11: Folder-based plugins with manifest.json
 
-**Status:** in-progress
+- **Type:** feat
+- **Scope:** `SwiftBar/Plugin/`, `SwiftBar/Resources/`, `SwiftBarTests/`, `README*.md`, `test-plugin/`
+- **Author(s):** Trae AI (with lingsmbp)
+- **Commit(s):** 536842d
+- **Status:** done
 
 ## Summary
 

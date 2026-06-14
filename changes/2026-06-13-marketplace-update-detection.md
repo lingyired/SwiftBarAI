@@ -1,7 +1,21 @@
 # M5 update-detection follow-up: marketplace browser surfaces available plugin updates from the catalogue
 
-Status: in-progress
+Status: done
 Commit: d831163e0ca2636306b87f91130cef92251ddfc4
+
+> **Status: done** — the original "in-progress" status
+> was due to the same pre-existing signal-abrt cascade
+> in the `menubar01Tests` parallel test runner that
+> affected
+> [`2026-06-13-marketplace-open-data-folder.md`](2026-06-13-marketplace-open-data-folder.md).
+> The cascade is resolved in
+> [`2026-06-14-fix-integration-test-flake.md`](2026-06-14-fix-integration-test-flake.md)
+> (commit `8c6594b`): the 11 new tests
+> (`MarketplaceVersionTests` × 6 + `MarketplaceUpdateAvailabilityTests` × 5)
+> pass in isolation and the full suite now passes
+> 5/5 consecutive runs. The cascade tracker document
+> [`2026-06-13-marketplace-update-detection-test-flake.md`](2026-06-13-marketplace-update-detection-test-flake.md)
+> is now closed.
 
 ## Why
 

@@ -4,21 +4,19 @@
 - **Scope:** menubar01/UI/Marketplace Browser
 - **Author(s):** Trae AI
 - **Commit(s):** 38b976d
-- **Status:** partial
+- **Status:** done
 
-> **Status: partial** — the 3 new tests pass cleanly in
-> isolation and in a focused marketplace-browsing subset
-> (16/16), but the full `menubar01Tests` suite is
-> intermittently failing with "Test crashed with signal
-> abrt" on runs that include unrelated pre-existing
-> tests (e.g. `AIGeneratorViewModelTests`,
-> `RemoteAIPluginGenerator*`, `MarketplaceInstallPrompt*`).
-> The 8-retry cap was hit. See
-> [`2026-06-13-marketplace-open-data-folder-test-flake.md`](2026-06-13-marketplace-open-data-folder-test-flake.md)
-> for the retry log + isolation evidence. The new tests
-> themselves are deterministic and ship-ready; the
-> signal-abrt crash is a pre-existing test-host issue
-> that the change does not introduce.
+> **Status: done** — the original "partial" status was
+> caused by a pre-existing signal-abrt cascade in the
+> `menubar01Tests` parallel test runner. The cascade is
+> resolved in
+> [`2026-06-14-fix-integration-test-flake.md`](2026-06-14-fix-integration-test-flake.md)
+> (commit `8c6594b`): the 3 new tests pass in isolation
+> and the full suite now passes 5/5 consecutive runs.
+> The signal-abrt crashes were the same pre-existing
+> `xctest` host issue documented in
+> [`2026-06-13-marketplace-open-data-folder-test-flake.md`](2026-06-13-marketplace-open-data-folder-test-flake.md),
+> which is now closed.
 
 ## Summary
 

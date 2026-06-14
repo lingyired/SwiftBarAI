@@ -1,6 +1,22 @@
 # Marketplace update detection test flake
 
-Status: open
+Status: closed
+
+> **Status: closed** — the cascade root cause was
+> resolved in commit `8c6594b` (see
+> [`2026-06-14-fix-integration-test-flake.md`](2026-06-14-fix-integration-test-flake.md)).
+> The two identified root causes were (1) undeclared
+> `delegate.pluginManager` call sites in
+> `FolderPlugin.swift`, `EphemeralPlugin.swift`, and
+> `ShortcutPlugin.swift` that trap in the test bundle,
+> and (2) the
+> `testFolderPlugin_ignoresScriptHeaderTypeTag` test
+> leaving an in-flight `RunPluginOperation` on the
+> shared `pluginInvokeQueue`, which crashed the
+> `xctest` host on `NSTask` dealloc in subsequent
+> parallel tests. Both are fixed; verification is
+> 5/5 consecutive `xcodebuild test` runs all green.
+
 Component: menubar01Tests
 First seen: 2026-06-14
 Related change: `2026-06-13-marketplace-update-detection.md`

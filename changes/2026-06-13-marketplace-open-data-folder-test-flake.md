@@ -5,7 +5,16 @@
   [`2026-06-13-marketplace-open-data-folder.md`](2026-06-13-marketplace-open-data-folder.md)
 - **Author(s):** Trae AI
 - **Commit(s):** 38b976d
-- **Status:** open
+- **Status:** closed
+
+> **Status: closed** — the cascade root cause was
+> resolved in commit `8c6594b` (see
+> [`2026-06-14-fix-integration-test-flake.md`](2026-06-14-fix-integration-test-flake.md)).
+> Verification: `xcodebuild test -only-testing:menubar01Tests`
+> passes 5/5 consecutive runs (450+ tests) after the
+> fix. The 3 new tests in
+> `MarketplaceBrowserOpenDataFolderTests` now run
+> cleanly in the full suite.
 
 ## Summary
 

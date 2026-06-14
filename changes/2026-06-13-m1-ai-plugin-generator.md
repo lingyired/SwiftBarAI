@@ -4,7 +4,7 @@
 - **Scope:** `menubar01/AI/`, `menubar01Tests/`, `docs/`
 - **Author(s):** Trae AI
 - **Commit(s):** 996e97b (pbxproj), ef7702c (M1 code+test+docs+record)
-- **Status:** in-progress
+- **Status:** done
 
 ## Summary
 
