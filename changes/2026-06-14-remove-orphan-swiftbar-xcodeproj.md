@@ -3,7 +3,7 @@
 - **Type:** chore
 - **Scope:** `SwiftBar.xcodeproj/` (deleted)
 - **Author(s):** Trae AI (with lingsmbp)
-- **Commit(s):** _pending_
+- **Commit(s):** 4b86ecd
 - **Status:** done
 
 ## Summary
