@@ -1,8 +1,8 @@
 # Fix integration test flake — `testPluginsDidChange_reusesMenuBarItemForReloadedPluginWithSameID`
 
 **Date:** 2026-06-14
-**Status:** pending
-**Commit:** _fill in after commit_
+**Status:** done
+**Commit:** 8c6594b
 
 ## Summary
 
