@@ -91,7 +91,7 @@ class EphemeralPlugin: Plugin {
     func disable() {}
 
     func terminate() {
-        delegate.pluginManager.setEphemeralPlugin(pluginId: id, content: "")
+        PluginManager.shared.setEphemeralPlugin(pluginId: id, content: "")
     }
 
     func enable() {}

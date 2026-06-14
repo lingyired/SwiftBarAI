@@ -1065,8 +1065,50 @@ struct Menubar01IntegrationTests {
         let plugin = try #require(FolderPlugin(manifestDirectory: folderURL))
         plugin.operation?.cancel()
         plugin.terminate()
+        // Wait for the background operation to actually finish before
+        // returning, so no NSTask is left running on the SHARED
+        // pluginInvokeQueue when the next parallel test starts. The
+        // previous test (testFolderPlugin_ignoresScriptHeaderTypeTag)
+        // left a SIGABRT-hazard because FolderPlugin.init triggers
+        // refresh(reason: .FirstLaunch) which enqueues a
+        // RunPluginOperation; if that operation is still running when
+        // the test exits, the next parallel test sees an in-flight
+        // NSTask dealloc crash that surfaces as the
+        // testPluginsDidChange_reusesMenuBarItemForReloadedPluginWithSameID
+        // flake (the failing test is the one in the same parallel
+        // process that loses the race for the shared queue).
+        plugin.operation?.waitUntilFinished()
 
         #expect(plugin.type == .Executable)
+    }
+
+    // Regression test for the testPluginsDidChange_… flake.
+    // Creates a FolderPlugin, asserts the operation is fully cancelled
+    // AND finished before returning. The previous version only called
+    // `cancel()` and `terminate()`, which left a RunPluginOperation in
+    // flight on the shared pluginInvokeQueue; under the parallel test
+    // runner, that operation would later NSTask-dealloc into the next
+    // test process and surface as a flake on
+    // testPluginsDidChange_reusesMenuBarItemForReloadedPluginWithSameID.
+    @Test func testFolderPlugin_waitUntilFinished_drainsBackgroundOperation() async throws {
+        let tempDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectory) }
+
+        let folderURL = tempDirectory.appendingPathComponent("drain", isDirectory: true)
+        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+        try Data("{\"entry\": \"plugin.sh\"}".utf8).write(to: folderURL.appendingPathComponent("manifest.json"))
+        let scriptURL = folderURL.appendingPathComponent("plugin.sh")
+        try Data("#!/bin/zsh\nexit 0\n".utf8).write(to: scriptURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
+
+        let plugin = try #require(FolderPlugin(manifestDirectory: folderURL))
+        plugin.operation?.cancel()
+        plugin.terminate()
+        plugin.operation?.waitUntilFinished()
+
+        #expect(plugin.operation?.isFinished == true)
+        #expect(plugin.operation?.isExecuting == false)
     }
 
     @Test func testShouldImportOpenedPluginFile_onlyAcceptsValidFolderPlugins() async throws {

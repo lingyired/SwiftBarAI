@@ -58,7 +58,11 @@ class ShortcutPlugin: TimerArmingPlugin, Identifiable, ObservableObject {
     var error: Error?
     var debugInfo = PluginDebugInfo()
 
-    lazy var invokeQueue: OperationQueue = delegate.pluginManager.pluginInvokeQueue
+    // Use PluginManager.shared instead of the undeclared top-level `delegate`
+    // (matches the precedent in MenuBarItem.swift). PluginManager.shared is
+    // created in PluginManager.init long before any plugin is constructed, so
+    // the test bundle's missing main.swift no longer traps.
+    lazy var invokeQueue: OperationQueue = PluginManager.shared.pluginInvokeQueue
 
     var updateTimerPublisher: Timer.TimerPublisher {
         Timer.TimerPublisher(interval: updateInterval, runLoop: .main, mode: .default)
